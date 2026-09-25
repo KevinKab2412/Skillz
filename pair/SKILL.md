@@ -157,7 +157,7 @@ what decisions remain human, and says when to inspect the result.
 
 Run [`spec`](references/spec/SKILL.md) to synthesise the grill decision log, any prototype verdict, and any
 architecture contract into a spec and GitHub epic with atomic child task sub-issues in
-`K2412/planning`. It hands back the
+`KevinKab2412/planning`. It hands back the
 epic number. `spec` is also where the epic gets its `stack:*` labels (e.g. `stack:react`,
 `stack:dagster`) — those labels are what later route `best-practices` guidance into `implement` and
 `code-review`.
@@ -235,4 +235,4 @@ human to open the PR (e.g. via `to-pr`).
 
 - **"stop pair"** / **"exit pair"**: save current state (which stage, which issues exist) and hand back control.
 - **"skip to execution"**: jump to Stage 4 using whatever task issues currently exist. Warn that the plan hasn't been reviewed.
-- **"pair resume"**: find the most recent open epic via `gh issue list -R K2412/planning --label spec:epic --state open --json number,title,url` and pick up from the last completed stage.
+- **"pair resume"**: find the most recent open epic via `gh issue list -R KevinKab2412/planning --label spec:epic --state open --json number,title,url` and pick up from the last completed stage.

@@ -1,10 +1,10 @@
 # GitHub-issues plan — planning-repo cookbook
 
 The implementation pipeline (`spec` → `plan-review` → `implement` → `code-review`) tracks work as
-**GitHub issues in `K2412/planning`** (private, issues-only) — the same home
+**GitHub issues in `KevinKab2412/planning`** (private, issues-only) — the same home
 [`wayfinder`](../../../wayfinder/SKILL.md) uses for its maps, so a map and the spec built from it sit
 together, branch-independent and out of any shared code repo. All commands use `gh`; none touch
-`git commit`/`git push`, so the global push guard never fires. `R=K2412/planning` throughout.
+`git commit`/`git push`, so the global push guard never fires. `R=KevinKab2412/planning` throughout.
 
 **Always pass `-R $R`.** `gh` defaults to the repo of the current directory, so an omitted `-R` files
 the plan into whatever code repo you happen to be standing in — the one mistake this cookbook exists
@@ -16,7 +16,7 @@ The **epic** is one issue; each **task** is a sub-issue of it.
 ## Ensure labels exist (idempotent — run once)
 
 ```bash
-R=K2412/planning
+R=KevinKab2412/planning
 gh label create -R $R "spec:epic"    --color 5319e7 --description "Accepted plan — the epic" --force
 gh label create -R $R "spec:task"    --color 1d76db --description "Bounded behavioral slice under an epic" --force
 gh label create -R $R "blocked"      --color b60205 --description "Has an open blocker — not on the frontier" --force
@@ -27,7 +27,7 @@ gh label create -R $R "architecture:checkpoint" --color fbca04 --description "Ar
 ## Create the epic
 
 ```bash
-R=K2412/planning
+R=KevinKab2412/planning
 EPIC_URL=$(gh issue create -R $R --label "spec:epic" \
   --title "<originating ticket id, if any>: <task title, ≤180 chars>" \
   --body "<the full spec from the spec skill>")
@@ -41,7 +41,7 @@ the **code repo and branch** the work targets, or a later reader can't tell what
 ## Create a task (sub-issue of the epic)
 
 ```bash
-R=K2412/planning
+R=KevinKab2412/planning
 # 1. create the task with its behavior, acceptance examples, seam, and architecture fence
 TASK_URL=$(gh issue create -R $R --label "spec:task" \
   --title "<task title>" \
@@ -138,7 +138,7 @@ gh issue close -R $R <EPIC_N>   # the epic, when review passes
 ## Find open epics (for `pair resume`)
 
 ```bash
-gh issue list -R K2412/planning --label "spec:epic" --state open --json number,title,url
+gh issue list -R KevinKab2412/planning --label "spec:epic" --state open --json number,title,url
 ```
 
 **No `gh`?** Fall back to a Markdown checklist of the spec + tasks and tell the user GitHub tracking

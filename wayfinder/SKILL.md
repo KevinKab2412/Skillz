@@ -19,7 +19,7 @@ need a map. Use [`grill`](../grill/SKILL.md). Wayfinder is for when you *can't* 
 
 ## Where the map lives — always the personal planning repo
 
-The map and every ticket are GitHub issues in **`K2412/planning`** (private), never in the code repo
+The map and every ticket are GitHub issues in **`KevinKab2412/planning`** (private), never in the code repo
 you're working in. This is deliberate:
 - **Branch-independent** — issues live on GitHub, not the working tree, so no branch checkout ever
   reshapes the map (the thing that made a committed-tracker unworkable for this).

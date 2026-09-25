@@ -101,8 +101,8 @@ the first orientation beat, so collect it once:
 - **Linked Linear tickets.** A PR body or branch name often carries a ticket id (e.g. `SIG-520`). Pull
   the ticket to read what was asked. **Read-only** — never comment on, edit, or move a Linear ticket;
   what appears there is the user's to write.
-- **A linked planning epic.** If the change references a `K2412/planning` epic, pull its acceptance
-  criteria: `gh issue view -R K2412/planning <n> --json title,body,labels`. This is the approved
+- **A linked planning epic.** If the change references a `KevinKab2412/planning` epic, pull its acceptance
+  criteria: `gh issue view -R KevinKab2412/planning <n> --json title,body,labels`. This is the approved
   spec when it exists. Preserve its Architecture Contract as part of the acceptance bar, including
   any human-approved revision returned by an architecture checkpoint. Fetch epic comments and the
   comments on every `architecture:checkpoint` task; the newest approved contract revision and recorded
@@ -383,7 +383,7 @@ options:
   `gh pr review <n> --comment` (or `--request-changes`) if they pick it. The paste blocks exist so the
   user can post in their own hands; that's the default path.
 - **Accept as-is**, when this ran against a planning epic and all findings are resolved or accepted,
-  closes the epic: `gh issue close -R K2412/planning <epic-n>`. Then show a one-line summary — epic
+  closes the epic: `gh issue close -R KevinKab2412/planning <epic-n>`. Then show a one-line summary — epic
   closed, what shipped, any deferred follow-ups.
 
 ## Pipeline notes (when called from /pair)

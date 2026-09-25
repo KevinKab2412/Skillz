@@ -54,14 +54,14 @@ If spawning, build task intent in the subagent prompt from issue and repository 
 conversation history or workflow memory (see [../spec/GITHUB-ISSUES.md](../spec/GITHUB-ISSUES.md)):
 
 ```bash
-gh issue view -R K2412/planning <epic-n> --json title,body                                   # the spec
-gh api repos/K2412/planning/issues/<epic-n>/sub_issues                      # the tasks + state + labels
-gh issue view -R K2412/planning <task-n> --json title,body,labels   # for each task (a `needs-human` label = stop and ask first)
-gh issue view -R K2412/planning <epic-n> --comments                         # latest approved contract revisions/checkpoints
+gh issue view -R KevinKab2412/planning <epic-n> --json title,body                                   # the spec
+gh api repos/KevinKab2412/planning/issues/<epic-n>/sub_issues                      # the tasks + state + labels
+gh issue view -R KevinKab2412/planning <task-n> --json title,body,labels   # for each task (a `needs-human` label = stop and ask first)
+gh issue view -R KevinKab2412/planning <epic-n> --comments                         # latest approved contract revisions/checkpoints
 ```
 
 Before choosing the frontier, inspect every `Blocked by #N` relation. When all named blockers are
-closed, remove the task's `blocked` label in `K2412/planning`; this transition is part of advancing the
+closed, remove the task's `blocked` label in `KevinKab2412/planning`; this transition is part of advancing the
 plan, not a human decision.
 
 For `needs-human`, stop before spawning the worker and present the exact irreversible operation. After
@@ -72,7 +72,7 @@ memory alone does not clear the gate.
 Read the epic's `stack:*` labels — `spec` applies them, so they say which stack the code will run on:
 
 ```bash
-gh issue view -R K2412/planning <epic-n> --json labels   # look for stack:react / stack:dagster
+gh issue view -R KevinKab2412/planning <epic-n> --json labels   # look for stack:react / stack:dagster
 ```
 
 If `stack:react` and/or `stack:dagster` is present, invoke the [`best-practices`](../best-practices/SKILL.md)
@@ -197,7 +197,7 @@ Each task is done when:
 3. The touched structure is clean enough to continue without stacking known debt.
 4. Every architecture-contract hard guard passes.
 5. No unexplained files, dependencies, or boundary types sit outside the contract.
-6. For a task without `architecture:checkpoint`, closing it in K2412/planning succeeds.
+6. For a task without `architecture:checkpoint`, closing it in KevinKab2412/planning succeeds.
 7. For a task with `architecture:checkpoint`, leave it open and return the task
    number, exact batch patch or commit range, digest, guard results, diagnostics,
    predicted-versus-actual touchpoints, and uncertainties to the

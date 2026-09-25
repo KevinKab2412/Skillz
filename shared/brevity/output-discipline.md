@@ -6,6 +6,11 @@ wade through to find the one thing they needed. This module caps that, hard, and
 into a picture instead. It pairs with the [`show-me`](../show-me/visual-formats.md) module: that one
 gives the format menu, this one makes using it non-optional.
 
+**Apply [`adhd-shaping.md`](adhd-shaping.md) alongside this, every time — not optional.** This module
+caps *length*; that one shapes what's left so the reader can act on it without re-reading (lead with
+the next action, number steps, restate state, make wins visible). A 150-word answer can still bury the
+one thing to do next. Run both before you send text or an artifact.
+
 ## The hard cap
 
 **Every output this skill produces is capped at 150 words of prose.** No exceptions — the terminal

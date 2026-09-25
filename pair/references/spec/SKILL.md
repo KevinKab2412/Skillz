@@ -12,14 +12,14 @@ description: >
 # Spec — synthesise understanding into a spec + GitHub plan
 
 Turn shared understanding (a grill decision log, a discussion, or a rough idea the user hands you)
-into a written spec and an atomic plan of **GitHub issues in `K2412/planning`** (private). **Don't
+into a written spec and an atomic plan of **GitHub issues in `KevinKab2412/planning`** (private). **Don't
 interview here** — that's [`grill`](../../../grill/SKILL.md). Synthesise from what's already decided plus
 what you find in the code.
 
 ## Where the plan lives — always the personal planning repo
 
-The epic and every task issue go in **`K2412/planning`**, never in the code repo, and never in
-whatever tracker the originating ticket came from (Linear, Jira). Pass `--repo K2412/planning` on
+The epic and every task issue go in **`KevinKab2412/planning`**, never in the code repo, and never in
+whatever tracker the originating ticket came from (Linear, Jira). Pass `--repo KevinKab2412/planning` on
 every `gh issue` call; `gh` otherwise defaults to the repo you happen to be standing in, which is
 exactly the mistake this rule exists to prevent.
 
@@ -41,7 +41,7 @@ options:
 
 ## Step 0 — If the source is a wayfinder map
 
-If you're synthesising from a [`wayfinder`](../../../wayfinder/SKILL.md) map (a `K2412/planning` issue with
+If you're synthesising from a [`wayfinder`](../../../wayfinder/SKILL.md) map (a `KevinKab2412/planning` issue with
 closed decision tickets), pull every closed sub-issue's title, body, and **resolution comment** first —
 those resolutions are the decisions. Build the spec from them, and **link each spec section back to the
 ticket URL it came from** so the implementer can open the primary source instead of trusting a summary.
@@ -124,7 +124,7 @@ Follow [GITHUB-ISSUES.md](GITHUB-ISSUES.md) for the exact `gh` commands. In orde
 2. **Create one epic issue** (`spec:epic`), title = original task (≤180 chars), body = the full spec
    from Step 3. If a prototype settled a design question upstream, attach its branch pointer + verdict
    as a comment on the epic so it travels with the plan.
-3. **Tag the epic's stack** (`stack:react`, `stack:dagster` — both exist in `K2412/planning`). Read the
+3. **Tag the epic's stack** (`stack:react`, `stack:dagster` — both exist in `KevinKab2412/planning`). Read the
    signal from two places and add a label when *either* points that way:
    - **The repo's stack** — React/Next.js if `package.json` carries `react`/`next` deps or the tree has
      `*.tsx` files; Dagster if code `import`s `dagster`, the tree has a `dg`/Dagster project layout, or
