@@ -12,7 +12,9 @@ description: >
   long as they point at a branch (or an explainer file) and want it to become a PR. Default base
   branch is `dev` and PRs are always opened as drafts. Stamps a blast-radius banner (Deep read /
   Spot-check / Skim) at the top of the body so a reviewer calibrates how hard to look — deep on trunk
-  and one-way-door changes, a skim on gated leaf code.
+  and one-way-door changes, a skim on gated leaf code. Also attaches visual proof as a PR comment on
+  every call — real screenshots (captured with a browser and uploaded through a logged-in browser
+  session) for UI changes, a mermaid state/sequence diagram for everything else.
 ---
 
 # to-pr
@@ -75,6 +77,8 @@ build the body from the diff and commits (Step 1).
 - **Blast-radius band** (optional override) — the reviewer's dial is computed from the diff by
   default. If the user sets a band ("mark this deep read", "this is leaf, skim it"), use theirs and
   keep the signal table as the evidence.
+- **Proof** (default on) — every call attaches visual proof as a PR comment (Step 8). Pass
+  `--no-proof` to skip it (e.g. when the app can't run in this environment).
 
 ## Steps
 
@@ -189,8 +193,20 @@ build the body from the diff and commits (Step 1).
    If a PR already exists for this branch, `gh pr create` will say so — in that case offer to
    update the existing body instead: `gh pr edit --body-file <body.md>`.
 
-8. **Report** the PR URL. Note that it opened as a draft and remind the user they mark it ready
-   themselves. Say the blast-radius band in one line so they know how the reviewer will be steered.
+8. **Attach visual proof as a PR comment** (on by default, every call — `--no-proof` to skip). Follow
+   [`references/visual-proof.md`](references/visual-proof.md). Read the diff: if it touches UI and the
+   app can be started, launch it (reuse the [`run`](../run/SKILL.md) skill), drive the changed
+   screen(s) with `agent-browser`, and screenshot them. Then open the PR in a **logged-in**
+   `agent-browser` session and upload the shots into a comment through GitHub's own browser upload — the
+   only path that renders in private repos (there is no image-upload API, and committed raw URLs break
+   behind GitHub's camo proxy). If there's no UI, or the app won't start, post a mermaid **state or
+   sequence diagram** of the changed flow instead (`gh pr comment` — mermaid renders inline, no upload).
+   Proof always goes in a **comment**, never the body. Never fake a shot — fall back to a diagram and
+   say so.
+
+9. **Report** the PR URL. Note that it opened as a draft and remind the user they mark it ready
+   themselves. Say the blast-radius band in one line so they know how the reviewer will be steered, and
+   name what proof you attached (screenshots or a diagram).
 
 ## Notes
 
@@ -210,6 +226,13 @@ build the body from the diff and commits (Step 1).
   block, a fenced file/call/component tree, or a shape-matched `diff` — is worth the effort; it's the
   part reviewers most appreciate. Pick the smallest one that carries the point. Never paste raw
   `<svg>` (GitHub strips it).
+- **Proof goes in a comment, via a real browser.** Every call attaches proof (Step 8):
+  screenshots for UI changes, a mermaid diagram otherwise. Screenshots are uploaded by driving a
+  **logged-in `agent-browser` session** to GitHub's own upload door — the only way an image renders in
+  a *private* repo (there's no comment-image API, and a committed raw URL breaks behind GitHub's camo
+  proxy). First run needs a one-time GitHub login saved as a session; after that it's unattended.
+  Never fabricate a screenshot — if capture or upload fails, fall back to a diagram and say so. Full
+  procedure: [`references/visual-proof.md`](references/visual-proof.md).
 - **Drafts by default.** This user always opens PRs as drafts and marks them ready manually — do
   not use `--web` or open a non-draft unless explicitly told.
 - **Don't paste the raw HTML.** It renders as broken, unstyled text. Always convert. Only
