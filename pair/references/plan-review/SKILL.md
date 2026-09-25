@@ -11,12 +11,12 @@ description: >
 # Plan Review — senior-engineer review of a GitHub plan
 
 Review the plan with a senior-engineer eye **before any code is written**. Fetch the task list
-(the user gives the epic number, or find the most recent open `spec:epic` in `K2412/planning`). Per
+(the user gives the epic number, or find the most recent open `spec:epic` in `KevinKab2412/planning`). Per
 [../spec/GITHUB-ISSUES.md](../spec/GITHUB-ISSUES.md):
 
 ```bash
-gh api repos/K2412/planning/issues/<epic-n>/sub_issues --jq '.[] | "#\(.number) [\(.state)] \(.title) | \((.labels|map(.name))|join(","))"'
-gh issue view -R K2412/planning <task-n> --json title,body,labels   # run for every child task
+gh api repos/KevinKab2412/planning/issues/<epic-n>/sub_issues --jq '.[] | "#\(.number) [\(.state)] \(.title) | \((.labels|map(.name))|join(","))"'
+gh issue view -R KevinKab2412/planning <task-n> --json title,body,labels   # run for every child task
 ```
 
 Evaluate for: DRY violations in the plan, over-stuffed tasks that are not independently shippable,

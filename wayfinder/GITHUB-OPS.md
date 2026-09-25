@@ -1,7 +1,7 @@
 # Wayfinder — GitHub operations cookbook
 
-Every map and ticket is a GitHub issue in **`K2412/planning`** (private, issues-only). All commands use
-`gh`; none touch `git commit`/`git push` (so the global push guard never fires). `R=K2412/planning`
+Every map and ticket is a GitHub issue in **`KevinKab2412/planning`** (private, issues-only). All commands use
+`gh`; none touch `git commit`/`git push` (so the global push guard never fires). `R=KevinKab2412/planning`
 throughout.
 
 ## Labels (already created in the repo)
@@ -12,7 +12,7 @@ throughout.
 ## Create the map
 
 ```bash
-R=K2412/planning
+R=KevinKab2412/planning
 gh issue create -R $R --label "wayfinder:map" \
   --title "<effort name>" \
   --body "$(cat <<'MD'

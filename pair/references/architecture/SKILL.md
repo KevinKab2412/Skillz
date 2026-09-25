@@ -175,7 +175,7 @@ If the contract changes, show the precise revision and ask the human to approve 
 
 ### Persist the gate
 
-After the human accepts the gate, record it as a comment on the checkpoint task in `K2412/planning`:
+After the human accepts the gate, record it as a comment on the checkpoint task in `KevinKab2412/planning`:
 
 ```markdown
 ## Architecture checkpoint

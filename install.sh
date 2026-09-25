@@ -251,9 +251,9 @@ AGENTS_MD="$AGENTS_HOME_DIR/AGENTS.md"
 
 ## Standing Rules
 
-- **Planning always lives in [`K2412/planning`](https://github.com/K2412/planning)** (private).
+- **Planning always lives in [`KevinKab2412/planning`](https://github.com/KevinKab2412/planning)** (private).
   Every spec epic, task sub-issue and wayfinder map goes there — never in a code repo, and never in
-  the tracker the work came from. Pass `-R K2412/planning` on every `gh issue` / `gh label` /
+  the tracker the work came from. Pass `-R KevinKab2412/planning` on every `gh issue` / `gh label` /
   `gh api repos/...` call; `gh` otherwise targets the repo you're standing in.
 - **Never write to a shared team tracker** (Linear, Jira) — read tickets, but don't comment, edit or
   change status. What appears there is the user's to write.
@@ -282,7 +282,7 @@ Skills load automatically from `~/.agents/skills/`. Use `/skill-name` or describ
 HEADER
   emit_skill_bullets
   echo ""
-  echo "> Source of truth: \`~/.agents/skills/\` — managed via [K2412/Skillz](https://github.com/K2412/Skillz). Run \`install.sh\` to sync."
+  echo "> Source of truth: \`~/.agents/skills/\` — managed via [KevinKab2412/Skillz](https://github.com/KevinKab2412/Skillz). Run \`install.sh\` to sync."
 } > "$AGENTS_MD"
 echo "Generated: $AGENTS_MD"
 
