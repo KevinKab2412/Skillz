@@ -99,6 +99,7 @@ Skills load automatically from `~/.agents/skills/` (shared across Claude Code, C
 - **`/goal`** — Set a goal that Codex will pursue to completion.
 - **`/grill`** — Interview the user relentlessly about an idea until you reach shared understanding, while actively maintaining the project's domain model (glossary +…
 - **`/loop`** — Run a prompt or skill in this session on a recurring or variable interval (e.g.
+- **`/meetily`** — Read, search, and summarise meeting transcripts recorded by the local Meetily app, which stores them in a SQLite database on this Mac.
 - **`/migrate-to-skills`** — Convert 'Applied intelligently' Codex rules (.cursor/rules/*.mdc) and slash commands (.cursor/commands/*.md) to Agent Skills format (.cursor/skills/).
 - **`/new-repo`** — Create a Codex-hosted repo for the current project and push it.
 - **`/onboard`** — Use /onboard for a focused Codex onboarding flow that learns basic preferences, picks a first goal, and routes the user to the right next action.
