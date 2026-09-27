@@ -1,22 +1,19 @@
-# Visual proof — attach evidence to the PR as a comment
+# Visual proof — capture evidence, draft a comment, let the user post
 
-Every `/to-pr` attaches **proof of the finished change** as a PR *comment* (never the body), so a
-reviewer sees what changed without checking it out. This is the video's core move: make the agent
-hand over evidence — a screenshot, a flow — so the reviewer trusts and skims instead of re-deriving.
+Every `/to-pr` prepares **proof of the finished change** and **drafts a PR comment** for the user to
+post. This is the video's core move: hand the reviewer evidence — a screenshot, a flow — so they trust
+and skim instead of re-deriving.
+
+**The proof step never posts on its own.** It captures, shows the user the result in chat, and drafts
+the comment. Posting to the PR happens **only when the user gives the word** — see
+[[feedback-never-post-pr-comments]]: approval to post is not approval to author, and a posted comment
+is public the moment it lands. So the default is capture + draft; the browser upload-and-submit runs
+only after the user says "post it".
 
 Two kinds, picked from the diff:
 
-- **UI change → real screenshots**, uploaded through a **logged-in browser**.
+- **UI change → real screenshots** (captured with `agent-browser`).
 - **No UI, or the app won't start → a mermaid diagram** (state or sequence) of how the behavior changed.
-
-## Why upload screenshots through a real browser
-
-GitHub has **no API** to put an image into a comment. The only working path is the browser's own
-upload door — the same drag-drop a human uses — which mints a `github.com/user-attachments/assets/…`
-URL that renders for everyone, **public or private repo**. Committing a PNG and linking its raw URL
-does *not* work on private repos: GitHub proxies every image through its anonymous fetcher (camo),
-which has no login and gets denied, so the reader sees a broken icon. So we drive a logged-in browser
-to do exactly what a person would: open the PR, attach the images, submit the comment.
 
 ## Step 1 — Decide the proof kind
 
@@ -32,66 +29,81 @@ Reuse the [`run`](../run/SKILL.md) skill to find and run the start command — i
 patterns (a project skill, `package.json` scripts, `Procfile`, `docker-compose`, `Makefile`, the
 README). Launch it in the background; wait for the port to answer before capturing.
 
-### A2. Capture the changed screens (app browser session)
+### A2. Capture the changed screens
 
-Use `agent-browser` in a throwaway session pointed at the local app:
+Use `agent-browser` pointed at the local app:
 
-- `agent_browser_open` the route(s) the diff changed; `agent_browser_snapshot` to get stable refs,
-  drive any state the change needs (log in, open the dialog, toggle the feature).
-- `agent_browser_screenshot` each changed screen; save the PNGs to the session scratchpad. Name each
-  file after what it shows (`save-card-button.png`), so the caption writes itself.
+- `agent_browser_open` the route(s) the diff changed. Reach the state the change needs (log in, select
+  the tenant/account, open the dialog, toggle the feature). `agent_browser_screenshot` each one; save
+  the PNGs to the session scratchpad, named after what they show (`save-card-button.png`).
 - Capture only what the diff changed — one to three shots, not a tour.
 
-### A3. Upload through the logged-in GitHub browser
+**Trusted clicks — the finicky-UI trap.** On React/Radix/Reflex UIs, `agent_browser_click @ref` and
+`eval`-dispatched `.click()`/`MouseEvent`s are **silently ignored** — they are untrusted
+(`isTrusted:false`) and the framework drops them, reporting success while nothing happens. For anything
+that won't respond (menus, account/tenant switchers, dialogs), use a **real coordinate click**: read
+the element's centre from `getBoundingClientRect()` via `eval`, then
+`agent_browser_mouse_move` → `mouse_down` → `mouse_up` at those x/y. Watch for two gotchas: elements
+often have a hidden mobile+desktop copy (pick the one with `rect.width>0`), and a login session can
+drop mid-run (re-login if the page reverts to the login screen).
 
-A **separate** `agent-browser` session that carries a saved GitHub login:
+### A3. Empty states are real evidence — never fake data
 
-1. **Session:** `agent_browser_state_load` a saved `github` state. If none exists, this is the
-   one-time setup — `agent_browser_auth_login` to GitHub interactively, then `agent_browser_state_save`
-   as `github` so every later run is unattended.
-2. `agent_browser_open` the PR URL (you just created it — you have it). Scroll to the **comment box**
-   at the bottom.
-3. **Attach the files:** `agent_browser_upload` the saved PNGs onto the comment box's file input
-   (`input[type=file]` behind the toolbar's attach control). If the input is not targetable, fall back
-   to a drag/paste onto the textarea. **Wait** until each upload finishes — GitHub inserts a
-   `![name](https://github.com/user-attachments/assets/…)` line into the textarea for each file
-   (`agent_browser_wait_for_text` on `user-attachments`).
-4. Type one plain caption line per shot above its image (what it shows, e.g. "new Save button on the
-   card").
-5. Submit the comment (click **Comment**). Confirm it posted (`agent_browser_wait_for_selector` on the
-   new comment, or re-read the PR).
+If a screen has no data (nothing seeded in this environment), that is a **valid screenshot** — capture
+it and label the caption honestly ("empty — no records seeded locally"). Do **not** imply a bug, and do
+**not** fabricate or describe data that isn't on screen. A described screenshot that doesn't exist is
+worse than an honest empty state. If richer data lives under another tenant/account, switch to it (real
+coordinate click) and recapture; if you can't reach populated data, ship the empty-state shot and say
+so.
 
-### A4. Stop the app
+### A4. Draft the comment (do not post)
+
+Save the shots locally, show them to the user in chat, and produce a **ready-to-post comment draft** in
+a fenced block: one caption line per shot. Then stop. Do not upload to GitHub and do not submit — that
+is the user's call (A5).
+
+### A5. Post — only on the user's explicit go
+
+When the user says to post, drive the **logged-in** `agent-browser` GitHub session:
+
+1. `agent_browser_state_load` a saved `github` state; if none exists, one-time `agent_browser_auth_login`
+   then `agent_browser_state_save` as `github`.
+2. `agent_browser_open` the PR, scroll to the comment box.
+3. `agent_browser_upload` the PNGs onto the comment box's file input (`input[type=file]`; fall back to
+   drag/paste). **Wait** until each upload finishes — GitHub inserts a
+   `![name](https://github.com/user-attachments/assets/…)` line for each. This browser upload is the
+   only path that renders images in a **private** repo: there is no comment-image API, and a committed
+   raw URL breaks behind GitHub's camo proxy (an anonymous fetcher with no login).
+4. Add the captions, then submit **only if the user said to post this draft as-is**. If they want to
+   review first, leave the box filled and unsubmitted and tell them it's staged.
+
+### A6. Stop the app
 
 Tear down the local app process started in A1.
 
 ## Section B — Diagram proof (no UI, or launch failed)
 
 Build the **smallest** mermaid that shows how the code's behavior changed, following the figure rules
-in [`references/show-me/visual-formats.md`](references/show-me/visual-formats.md) and the code-review
-explainer's approach:
+in [`references/show-me/visual-formats.md`](references/show-me/visual-formats.md):
 
 - a `sequenceDiagram` for a call/request/message flow that changed,
 - a `stateDiagram-v2` for a state machine or lifecycle that changed,
 - a shape-matched `flowchart` for control flow.
 
-Read it off the diff — the functions added/changed and how they call each other. Post it with
-`gh pr comment <n> --body-file <diagram.md>`. Mermaid renders inline in comments, so **no upload is
-needed** — this path always works, public or private.
+Read it off the diff. Present it as a **ready-to-post fenced block in chat** for the user to paste.
+Mermaid renders inline in a comment, so no upload is needed — but still don't `gh pr comment` it
+yourself; the user posts it (or says to).
 
 ## Rules
 
-- **Proof every call.** The default is on for every `/to-pr`. A UI change gets screenshots; everything
-  else gets a diagram — but a proof comment always goes up. `--no-proof` is the only escape hatch.
-- **Comment, never body.** The body stays lean (blast-radius banner + summary). Proof is a follow-up
-  comment so it never bloats the description.
-- **Never fake a shot.** If the app won't start or capture fails, fall back to a diagram and say so in
-  the comment ("app didn't start locally — flow shown as a diagram instead"). A described screenshot
-  that doesn't exist is worse than an honest diagram.
-- **After-only by default.** One set of "after" screenshots. Before/after needs running the base
-  branch too — skip it unless the user asks.
-- **The upload browser must be logged in.** First run needs a one-time GitHub login saved as a
-  session; after that it's unattended. If no login is available, fall back to a diagram rather than
-  blocking the PR.
-- **Posting is the one outward action.** Creating the comment writes to GitHub. It's on the user's own
-  PR and they've opted every call in — but it is the only thing here that leaves the machine.
+- **Prepare proof every call; never post it.** Default on for every `/to-pr` (`--no-proof` to skip).
+  Capture + draft always; posting to the PR waits for the user's explicit word. Same rule as
+  [[feedback-never-post-pr-comments]].
+- **Comment, never body.** The body stays lean (blast-radius banner + summary). Proof is a separate
+  comment draft so it never bloats the description.
+- **Never fake a shot.** App won't start or capture fails → fall back to a diagram and say so. Empty
+  data → an honest empty-state shot, labelled. Never describe pixels that aren't there.
+- **Trusted clicks for finicky UIs.** Real coordinate `mouse_move/down/up`, not `eval`/`@ref` clicks,
+  on React/Radix/Reflex controls that silently ignore synthetic events.
+- **After-only by default.** One set of "after" shots. Before/after needs running the base branch too —
+  skip unless the user asks.
