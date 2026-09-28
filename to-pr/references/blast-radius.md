@@ -167,3 +167,5 @@ spends the budget in the right place:
 - **Round up under doubt.** An unclear file is a deeper read, not a skim.
 - **The user can override.** If they set a band explicitly, use theirs and keep the table as the
   evidence for the reader.
+
+> **At a glance:** the banner is a structural read of the diff — it sets *how hard to look*, never whether the code is good.
