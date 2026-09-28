@@ -12,7 +12,10 @@ description: >
   long as they point at a branch (or an explainer file) and want it to become a PR. Default base
   branch is `dev` and PRs are always opened as drafts. Stamps a blast-radius banner (Deep read /
   Spot-check / Skim) at the top of the body so a reviewer calibrates how hard to look — deep on trunk
-  and one-way-door changes, a skim on gated leaf code.
+  and one-way-door changes, a skim on gated leaf code. Also prepares visual proof on every call and
+  drafts a PR comment for you to post — real screenshots (captured with a browser) for UI changes, a
+  mermaid state/sequence diagram for everything else. It never posts the comment itself; posting is
+  yours.
 ---
 
 # to-pr
@@ -75,6 +78,9 @@ build the body from the diff and commits (Step 1).
 - **Blast-radius band** (optional override) — the reviewer's dial is computed from the diff by
   default. If the user sets a band ("mark this deep read", "this is leaf, skim it"), use theirs and
   keep the signal table as the evidence.
+- **Proof** (default on) — every call prepares visual proof and drafts a PR comment for the user to
+  post (Step 8); it never posts on its own. Pass `--no-proof` to skip it (e.g. when the app can't run
+  in this environment).
 
 ## Steps
 
@@ -189,8 +195,22 @@ build the body from the diff and commits (Step 1).
    If a PR already exists for this branch, `gh pr create` will say so — in that case offer to
    update the existing body instead: `gh pr edit --body-file <body.md>`.
 
-8. **Report** the PR URL. Note that it opened as a draft and remind the user they mark it ready
-   themselves. Say the blast-radius band in one line so they know how the reviewer will be steered.
+8. **Prepare visual proof and draft a comment — do not post it** (on by default, every call —
+   `--no-proof` to skip). Follow [`references/visual-proof.md`](references/visual-proof.md). Read the
+   diff: if it touches UI and the app can be started, launch it (reuse the [`run`](../run/SKILL.md)
+   skill), drive the changed screen(s) with `agent-browser` (**real coordinate clicks** on finicky
+   React/Radix/Reflex controls — `eval`/`@ref` clicks are silently dropped), and screenshot them —
+   **empty states are valid, labelled, evidence; never fake data**. If there's no UI or the app won't
+   start, build a mermaid **state/sequence diagram** of the changed flow instead. Then **show the user
+   the shots/diagram in chat and draft the comment in a fenced block** — proof is a **comment**, never
+   the body. **Stop there.** Posting is the user's call ([[feedback-never-post-pr-comments]]): only on
+   their explicit go, drive the **logged-in** `agent-browser` GitHub session to upload the shots (the
+   only path that renders images in a private repo — no image-upload API, and committed raw URLs break
+   behind GitHub's camo proxy) and submit. Never `gh pr comment` or click **Comment** on your own.
+
+9. **Report** the PR URL. Note that it opened as a draft and remind the user they mark it ready
+   themselves. Say the blast-radius band in one line so they know how the reviewer will be steered, and
+   name what proof you attached (screenshots or a diagram).
 
 ## Notes
 
@@ -210,6 +230,16 @@ build the body from the diff and commits (Step 1).
   block, a fenced file/call/component tree, or a shape-matched `diff` — is worth the effort; it's the
   part reviewers most appreciate. Pick the smallest one that carries the point. Never paste raw
   `<svg>` (GitHub strips it).
+- **Proof is drafted, never posted.** Every call prepares proof (Step 8): screenshots for UI changes,
+  a mermaid diagram otherwise. It shows the user the result and drafts the comment — then stops.
+  **Posting is the user's call** ([[feedback-never-post-pr-comments]]): only on their explicit go do you
+  drive the **logged-in `agent-browser` session** to upload the shots through GitHub's own upload door —
+  the only way an image renders in a *private* repo (no comment-image API, and a committed raw URL
+  breaks behind GitHub's camo proxy) — and submit. Never `gh pr comment`/click Comment yourself.
+  **Empty states are valid, labelled evidence; never fabricate a screenshot.** On finicky
+  React/Radix/Reflex controls use **real coordinate clicks** (`mouse_move/down/up`), not `eval`/`@ref`
+  clicks, which are silently dropped. Full procedure:
+  [`references/visual-proof.md`](references/visual-proof.md).
 - **Drafts by default.** This user always opens PRs as drafts and marks them ready manually — do
   not use `--web` or open a non-draft unless explicitly told.
 - **Don't paste the raw HTML.** It renders as broken, unstyled text. Always convert. Only
