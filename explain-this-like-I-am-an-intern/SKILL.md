@@ -1,18 +1,17 @@
 ---
 name: explain-this-like-I-am-an-intern
 description: >
-  User-invoked way to get clarity on anything — a subject you want to finally understand, or a
-  message of mine that just didn't land. It re-explains from scratch as if to a bright intern on
-  their first day: someone sharp but brand-new, who shares none of this thread's history and none
-  of its jargon. It leads with the missing premise and the *why*, spells out every acronym and
-  domain term on first use, drops to plain English and a concrete example — and *then* probes with
-  a question or two, because a nod is not understanding and the point is that you hold it, not that
-  it merely sounded clear. Reach for it with "/explain-this-like-I-am-an-intern", "eli-intern",
-  "explain this like I'm an intern", "you lost me", "wait, what?", "I'm lost", "that didn't land",
-  "back up", "break this down for me from scratch", "I want to actually understand X". User-invoked
-  only — the agent never reaches for this on its own, because only you know when you stopped
-  following.
-disable-model-invocation: true
+  Get clarity on anything — a subject you want to finally understand, or a message of mine that
+  just didn't land. It re-explains from scratch as if to a bright intern on their first day:
+  someone sharp but brand-new, who shares none of this thread's history and none of its jargon. It
+  leads with the missing premise and the *why*, spells out every acronym and domain term on first
+  use, drops to plain English and a concrete example — and *then* probes with a question or two,
+  because a nod is not understanding and the point is that you hold it, not that it merely sounded
+  clear. Reach for it with "/explain-this-like-I-am-an-intern", "eli-intern", "explain this like
+  I'm an intern", "you lost me", "wait, what?", "I'm lost", "that didn't land", "back up", "break
+  this down for me from scratch", "I want to actually understand X". code-review also invokes it to
+  construct the explanation of a change — its explain / deep-dive pass runs this skill so the
+  walkthrough leads with the why, glosses the jargon, and probes that it landed.
 argument-hint: "What should I explain? (or nothing — I'll re-pitch whatever lost you)"
 ---
 

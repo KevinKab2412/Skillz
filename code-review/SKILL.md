@@ -23,10 +23,13 @@ findings that actually matter — each explained so clearly they don't have to a
 It has two modes:
 
 - **Review** (default) — the verdict pass. Runs below.
-- **Explain** — the teaching pass. Builds the full HTML explainer + quiz. Triggered when the user
-  asks to *understand* rather than *judge* ("explain this diff", "help me understand this change",
-  "walk me through this PR"), or when a review didn't land and they want the deep dive. Jump to
-  [`references/explainer.md`](references/explainer.md) and follow it; skip the rest of this file.
+- **Explain** — the teaching pass. Invokes the
+  [`explain-this-like-I-am-an-intern`](../explain-this-like-I-am-an-intern/SKILL.md) skill via the
+  Skill tool to construct the explanation, then packages that into the full HTML explainer + quiz.
+  Triggered when the user asks to *understand* rather than *judge* ("explain this diff", "help me
+  understand this change", "walk me through this PR"), or when a review didn't land and they want the
+  deep dive. Jump to [`references/explainer.md`](references/explainer.md) and follow it; skip the rest
+  of this file.
 
 The two axes of the review — **Standards** and **Spec** — run as separate subagents so their contexts
 never bleed into each other. A change can pass one and fail the other, and keeping them apart is what
@@ -377,8 +380,11 @@ options:
   - "Accept as-is"
 ```
 
-- **Explain it** → switch to explain mode: follow [`references/explainer.md`](references/explainer.md)
-  on the same change, then hand back the HTML path.
+- **Explain it** → switch to explain mode: invoke the
+  [`explain-this-like-I-am-an-intern`](../explain-this-like-I-am-an-intern/SKILL.md) skill via the
+  Skill tool on the same change so the walkthrough leads with the why, glosses the jargon, and probes
+  that it landed; then follow [`references/explainer.md`](references/explainer.md) to package it into
+  the HTML explainer + quiz and hand back the path.
 - **Post to the PR** is outward-facing and stays the user's call — only run
   `gh pr review <n> --comment` (or `--request-changes`) if they pick it. The paste blocks exist so the
   user can post in their own hands; that's the default path.

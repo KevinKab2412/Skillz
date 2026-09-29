@@ -55,6 +55,14 @@ honour that and tighten the background accordingly.
 
 ## Step 2 — Write the explainer in teaching order
 
+**Construct the teaching content by invoking the
+[`explain-this-like-I-am-an-intern`](../../explain-this-like-I-am-an-intern/SKILL.md) skill via the
+Skill tool** — it is the source of truth for *how* to explain: lead with the why and the missing
+premise, spell out every acronym and domain term on first use, reach for a concrete example before any
+abstraction, and name the trap a newcomer would form. Author the sections below from what it produces.
+The five-question quiz in Step 3 stands in for its interactive probe, so when you're packaging the
+durable artifact you don't block on the back-and-forth — the quiz is the comprehension check.
+
 Copy [`../assets/template.html`](../assets/template.html) to the output path (Step 4) and fill these
 sections. This order is the skill — keep it. Delete any section that genuinely doesn't apply; don't
 pad.
