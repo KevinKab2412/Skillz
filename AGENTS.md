@@ -93,7 +93,7 @@ Skills load automatically from `~/.agents/skills/` (shared across Claude Code, C
 - **`/create-subagent`** — Create custom subagents for specialized AI tasks.
 - **`/data-viz-selection`** — Pick the right chart for a dataset and message, then design it well.
 - **`/experts`** — Reach the `experts` MCP gateway from any message — a local server holding 11 domain corpora (software_engineer, python, laravel, ai_engineer,…
-- **`/explain-this-like-I-am-an-intern`** — User-invoked way to get clarity on anything — a subject you want to finally understand, or a message of mine that just didn't land.
+- **`/explain-this-like-I-am-an-intern`** — Get clarity on anything — a subject you want to finally understand, or a message of mine that just didn't land.
 - **`/find-flexible-oneworld-awards`** — Find and validate live oneworld business- or first-class award availability across flexible dates, trip lengths, origins, destinations, and booking…
 - **`/gh-stack`** — Manages stacked PRs and splits multi-part work into reviewable branches with gh-stack.
 - **`/goal`** — Set a goal that Codex will pursue to completion.
@@ -121,6 +121,7 @@ Skills load automatically from `~/.agents/skills/` (shared across Claude Code, C
 - **`/to-pr`** — Open a draft pull request for the current branch from work that's already done.
 - **`/update-cli-config`** — View and modify Codex CLI configuration settings in ~/.cursor/cli-config.json.
 - **`/update-cursor-settings`** — Modify Codex/VSCode user settings in settings.json.
+- **`/visualize`** — Use /visualize for creating compact charts, diagrams, or other visuals inline as part of the conversation itself.
 - **`/wayfinder`** — Plan a chunk of work too big for one session — wrapped in fog, where the way from here to the destination isn't visible yet — as a shared map of…
 - **`/worktree`** — Spin up a local git worktree for a branch in one step, then drop into it ready to work.
 
