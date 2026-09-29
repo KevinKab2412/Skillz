@@ -64,18 +64,48 @@ is the user's call (A5).
 
 ### A5. Post — only on the user's explicit go
 
-When the user says to post, drive the **logged-in** `agent-browser` GitHub session:
+An image reaches a **private** repo's comment only through GitHub's own upload door in a signed-in
+browser: there is no comment-image API, and a committed raw URL breaks behind GitHub's camo proxy (an
+anonymous fetcher with no login). So uploads go through one dedicated `agent-browser` session named
+`github`, whose GitHub login is saved to disk and restored on every run. The user signs in once; after
+that no switch, profile or password is needed.
 
-1. `agent_browser_state_load` a saved `github` state; if none exists, one-time `agent_browser_auth_login`
-   then `agent_browser_state_save` as `github`.
-2. `agent_browser_open` the PR, scroll to the comment box.
-3. `agent_browser_upload` the PNGs onto the comment box's file input (`input[type=file]`; fall back to
-   drag/paste). **Wait** until each upload finishes — GitHub inserts a
-   `![name](https://github.com/user-attachments/assets/…)` line for each. This browser upload is the
-   only path that renders images in a **private** repo: there is no comment-image API, and a committed
-   raw URL breaks behind GitHub's camo proxy (an anonymous fetcher with no login).
-4. Add the captions, then submit **only if the user said to post this draft as-is**. If they want to
-   review first, leave the box filled and unsubmitted and tell them it's staged.
+**Send identical launch options on every call.** The daemon compares launch options on each command.
+Any difference restarts the browser and drops the page it was on (the call reports
+`restartedBackground: true`). Use one interface per run, with the same options every time:
+
+| Interface | On every call |
+|---|---|
+| CLI | `agent-browser --session github --restore github --restore-save auto --headed --idle-timeout 30m <command>` |
+| MCP tools | `session: "github"`, `restore: "github"`, `restoreSave: "auto"`, `idleTimeout: "30m"`; plus `headed: true` on `open` and `extraArgs: ["--headed"]` on every other tool |
+
+A call from the other interface without those options relaunches the session blank.
+
+1. **Open the PR** (`open https://github.com/<owner>/<repo>/pull/<n>`) and check the login:
+   `eval "document.querySelector('meta[name=user-login]')?.content"` returns the user's GitHub login.
+2. **First run, or signed out** (no login, or the page lands on `github.com/login`): open
+   `https://github.com/login?return_to=<PR path>` in that headed session and ask the user to sign in
+   in the window it shows, two-factor code included, and to say when they're done. Never type their
+   GitHub password. Restore saves the login to `~/.agent-browser/sessions/github-github.json`; run
+   `chmod 700 ~/.agent-browser/sessions` so only they can read it. GitHub's login cookie lasts two
+   weeks. Each run re-saves it, and when it lapses, repeat this step. The user can revoke it any time at
+   github.com/settings/sessions.
+3. **Upload** the PNGs onto the comment box's file input: `upload "#fc-new_comment_field" <png>…`.
+   Then wait until `#new_comment_field` holds one `user-attachments/assets` link per file and no
+   "Uploading" (`wait --fn "…"`).
+4. **Take the links, leave the box empty.** Read the textarea (`get value "#new_comment_field"`): it
+   holds one `<img … src="https://github.com/user-attachments/assets/…">` tag per file. Clear it (set
+   `value = ''` and dispatch an `input` event) so no half-written draft is left on the PR.
+5. **Post** the approved captions with those `<img>` tags as a plain PR comment,
+   `gh pr comment <n> --body-file <file>`, **only if the user said to post this draft as-is**. If they
+   want to review first, put the text in the comment box instead, leave it unsubmitted, and tell them
+   it's staged.
+6. **Verify and close.** Open the new comment's anchor and check every image loaded
+   (`img.complete && img.naturalWidth > 0`). Then `state save ~/.agent-browser/sessions/github-github.json`
+   and `close`. The saved login survives the close.
+
+Never launch with `--profile`. Copying a Chrome profile makes macOS ask for keychain access to
+Chrome's cookie key, and the copy may not be signed in anyway.
 
 ### A6. Stop the app
 
@@ -105,5 +135,7 @@ yourself; the user posts it (or says to).
   data → an honest empty-state shot, labelled. Never describe pixels that aren't there.
 - **Trusted clicks for finicky UIs.** Real coordinate `mouse_move/down/up`, not `eval`/`@ref` clicks,
   on React/Radix/Reflex controls that silently ignore synthetic events.
+- **One saved GitHub session, identical options.** Uploads use the `github` session with the same
+  launch options on every call (A5). The user signs in once, never per run.
 - **After-only by default.** One set of "after" shots. Before/after needs running the base branch too —
   skip unless the user asks.

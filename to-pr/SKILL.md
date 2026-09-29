@@ -204,9 +204,12 @@ build the body from the diff and commits (Step 1).
    start, build a mermaid **state/sequence diagram** of the changed flow instead. Then **show the user
    the shots/diagram in chat and draft the comment in a fenced block** — proof is a **comment**, never
    the body. **Stop there.** Posting is the user's call ([[feedback-never-post-pr-comments]]): only on
-   their explicit go, drive the **logged-in** `agent-browser` GitHub session to upload the shots (the
-   only path that renders images in a private repo — no image-upload API, and committed raw URLs break
-   behind GitHub's camo proxy) and submit. Never `gh pr comment` or click **Comment** on your own.
+   their explicit go, upload the shots through the saved `github` `agent-browser` session (the only
+   path that renders images in a private repo — no image-upload API, and committed raw URLs break
+   behind GitHub's camo proxy), then post the approved text with those images via
+   `gh pr comment --body-file`. The user signs in to that session once, not per run, and every call
+   must carry the same launch options or the browser restarts mid-upload. Recipe:
+   [`references/visual-proof.md`](references/visual-proof.md) A5. Never post on your own.
 
 9. **Report** the PR URL. Note that it opened as a draft and remind the user they mark it ready
    themselves. Say the blast-radius band in one line so they know how the reviewer will be steered, and
@@ -233,9 +236,11 @@ build the body from the diff and commits (Step 1).
 - **Proof is drafted, never posted.** Every call prepares proof (Step 8): screenshots for UI changes,
   a mermaid diagram otherwise. It shows the user the result and drafts the comment — then stops.
   **Posting is the user's call** ([[feedback-never-post-pr-comments]]): only on their explicit go do you
-  drive the **logged-in `agent-browser` session** to upload the shots through GitHub's own upload door —
+  upload the shots through GitHub's own upload door in the saved `github` `agent-browser` session —
   the only way an image renders in a *private* repo (no comment-image API, and a committed raw URL
-  breaks behind GitHub's camo proxy) — and submit. Never `gh pr comment`/click Comment yourself.
+  breaks behind GitHub's camo proxy) — and post the approved comment with `gh pr comment --body-file`.
+  One sign-in lasts across runs; identical launch options on every call keep the page alive.
+  Never post on your own.
   **Empty states are valid, labelled evidence; never fabricate a screenshot.** On finicky
   React/Radix/Reflex controls use **real coordinate clicks** (`mouse_move/down/up`), not `eval`/`@ref`
   clicks, which are silently dropped. Full procedure:
