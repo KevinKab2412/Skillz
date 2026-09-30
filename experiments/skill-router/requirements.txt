@@ -1,0 +1,8 @@
+# cheap local skill-router — deps for src/. No GPU, no torch.
+#   python3 -m venv .venv && ./.venv/bin/pip install -r requirements.txt
+#   ./.venv/bin/python src/extract.py     # rebuild data/ from local transcripts
+#   ./.venv/bin/python src/routerd.py &    # warm daemon
+#   ./.venv/bin/python src/ask.py "review my changes"
+model2vec>=0.7
+numpy>=1.26
+rank_bm25>=0.2

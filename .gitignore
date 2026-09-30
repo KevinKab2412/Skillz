@@ -12,3 +12,14 @@ docs/sketches/
 
 # Stray session-state artifact
 /:memory:.ses
+
+# throwaway experiments (not committed) — but keep the skill-router source.
+# data/, results/, report.html and .venv/ stay out: they hold real session text
+# (regenerated locally by src/extract.py) or machine-specific bytes.
+experiments/*
+!experiments/skill-router/
+experiments/skill-router/*
+!experiments/skill-router/src/
+!experiments/skill-router/README.md
+!experiments/skill-router/requirements.txt
+experiments/skill-router/src/__pycache__/
