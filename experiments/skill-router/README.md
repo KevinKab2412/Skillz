@@ -32,6 +32,27 @@ python3 src/extract.py
 ./.venv/bin/python src/ask.py --k 3 --json "review my changes before I merge"
 ```
 
+## Auto-start on login (macOS)
+The daemon runs as a LaunchAgent from `~/.skill-router` (NOT this repo dir):
+macOS TCC blocks background launchd agents from reading `~/Documents`. `deploy.sh`
+copies the source there, builds a venv, regenerates data, and loads the agent.
+```bash
+./deploy.sh          # install/update; starts now and on every login (KeepAlive)
+./deploy.sh --stop   # disable auto-start + weekly refresh (unload both agents)
+launchctl list | grep skillrouter          # PIDs / last-exit status
+tail -f ~/.skill-router/routerd.log        # daemon log
+~/.skill-router/.venv/bin/python ~/.skill-router/src/ask.py "review my changes"
+```
+`ask.py` from anywhere finds the deployed daemon (or set `SKILLROUTER_SOCK`).
+
+**Weekly self-refresh.** A second agent (`com.kevinkabeya.skillrouter.refresh`,
+Mon 09:00) runs `refresh.sh`: rebuild `data/` from the latest transcripts, then
+restart the daemon so it learns from new skill usage. Run `refresh.sh` by hand
+anytime; log at `~/.skill-router/refresh.log`. Change the cadence by editing the
+`StartCalendarInterval` block in `deploy.sh` and re-running it.
+
+To fully remove: `./deploy.sh --stop && rm -rf ~/.skill-router ~/Library/LaunchAgents/com.kevinkabeya.skillrouter*.plist`
+
 Footprint: ~130 MB RAM peak, 30 MB model + 193 MB venv on disk. No GPU, no network at query time.
 
 ## Known limits

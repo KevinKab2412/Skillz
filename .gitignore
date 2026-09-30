@@ -22,4 +22,6 @@ experiments/skill-router/*
 !experiments/skill-router/src/
 !experiments/skill-router/README.md
 !experiments/skill-router/requirements.txt
+!experiments/skill-router/deploy.sh
+!experiments/skill-router/refresh.sh
 experiments/skill-router/src/__pycache__/

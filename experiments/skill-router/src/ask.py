@@ -12,13 +12,21 @@ so it always works; start routerd.py to get the ~1ms warm path.
 import json, os, socket, sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SOCK = os.path.join(HERE, "..", "routerd.sock")
+# try, in order: env override, the local runtime, the deployed ~/.skill-router daemon
+SOCK_CANDIDATES = [p for p in [
+    os.environ.get("SKILLROUTER_SOCK"),
+    os.path.join(HERE, "..", "routerd.sock"),
+    os.path.expanduser("~/.skill-router/routerd.sock"),
+] if p]
 
 
 def query_daemon(q, k):
+    sock = next((p for p in SOCK_CANDIDATES if os.path.exists(p)), None)
+    if sock is None:
+        raise FileNotFoundError("no routerd socket")
     s = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
     s.settimeout(5)
-    s.connect(SOCK)
+    s.connect(sock)
     s.sendall((json.dumps({"q": q, "k": k}) + "\n").encode())
     buf = b""
     while not buf.endswith(b"\n"):
