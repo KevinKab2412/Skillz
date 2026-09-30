@@ -14,12 +14,16 @@ set -euo pipefail
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 RUNTIME="$HOME/.skill-router"
 LABEL="com.kevinkabeya.skillrouter"
+RLABEL="com.kevinkabeya.skillrouter.refresh"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
+RPLIST="$HOME/Library/LaunchAgents/$RLABEL.plist"
 UID_="$(id -u)"
 
 if [[ "${1:-}" == "--stop" ]]; then
-  launchctl bootout "gui/$UID_" "$PLIST" 2>/dev/null || launchctl unload "$PLIST" 2>/dev/null || true
-  echo "stopped $LABEL (auto-start disabled; plist left at $PLIST)"
+  for L in "$PLIST" "$RPLIST"; do
+    launchctl bootout "gui/$UID_" "$L" 2>/dev/null || launchctl unload "$L" 2>/dev/null || true
+  done
+  echo "stopped daemon + weekly refresh (plists left in ~/Library/LaunchAgents)"
   exit 0
 fi
 
@@ -27,6 +31,7 @@ echo "==> syncing source to $RUNTIME"
 mkdir -p "$RUNTIME"
 cp -R "$REPO_DIR/src" "$RUNTIME/"
 cp "$REPO_DIR/requirements.txt" "$REPO_DIR/README.md" "$RUNTIME/" 2>/dev/null || true
+cp "$REPO_DIR/refresh.sh" "$RUNTIME/" && chmod +x "$RUNTIME/refresh.sh"
 
 echo "==> venv + deps"
 [[ -d "$RUNTIME/.venv" ]] || python3 -m venv "$RUNTIME/.venv"
@@ -77,3 +82,27 @@ else
   echo "FAILED to come up; last log lines:"; tail -8 "$RUNTIME/routerd.log" 2>/dev/null || true
   exit 1
 fi
+
+echo "==> installing weekly refresh (Mon 09:00) -> $RPLIST"
+cat > "$RPLIST" <<RPLISTEOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key><string>$RLABEL</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>$RUNTIME/refresh.sh</string>
+    </array>
+    <key>WorkingDirectory</key><string>$RUNTIME</string>
+    <key>StartCalendarInterval</key>
+    <dict><key>Weekday</key><integer>1</integer><key>Hour</key><integer>9</integer><key>Minute</key><integer>0</integer></dict>
+    <key>StandardOutPath</key><string>$RUNTIME/refresh.log</string>
+    <key>StandardErrorPath</key><string>$RUNTIME/refresh.log</string>
+</dict>
+</plist>
+RPLISTEOF
+launchctl bootout "gui/$UID_" "$RPLIST" 2>/dev/null || true
+launchctl bootstrap "gui/$UID_" "$RPLIST" 2>/dev/null || launchctl load -w "$RPLIST"
+echo "OK: weekly refresh scheduled ($(launchctl list | grep "$RLABEL" | awk '{print $3}'))"
