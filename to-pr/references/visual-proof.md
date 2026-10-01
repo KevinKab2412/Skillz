@@ -25,13 +25,33 @@ can be started locally → **screenshots** (Section A). Otherwise → **diagram*
 
 ### A1. Start the app locally
 
-Reuse the [`run`](../run/SKILL.md) skill to find and run the start command — it already knows the
-patterns (a project skill, `package.json` scripts, `Procfile`, `docker-compose`, `Makefile`, the
-README). Launch it in the background; wait for the port to answer before capturing.
+Check the worktree root for `.worktree-stack.local.env` first — the sign this repo gives every
+worktree its own isolated dev stack instead of one shared app/DB that concurrent worktrees fight over
+(a personal, gitignored convention — nothing to set up on a repo that doesn't have it). If it's there:
+
+- Source it for this worktree's ports (e.g. `WORKTREE_DASHBOARD_PORT`) and bring its stack up/confirm
+  it's healthy (e.g. in signal-lift-dev: `./worktree-up.local.sh` from `deploy/dockers/local-dev/` in
+  that worktree — idempotent and fast if already running, since identity and ports are derived
+  deterministically from this worktree's path).
+- Point A2's `agent_browser_open` calls at `http://localhost:<that worktree's port>/`, not whatever a
+  generic start command would have bound.
+- **Don't tear this down in A6** — it's meant to persist across runs and other skills
+  (`/pair`, `/code-review`) in the same worktree, and gets torn down with the worktree itself, not
+  with this one `/to-pr` call.
+
+No `.worktree-stack.local.env` → fall back to the [`run`](../run/SKILL.md) skill to find and run the
+start command — it already knows the patterns (a project skill, `package.json` scripts, `Procfile`,
+`docker-compose`, `Makefile`, the README). Launch it in the background; wait for the port to answer
+before capturing. This is the path A6 tears down.
 
 ### A2. Capture the changed screens
 
-Use `agent-browser` pointed at the local app:
+Use `agent-browser` pointed at the local app, in a **session scoped to this worktree**: call
+`agent_browser_session_id` (default `scope: "worktree"`) once and reuse the name it returns as
+`session` on every call below, with `headed: false`. Without this, two worktrees running
+`/to-pr`/`/pair`/`/code-review` at the same time fight over the same browser tab, and a headed browser
+steals screen focus from whatever else is on screen. (The `github` session in A5 is the one deliberate
+exception — shared and headed on purpose, see there.)
 
 - `agent_browser_open` the route(s) the diff changed. Reach the state the change needs (log in, select
   the tenant/account, open the dialog, toggle the feature). `agent_browser_screenshot` each one; save
@@ -109,7 +129,10 @@ Chrome's cookie key, and the copy may not be signed in anyway.
 
 ### A6. Stop the app
 
-Tear down the local app process started in A1.
+Tear down the local app process started in A1 — **unless A1 used a worktree-scoped stack**
+(`.worktree-stack.local.env` was present), in which case leave it running. That stack is reused by later
+`/to-pr`/`/pair`/`/code-review` calls in the same worktree and is torn down with the worktree itself
+(see the [`worktree`](../worktree/SKILL.md) skill's cleanup note), not after one visual-check run.
 
 ## Section B — Diagram proof (no UI, or launch failed)
 

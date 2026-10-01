@@ -126,25 +126,35 @@ for f in "$repo"/.env "$repo"/.env.*; do
 done
 [ "$copied" -eq 0 ] && say "→ no gitignored env files to copy"
 
-# Copy gitignored personal ".local.md" instruction files (AGENTS.local.md,
-# CONTEXT.local.md, ADR-####.local.md) from the source tree into the worktree.
-# Like env files, these hold one developer's own instructions, are gitignored,
-# and so aren't carried by a fresh worktree. `ls-files -o -i --exclude-standard`
-# reports exactly the ignored, untracked paths — at any depth, honouring
-# .gitignore and .git/info/exclude alike — so the "only if ignored" guarantee
-# still holds and nothing untracked leaks in. Scoped to `.local.md` on purpose:
-# a broad `.local.*` also matches `settings.local.json` vendored under
-# node_modules, which must never be dragged into a worktree.
+# Copy gitignored personal ".local." files (AGENTS.local.md, CONTEXT.local.md,
+# a personal script, a compose override — any path with a `.local.` infix) from
+# the source tree into the worktree. Like env files, these hold one developer's
+# own stuff, are gitignored, and so aren't carried by a fresh worktree.
+# `ls-files -o -i --exclude-standard` reports exactly the ignored, untracked
+# paths — at any depth, honouring .gitignore and .git/info/exclude alike — so
+# the "only if ignored" guarantee still holds and nothing untracked leaks in.
+#
+# Skip anything under a dot-directory (.claude/, .git/, .venv/, .cursor/, a
+# vendored node_modules/**/.claude/, …): that's tool-managed per-checkout
+# state like `.claude/settings.local.json`, not a developer's own source file,
+# and copying it would carry one checkout's tool state into a different one
+# rather than a personal file meant to follow the developer across worktrees.
 local_copied=0
 while IFS= read -r -d '' rel; do
   src="$repo/$rel"
   [ -f "$src" ] || continue
-  mkdir -p "$dir/$(dirname "$rel")"
+  dirpart="$(dirname "$rel")"
+  if [ "$dirpart" != "." ]; then
+    case "/$dirpart/" in
+      */.*) continue ;;
+    esac
+  fi
+  mkdir -p "$dir/$dirpart"
   cp "$src" "$dir/$rel"
   say "→ copied $rel"
   local_copied=$((local_copied + 1))
-done < <(git -C "$repo" ls-files -o -i --exclude-standard -z -- '*.local.md' 2>/dev/null)
-[ "$local_copied" -eq 0 ] && say "→ no gitignored .local.md files to copy"
+done < <(git -C "$repo" ls-files -o -i --exclude-standard -z -- '*.local.*' 2>/dev/null)
+[ "$local_copied" -eq 0 ] && say "→ no gitignored .local.* files to copy"
 
 say ""
 say "Done — $case_used"
