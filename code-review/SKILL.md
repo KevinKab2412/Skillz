@@ -117,6 +117,26 @@ If there are **no** acceptance criteria anywhere, the Spec axis runs in reduced 
 Read the epic's `stack:*` labels if a planning epic is in play — a `stack:react` / `stack:dagster`
 label routes the matching `best-practices` lens into the Standards axis (Step 2).
 
+Also check for `CODING_STANDARDS.md` (or `CONTRIBUTING.md` / `docs/standards*`) and a configured linter
+(`ruff.toml`, `pyproject.toml`'s `[tool.ruff]`, `.eslintrc*`) — reading the **right copy** depends on
+how Step 0 resolved the target:
+
+- **A branch or PR (in its own worktree)** → read off `<base>`, not the worktree's working copy:
+  `git show <base>:CODING_STANDARDS.md` (same for the other candidate names, and for the linter config).
+  A worktree can sit on a branch cut weeks ago; its checked-out file is whatever existed then, and the
+  staleness is invisible unless you read from the ref instead. `git show` works identically from any
+  worktree — the object lives in the one shared `.git`.
+  - **If this diff itself edits `CODING_STANDARDS.md`**, don't read the file at `<base>` as if it still
+    applied unchanged — note in one clause that the standard is moving as part of this PR, and judge
+    the diff's other files against whichever version makes sense (usually the one in force when the
+    author wrote them: `<base>`).
+- **The working diff** (no worktree, Step 0 skipped) → read the physical file. This is the one case
+  where an uncommitted edit to the standard itself should count.
+
+Read whatever exists in full —
+[`references/coding-standards/coding-standards.md`](references/coding-standards/coding-standards.md)
+has the maturity rubric. Pass whatever you found, or its absence, into the Standards subagent verbatim.
+
 ## Step 2 — Run Standards and Spec in parallel
 
 Send **one message with two `Agent` calls** (`subagent_type: "claude"`). They share the diff, commit
@@ -140,6 +160,13 @@ Review the diff below against (a) this repo's documented standards and (b) the F
 
 ## Commits
 <paste: git log <base>..HEAD --oneline>
+
+## Documented standards (CODING_STANDARDS.md)
+<paste: CODING_STANDARDS.md / CONTRIBUTING.md content if found in the main thread, else write "None found.">
+This is the authoritative judgment-call standard when present — hold the diff to it first. Report a
+maturity read (references/coding-standards/coding-standards.md): 🔴 none set (nothing above and no
+configured linter rules below) / 🟡 partial (thin, stale, or only one of the two) / 🟢 solid (a real
+doc, configured linter thresholds, or both).
 
 ## Repo standards
 Check pyproject.toml / ruff.toml (or the repo's linter config) for intentionally configured thresholds.
@@ -172,14 +199,17 @@ Each smell is a judgement call, not a hard violation. Skip anything tooling alre
 - Refused Bequest — a subclass ignoring most of what it inherits → use composition.
 
 ## Brief
-Per file/hunk, report: (a) every documented-standard violation — cite the rule; (b) any stack
-best-practice violation if that lens applies — cite the rule; (c) any smell — name it and quote the
-hunk. Documented standards override the baseline; smells are judgement calls. Skip anything tooling
-enforces. For EACH finding, classify severity honestly:
+Start your reply with one line: `Maturity: <🔴/🟡/🟢> — <one clause why>`. Then per file/hunk, report:
+(a) every documented-standard violation — cite the rule; (b) any stack best-practice violation if that
+lens applies — cite the rule; (c) any smell — name it and quote the hunk. Documented standards override
+the baseline; smells are judgement calls. Skip anything tooling enforces. For EACH finding, classify
+severity honestly:
 - blocker  = a correctness defect that ships broken behaviour to a user.
 - should-fix = a real design/maintainability problem a careful reviewer would ask to change first.
 - nit = style, wording, or "pattern to notice" — anything you would not block a merge on.
-Give each finding as: [severity] File:Line — one plain sentence on what's wrong · one plain sentence
+Also tag a finding `(trunk)` when its file is a hub — an entry point, shared state/store, router, auth,
+config schema, or a file with many importers; leave leaf files untagged. Give each finding as:
+[severity] (trunk, if applicable) File:Line — one plain sentence on what's wrong · one plain sentence
 on the concrete consequence · (for blocker/should-fix) a one-line before→after or the fix in words.
 No jargon without a gloss. Under 400 words.
 ```
@@ -212,11 +242,40 @@ Report: (a) acceptance criteria (or stated intent) that are missing or only part
 quote the criterion; (b) behaviour in the diff that nothing asked for (scope creep); (c) criteria
 that look implemented but where the implementation looks wrong. Classify each as blocker /
 should-fix / nit using the same definitions the Standards reviewer uses (blocker = broken behaviour
-shipped to a user). Write each finding in plain English — lead with the consequence, gloss any
-jargon. Under 400 words.
+shipped to a user). Tag a finding `(trunk)` when its file is a hub (entry point, shared state/store,
+router, auth, many importers) the same way the Standards lane does; leave leaf files untagged. Write
+each finding in plain English — lead with the consequence, gloss any jargon. Under 400 words.
 ```
 
-## Step 3 — Distil to the concise report
+## Step 3 — Verify blockers before they reach the report
+
+Collect every finding either lane classified `blocker`. If there are none, skip this step entirely — it
+costs nothing on the common case. For each one, send a single `Agent` call (`subagent_type: "claude"`)
+trying to refute it:
+
+```
+Try to refute this blocker claim. Default to CONFIRMED unless you find concrete contradicting
+evidence — report REFUTED only when certain, not on mere doubt.
+
+## The claim
+<the finding, verbatim: file:line, what's wrong, the consequence>
+
+## The diff
+<paste: git diff <base>...HEAD>
+
+Look for a guard, an upstream validation, an existing test, or a feature flag that the first pass
+missed and that makes this not actually ship broken behaviour. Answer in two lines: CONFIRMED or
+REFUTED, then one sentence why. Under 60 words.
+```
+
+Run these in parallel, one `Agent` call per blocker. A `REFUTED` verdict downgrades that finding to
+should-fix in Step 4 — note why in one clause, don't silently move it. `CONFIRMED` carries no change.
+This is a narrow, cheap echo of the adversarial-verify pattern (Cursor's Bugbot and independent research
+both found a second independent pass cuts false positives): scoped to blockers only, because that's
+where a false positive costs the most trust, and because most reviews carry zero or one, so it rarely
+spawns more than a couple of calls.
+
+## Step 4 — Distil to the concise report
 
 Both lanes have returned. Now write the report the user actually reads. **Do not paste the subagent
 returns.** They are raw material; your job is to distil them into the structure below, dropping every
@@ -226,6 +285,9 @@ Build the four orientation beats yourself from the inputs you already gathered (
 the changed files) — this is the "here's the story of this change" framing that makes the findings
 land, because the reader is oriented before they hit a single problem. Keep each beat to one to three
 sentences.
+
+Carry the Standards lane's maturity line (Step 2) straight into the verdict block — it answers "is
+there even a standard to check this diff against," a different question from the verdict itself.
 
 Use this exact shape:
 
@@ -238,6 +300,9 @@ Use this exact shape:
 **🟡 Fix first** — <n> should-fix(es) below, no hard blockers.
    — or —
 **🔴 Don't merge yet** — <n> blocker(s): <the one-line worst>.
+
+**Standards:** <🔴 none set / 🟡 partial / 🟢 solid> — <the Standards lane's one-clause why>. <if 🔴 or
+🟡:> consider running `retro` to start one.
 
 ## The goal
 <1–2 sentences, plain English: what problem this change set out to solve. From Linear + the PR.>
@@ -254,6 +319,12 @@ This is the "here's what they did" beat, in words, not a diff dump.>
 <Only blockers and should-fixes. If there are none: "None worth blocking on." Otherwise, per finding:>
 
 ### 🔴 Blocker · `path/file.py:42`   (or  ### 🟡 Should fix · `path/file.py:88`)
+Append ` (trunk)` after the path on either form — e.g. `### 🟡 Should fix · path/file.py:88 (trunk)` —
+when the owning lane tagged the file a hub; omit it for leaf files. This is the position signal from
+`to-pr`'s blast-radius rubric, kept lightweight here (full version:
+[`to-pr/references/blast-radius.md`](../to-pr/references/blast-radius.md)). It never changes severity —
+blocker/should-fix still means what it always meant — it just tells the reader which findings to act
+on first when they can't get to all of them.
 <Plain English, intern-level: what's wrong, no unglossed jargon — 1 sentence.>
 ```<lang>
 <the offending lines, verbatim, line-numbered — see below>
@@ -369,17 +440,27 @@ If you're reviewing in a repo whose owner comments differently, read their last 
 
 Order the findings by how much they matter, worst first.
 
-## Step 4 — Gate
+## Step 5 — Gate
 
 ```
 question: "Review done. What next?"
 options:
   - "Present findings — I'll decide what to act on (Recommended)"
+  - "Fix the should-fixes now — patch them and show me the diff"
   - "Explain it — build the full walkthrough + quiz"
   - "Post the comments as a PR review"
   - "Accept as-is"
 ```
 
+- **Fix it now** → spawn one `Agent` call (`subagent_type: "claude"`) with the diff and the should-fix
+  findings only — never blockers; those need a human call on behaviour, not a mechanical patch. Include
+  each finding's drafted before→after. Instruct it to apply the smallest edit that resolves each
+  finding, nothing more, then run the repo's existing test/lint command once if cheap. If Step 0 put
+  this review in a dedicated worktree, the patch lands there, isolated from the user's own checkout; if
+  reviewing the working diff directly, say so before applying — the edit lands in the live checkout the
+  user is already editing. When the subagent returns, show the full `git diff` and stop. **Never
+  commit** — that's always the user's call, the same rule that keeps the paste-comment path below from
+  posting on its own.
 - **Explain it** → switch to explain mode: invoke the
   [`explain-this-like-I-am-an-intern`](../explain-this-like-I-am-an-intern/SKILL.md) skill via the
   Skill tool on the same change so the walkthrough leads with the why, glosses the jargon, and probes
@@ -410,11 +491,14 @@ over from that role:
 
 ## Done when
 
-The verdict is the first line and it's unambiguous (ship / fix first / don't merge). The four beats
-orient a newcomer to the change before any finding. Every surfaced finding is a blocker or should-fix,
-written so a bright intern gets it without asking, quotes the offending lines so the reader never has
-to open the file, and carries a one-line paste comment in the user's voice. The review plan gives the
-user their own route through the change, accounts for every changed file with none skipped, and says
-where your own pass is weakest. The nits are counted, not shown. A lane that had nothing to say says so — a silent lane must
-never read as a clean bill of health. The report ends with the offer to go deeper, so understanding is
-always one word away.
+The verdict is the first line and it's unambiguous (ship / fix first / don't merge). Right after it,
+the Standards-maturity line says whether there was even a standard to hold this diff to — a silent
+maturity line is as much a bug as a silent lane. The four beats orient a newcomer to the change before
+any finding. Every surfaced finding is a blocker or should-fix, written so a bright intern gets it
+without asking, quotes the offending lines so the reader never has to open the file, carries a one-line
+paste comment in the user's voice, and is tagged `(trunk)` when it lives in a hub file. Every blocker
+survived an independent refute attempt (Step 3) before reaching the reader — a downgraded one says why.
+The review plan gives the user their own route through the change, accounts for every changed file with
+none skipped, and says where your own pass is weakest. The nits are counted, not shown. A lane that had
+nothing to say says so — a silent lane must never read as a clean bill of health. The report ends with
+the offer to go deeper, so understanding is always one word away.
