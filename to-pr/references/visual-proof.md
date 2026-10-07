@@ -1,14 +1,14 @@
-# Visual proof — capture evidence, draft a comment, let the user post
+# Visual proof — capture evidence, post it as a comment
 
-Every `/to-pr` prepares **proof of the finished change** and **drafts a PR comment** for the user to
-post. This is the video's core move: hand the reviewer evidence — a screenshot, a flow — so they trust
-and skim instead of re-deriving.
+Every `/to-pr` prepares **proof of the finished change** and **posts it as a PR comment**. This is the
+video's core move: hand the reviewer evidence — a screenshot, a flow — so they trust and skim instead of
+re-deriving.
 
-**The proof step never posts on its own.** It captures, shows the user the result in chat, and drafts
-the comment. Posting to the PR happens **only when the user gives the word** — see
-[[feedback-never-post-pr-comments]]: approval to post is not approval to author, and a posted comment
-is public the moment it lands. So the default is capture + draft; the browser upload-and-submit runs
-only after the user says "post it".
+**The proof step posts on its own, without asking.** The user has said to post automatically and adjust
+afterwards (edit or delete the comment) if they don't like something. Because the comment goes out under
+their name unreviewed, keep it plain: one factual caption per shot saying what's on screen, no opinions,
+no sales pitch. This is the only comment `to-pr` writes by itself; any other PR or issue comment still
+waits for the user's words ([[feedback-never-post-pr-comments]]).
 
 Two kinds, picked from the diff:
 
@@ -50,8 +50,7 @@ Use `agent-browser` pointed at the local app, in a **session scoped to this work
 `agent_browser_session_id` (default `scope: "worktree"`) once and reuse the name it returns as
 `session` on every call below, with `headed: false`. Without this, two worktrees running
 `/to-pr`/`/pair`/`/code-review` at the same time fight over the same browser tab, and a headed browser
-steals screen focus from whatever else is on screen. (The `github` session in A5 is the one deliberate
-exception — shared and headed on purpose, see there.)
+steals screen focus from whatever else is on screen.
 
 - `agent_browser_open` the route(s) the diff changed. Reach the state the change needs (log in, select
   the tenant/account, open the dialog, toggle the feature). `agent_browser_screenshot` each one; save
@@ -76,56 +75,43 @@ worse than an honest empty state. If richer data lives under another tenant/acco
 coordinate click) and recapture; if you can't reach populated data, ship the empty-state shot and say
 so.
 
-### A4. Draft the comment (do not post)
+### A4. Write the comment
 
-Save the shots locally, show them to the user in chat, and produce a **ready-to-post comment draft** in
-a fenced block: one caption line per shot. Then stop. Do not upload to GitHub and do not submit — that
-is the user's call (A5).
+Save the shots to the session scratchpad and write the comment to `proof-comment.md` in the **same
+folder** as the shots. Give each shot its caption line and a local image reference, so the file reads as
+the posted comment will:
 
-### A5. Post — only on the user's explicit go
+```markdown
+**Save button on the card** — enabled once the form is valid.
+![Save button on the card](./save-card-button.png)
+```
 
-An image reaches a **private** repo's comment only through GitHub's own upload door in a signed-in
-browser: there is no comment-image API, and a committed raw URL breaks behind GitHub's camo proxy (an
-anonymous fetcher with no login). So uploads go through one dedicated `agent-browser` session named
-`github`, whose GitHub login is saved to disk and restored on every run. The user signs in once; after
-that no switch, profile or password is needed.
+Go straight on to A5; don't wait for approval.
 
-**Send identical launch options on every call.** The daemon compares launch options on each command.
-Any difference restarts the browser and drops the page it was on (the call reports
-`restartedBackground: true`). Use one interface per run, with the same options every time:
+### A5. Post
 
-| Interface | On every call |
-|---|---|
-| CLI | `agent-browser --session github --restore github --restore-save auto --headed --idle-timeout 30m <command>` |
-| MCP tools | `session: "github"`, `restore: "github"`, `restoreSave: "auto"`, `idleTimeout: "30m"`; plus `headed: true` on `open` and `extraArgs: ["--headed"]` on every other tool |
+`gh` uploads the shots and posts the comment in one call, using the login `gh` already holds. This works
+in private repos too. Uploaded images are visible only to signed-in users who can read the repo. No
+browser, no separate GitHub sign-in.
 
-A call from the other interface without those options relaunches the session blank.
+1. **Check `gh` is new enough.** `--attach` arrived in `gh` 2.99.0. If `gh --version` is older, stop and
+   ask the user to `brew upgrade gh`. Don't fall back to a browser upload or a committed image.
+2. **Post** from the folder holding the shots, naming the PR by URL (that folder isn't the repo, so `gh`
+   can't infer it):
+   ```bash
+   cd <shots folder> && gh pr comment <PR URL> --body-file proof-comment.md \
+     --attach ./save-card-button.png --attach ./empty-list.png
+   ```
+   `gh` uploads each file and rewrites the comment's matching `![…](./x.png)` reference to the uploaded
+   URL. A file the comment doesn't reference is appended at the end.
+3. **Verify.** `gh pr view <PR URL> --json comments --jq '.comments[-1] | .url, .body'` should show one
+   `github.com/user-attachments/assets/…` link per shot and no `./…png` paths left over. Give the user
+   the comment's URL so they can edit or delete it.
 
-1. **Open the PR** (`open https://github.com/<owner>/<repo>/pull/<n>`) and check the login:
-   `eval "document.querySelector('meta[name=user-login]')?.content"` returns the user's GitHub login.
-2. **First run, or signed out** (no login, or the page lands on `github.com/login`): open
-   `https://github.com/login?return_to=<PR path>` in that headed session and ask the user to sign in
-   in the window it shows, two-factor code included, and to say when they're done. Never type their
-   GitHub password. Restore saves the login to `~/.agent-browser/sessions/github-github.json`; run
-   `chmod 700 ~/.agent-browser/sessions` so only they can read it. GitHub's login cookie lasts two
-   weeks. Each run re-saves it, and when it lapses, repeat this step. The user can revoke it any time at
-   github.com/settings/sessions.
-3. **Upload** the PNGs onto the comment box's file input: `upload "#fc-new_comment_field" <png>…`.
-   Then wait until `#new_comment_field` holds one `user-attachments/assets` link per file and no
-   "Uploading" (`wait --fn "…"`).
-4. **Take the links, leave the box empty.** Read the textarea (`get value "#new_comment_field"`): it
-   holds one `<img … src="https://github.com/user-attachments/assets/…">` tag per file. Clear it (set
-   `value = ''` and dispatch an `input` event) so no half-written draft is left on the PR.
-5. **Post** the approved captions with those `<img>` tags as a plain PR comment,
-   `gh pr comment <n> --body-file <file>`, **only if the user said to post this draft as-is**. If they
-   want to review first, put the text in the comment box instead, leave it unsubmitted, and tell them
-   it's staged.
-6. **Verify and close.** Open the new comment's anchor and check every image loaded
-   (`img.complete && img.naturalWidth > 0`). Then `state save ~/.agent-browser/sessions/github-github.json`
-   and `close`. The saved login survives the close.
-
-Never launch with `--profile`. Copying a Chrome profile makes macOS ask for keychain access to
-Chrome's cookie key, and the copy may not be signed in anyway.
+**Limits** (from the `gh` 2.99.0 release): PNG, JPEG, GIF, WebP, SVG, MP4, MOV or WebM; 10 MB per image;
+up to 50 files per call; GitHub.com and Enterprise Cloud only. The user needs push access. `gh`'s own
+login token works, but an Actions `GITHUB_TOKEN` or a GitHub App token is rejected. If the call fails,
+report the error and hand the user the draft and the PNG paths to post by hand. Never fake the upload.
 
 ### A6. Stop the app
 
@@ -143,22 +129,22 @@ in [`references/show-me/visual-formats.md`](references/show-me/visual-formats.md
 - a `stateDiagram-v2` for a state machine or lifecycle that changed,
 - a shape-matched `flowchart` for control flow.
 
-Read it off the diff. Present it as a **ready-to-post fenced block in chat** for the user to paste.
-Mermaid renders inline in a comment, so no upload is needed — but still don't `gh pr comment` it
-yourself; the user posts it (or says to).
+Read it off the diff. Write it as a fenced ` ```mermaid ``` ` block under a one-line caption, then post
+it straight away with `gh pr comment <PR URL> --body-file <file>`. Mermaid renders inline in a comment,
+so no `--attach` is needed. Give the user the comment's URL.
 
 ## Rules
 
-- **Prepare proof every call; never post it.** Default on for every `/to-pr` (`--no-proof` to skip).
-  Capture + draft always; posting to the PR waits for the user's explicit word. Same rule as
-  [[feedback-never-post-pr-comments]].
+- **Prepare and post proof every call.** Default on for every `/to-pr` (`--no-proof` to skip). Capture,
+  write, post, then hand the user the comment link. Don't wait for approval; the user edits or deletes
+  it afterwards.
 - **Comment, never body.** The body stays lean (blast-radius banner + summary). Proof is a separate
-  comment draft so it never bloats the description.
+  comment so it never bloats the description.
 - **Never fake a shot.** App won't start or capture fails → fall back to a diagram and say so. Empty
   data → an honest empty-state shot, labelled. Never describe pixels that aren't there.
 - **Trusted clicks for finicky UIs.** Real coordinate `mouse_move/down/up`, not `eval`/`@ref` clicks,
   on React/Radix/Reflex controls that silently ignore synthetic events.
-- **One saved GitHub session, identical options.** Uploads use the `github` session with the same
-  launch options on every call (A5). The user signs in once, never per run.
+- **Post with `gh --attach`.** One `gh pr comment --body-file … --attach …` call uploads and posts
+  (A5). No browser and no GitHub sign-in beyond `gh`'s own.
 - **After-only by default.** One set of "after" shots. Before/after needs running the base branch too —
   skip unless the user asks.
