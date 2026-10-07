@@ -315,6 +315,17 @@ and the seam between them. Enough that the findings below have somewhere to land
 <1–3 sentences: how the author went about it — the approach and the one or two load-bearing changes.
 This is the "here's what they did" beat, in words, not a diff dump.>
 
+## Review it yourself
+<1 sentence naming the spine of the order and why it's that order.>
+
+1. **`path/file.py`** (N lines) — <the one thing this file settles> · **ask:** <the question to hold
+   while reading it>
+<…one stop per file or per group-read-together, every changed file present…>
+
+**Where I'm least sure:** <1–2 sentences: the spots the lanes could not settle, where a human pass
+pays best.>
+<N> files, all <N> above — matches `git diff --name-only <base>...HEAD | wc -l`.
+
 ## The issues
 <Only blockers and should-fixes. If there are none: "None worth blocking on." Otherwise, per finding:>
 
@@ -334,17 +345,6 @@ next engineer — 1 sentence.>
 ```
 <the ready-to-paste PR comment, in the user's voice — see below>
 ```
-
-## Review it yourself
-<1 sentence naming the spine of the order and why it's that order.>
-
-1. **`path/file.py`** (N lines) — <the one thing this file settles> · **ask:** <the question to hold
-   while reading it>
-<…one stop per file or per group-read-together, every changed file present…>
-
-**Where I'm least sure:** <1–2 sentences: the spots the lanes could not settle, where a human pass
-pays best.>
-<N> files, all <N> above — matches `git diff --name-only <base>...HEAD | wc -l`.
 
 ## What I left out
 <n> nit(s) and wording note(s), not shown — say the word if you want them. <If the experts lane
