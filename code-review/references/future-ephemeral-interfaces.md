@@ -1,9 +1,11 @@
 # Future extension: ephemeral interfaces & micro-worlds
 
-> The **step-through walk** (code + live runtime cards, one keypress per beat) is now
-> active skill behaviour — see [`step-through.md`](step-through.md). This file remains the
-> roadmap for patterns the stepper player does not cover: timeline scrubbers, before/after
-> simulations, and DIY-migration games. Read it when a walk is too small for the change.
+> Two of these are now active skill behaviour through [`to-visual`](../../to-visual/SKILL.md)'s
+> beat player: the **step-through walk** (code + live runtime cards, see
+> [`step-through.md`](step-through.md)) and **animated concept scenes** (a metaphor that moves,
+> one beat per keypress). This file remains the roadmap for what that player does not cover:
+> free timeline scrubbers with comments, input-driven before/after simulations, and
+> DIY-migration games. Read it when a beat-by-beat animation is too small for the change.
 
 ## The idea, and why it's separate
 

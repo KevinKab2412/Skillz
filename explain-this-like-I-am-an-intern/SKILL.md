@@ -58,8 +58,15 @@ answer to the wrong X.
   intern's eyes glaze at a dense paragraph; a five-node tree they read for free. Keep it tiny, put it
   right next to the one line it supports, and don't overwhelm. The format menu is in
   [`references/show-me/visual-formats.md`](references/show-me/visual-formats.md). Stay stateless —
-  inline text visuals, no workspace; only write a separate HTML file if they explicitly ask to *see*
-  it.
+  inline text visuals, no workspace; the only files you write are the animated page below, or a
+  separate HTML file if they explicitly ask to *see* it.
+- **Animate it when it moves.** When the subject is a process or mechanism (something that changes
+  over time) and the "Animated walkthrough" gate in `visual-formats.md` fires, write your explanation
+  first, then invoke the [`to-visual`](../to-visual/SKILL.md) skill via the Skill tool. Pass the
+  concept, the analogy you used, small real example values, and your explanation text. Your chat
+  explanation stays exactly as you'd write it; the animated page opens beside it to deepen it. When
+  you're running inside code-review's explain mode, leave this to code-review: it embeds the animation
+  in the explainer itself.
 - **Name the trap.** Say the misconception a smart newcomer is *likely* to form here, and head it
   off — "you'd think X, but watch: …". The wrong guess they were about to make is the most useful
   thing to pre-empt.
@@ -77,7 +84,8 @@ happens when *they* produce something, not when they nod.
 - After the explanation, ask **one or two** short questions that make them use the idea, not just
   echo it: "so what would break if we dropped this?", "given that, what would you expect X to do?",
   "where else have you seen this shape?". Aim just past what you just said — a small reach, not a
-  quiz on the definition.
+  quiz on the definition. If you made an animation, one question can be the quiz hook `to-visual`
+  handed back (something only answerable by having watched it).
 - **Don't validate to be nice.** If their answer is off, say so plainly and re-explain *the sticky
   part a different way* — a new analogy, smaller numbers, a different angle. The same explanation
   repeated louder rarely helps; a different one often does.
@@ -87,6 +95,6 @@ happens when *they* produce something, not when they nod.
 ## What this is not
 
 Deliberately lightweight and stateless. It doesn't open a workspace, track reps, write a lesson, or
-persist anything. One call, real understanding, move on. If they want the long-haul, multi-session,
+persist anything beyond an animated page when the gate fires. One call, real understanding, move on. If they want the long-haul, multi-session,
 build-lasting-mastery version, that's a different kind of engagement — this one is the fast
 "wait, *actually*, help me get this" you reach for mid-flow.

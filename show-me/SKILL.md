@@ -29,8 +29,11 @@ module). Read it, then work like this:
    sources (the codebase, the diff, the docs), not your memory of how such things usually look.
 2. **Pick the smallest view that makes it clear.** Pseudocode, call tree, component tree, file tree,
    Mermaid sequence/state, a shape-matched diff, a whole block, or — only when a text format can't
-   carry it — one focused HTML file you `open` for the reader. Match a diff to the shape it changes
-   (component tree for UI, file tree for layout, call tree for control flow, pseudocode for state).
+   carry it — one focused HTML file you `open` for the reader. When the shape **changes over time**
+   and the "Animated walkthrough" gate fires, the top rung is the [`to-visual`](../to-visual/SKILL.md)
+   skill (invoke it via the Skill tool): a beat-by-beat animated page. Match a diff to the shape it
+   changes (component tree for UI, file tree for layout, call tree for control flow, pseudocode for
+   state).
 3. **Put each visual next to the one short line it supports.** Keep only the calls, files, props,
    states, and boundaries the current question needs. Use one format, sometimes a few, almost never
    all of them — don't overwhelm.
@@ -47,5 +50,6 @@ layout so the design is legible before it's built.
 Lightweight and stateless — one or more visuals inline (or one HTML file), then move on. It doesn't
 open a workspace, run a quiz, or persist anything. For a full teaching walkthrough of a code change
 (background → intuition → literate diff → quiz), that's `code-review`'s explain mode; for
-re-explaining something that lost the reader from scratch, that's `explain-this-like-I-am-an-intern`.
-Both of those already reach for these same visuals — this skill is the direct "just show me" button.
+re-explaining something that lost the reader from scratch, that's `explain-this-like-I-am-an-intern`;
+for an animated, beat-by-beat walkthrough, that's `to-visual`. The first two already reach for these
+same visuals — this skill is the direct "just show me" button.

@@ -1,0 +1,259 @@
+<!-- to-visual scene
+id: dbt-conveyor
+title: How dbt turns raw data into tables
+kicker: Explain · dbt
+-->
+<!-- Reference scene: a concept metaphor (conveyor belt) plus one code beat. Copy its shape:
+     world (camera moves) + hud (fixed overlays) + one script that builds beats, then S.done(). -->
+<style>
+  #dbt-conveyor .tv-world { width: 3200px; }
+  #dbt-conveyor .box { bottom: 380px; left: 140px; }
+  #dbt-conveyor .tv-row { grid-template-columns: 100px 120px 140px 1fr; }
+  #dbt-conveyor .L-fct .tv-row { grid-template-columns: 1fr 1fr; }
+  #dbt-conveyor .slip { left: 1611px; top: 596px; width: 538px; }
+  #dbt-conveyor .code { left: 1080px; top: 380px; width: 760px; }
+  #dbt-conveyor .chip { right: 80px; top: 56px; }
+  #dbt-conveyor .wh { left: 80px; top: 200px; width: 1760px; height: 690px; }
+  #dbt-conveyor .wh .tv-k { position: absolute; left: 48px; top: 42px; }
+  #dbt-conveyor .cards { position: absolute; left: 48px; right: 48px; top: 100px; display: grid;
+    grid-template-columns: repeat(4, 1fr); gap: 36px; }
+  #dbt-conveyor .wc { position: relative; height: 430px; padding: 28px; border-radius: 12px; }
+  #dbt-conveyor .wc.src { background: var(--tile); border: 2px solid var(--hair-strong); }
+  #dbt-conveyor .wc.view { border: 2px dashed rgba(20,20,19,.42); }
+  #dbt-conveyor .wc.table { background: var(--tile); border: 2px solid var(--ink); }
+  #dbt-conveyor .wc .nm { font: 500 26px/1.2 var(--mono); }
+  #dbt-conveyor .wc .ty { display: inline-block; margin-top: 14px; padding: 7px 11px; border-radius: 999px;
+    border: 1px solid var(--hair-strong); font: 500 16px/1 var(--mono); letter-spacing: .16em; text-transform: uppercase; }
+  #dbt-conveyor .wc .glyph { margin: 30px 0 16px; display: flex; flex-direction: column; gap: 9px; }
+  #dbt-conveyor .wc .glyph i { display: block; height: 15px; border-radius: 3px; background: var(--tile-strong); border: 1px solid var(--hair); }
+  #dbt-conveyor .wc .glyph i:first-child { background: rgba(20,20,19,.16); }
+  #dbt-conveyor .wc .rows { font: 500 22px/1 var(--mono); color: var(--muted); }
+  #dbt-conveyor .wc .note { position: absolute; left: 28px; right: 28px; bottom: 26px; font: 400 24px/1.35 var(--sans); }
+  #dbt-conveyor .wh .legend { position: absolute; left: 48px; right: 48px; bottom: 40px; font: 400 24px/1.3 var(--sans); color: var(--muted); }
+</style>
+
+<div class="tv-world">
+  <svg class="back" viewBox="0 0 3200 1080" aria-hidden="true"></svg>
+  <div class="tv-box box raw"></div>
+  <div class="tv-box box run"></div>
+  <div class="tv-slip slip"><div class="tv-row"><div class="tv-cell">3</div><div class="tv-cell">12.50</div><div class="tv-cell"><span class="tv-hot">returned</span></div><div class="tv-cell">2026-10-02</div></div></div>
+  <svg class="front" viewBox="0 0 3200 1080" aria-hidden="true"></svg>
+</div>
+
+<div class="tv-hud">
+  <div class="tv-scrim scrim"></div>
+  <div class="tv-hk"><b>✱</b> dbt, visually</div>
+  <div class="tv-hh">A dbt project is a conveyor belt</div>
+  <div class="tv-chip chip"><span class="t">$ dbt run</span></div>
+  <div class="tv-code code">
+    <div class="bar"><span class="dots"><i></i><i></i><i></i></span>models/intermediate/int_shipped_orders.sql</div>
+    <pre><span class="ln"><span class="kw">select</span> *</span><span class="ln"><span class="kw">from</span> {{ <span class="ref">ref('stg_orders')<span class="ul"></span></span> }}</span><span class="ln"><span class="kw">where</span> status = <span class="st">'shipped'</span></span></pre>
+  </div>
+  <div class="tv-panel wh">
+    <div class="tv-k"><b>✱</b> In the warehouse now</div>
+    <div class="cards">
+      <div class="wc src"><div class="nm">raw.orders</div><span class="ty">Source</span>
+        <div class="glyph"><i></i><i></i><i></i><i></i><i></i></div><div class="rows">4 rows</div>
+        <div class="note">Loaded by your ingestion tool. dbt only reads it.</div></div>
+      <div class="wc view"><div class="nm">stg_orders</div><span class="ty">View</span>
+        <div class="glyph"><i></i><i></i><i></i><i></i><i></i></div><div class="rows">4 rows</div>
+        <div class="note">A saved query. It re-runs each time you read it.</div></div>
+      <div class="wc view"><div class="nm">int_shipped_orders</div><span class="ty">View</span>
+        <div class="glyph"><i></i><i></i><i></i><i></i></div><div class="rows">3 rows</div>
+        <div class="note">Also a view: dbt's default.</div></div>
+      <div class="wc table"><div class="nm">fct_daily_revenue</div><span class="ty">Table</span>
+        <div class="glyph"><i></i><i></i><i></i></div><div class="rows">2 rows</div>
+        <div class="note">Rows stored on disk. Fast for dashboards.</div></div>
+    </div>
+    <div class="legend">Dashed = view (a saved query) &nbsp;·&nbsp; Solid = stored rows</div>
+  </div>
+</div>
+
+<script>
+(function () {
+  var S = V.scene({ id: "dbt-conveyor" }), tl = S.tl, C = V.C, svg = V.svg, q = S.q, qa = S.qa;
+  var SRC = 420, ST = [1150, 1880, 2610], BELT_Y = 700;
+
+  // ---- world: pallet, belt, bin, the ref() glow (back); stations, ring, DAG line (front) ----
+  var back = q(".back"), front = q(".front");
+  svg("rect", { x: 120, y: BELT_Y, width: 600, height: 30, rx: 6, style: "fill:" + C.tileStrong + ";stroke:" + C.hair }, back);
+  svg("text", { x: SRC, y: 772, "text-anchor": "middle", "font-size": 20, "letter-spacing": 3, style: "fill:" + C.muted }, back, "RAW SCHEMA");
+  var belt = svg("g", {}, back);
+  svg("rect", { x: 740, y: BELT_Y, width: 2360, height: 34, rx: 17, style: "fill:" + C.tileStrong + ";stroke:" + C.hair }, belt);
+  var treads = svg("line", { x1: 758, y1: BELT_Y + 9, x2: 3082, y2: BELT_Y + 9, "stroke-width": 3, "stroke-dasharray": "28 20",
+    "stroke-linecap": "round", style: "stroke:rgba(20,20,19,.28)" }, belt);
+  for (var x = 800; x <= 3040; x += 120) svg("circle", { cx: x, cy: BELT_Y + 24, r: 6, style: "fill:none;stroke:" + C.hair }, belt);
+  var glow = svg("rect", { x: ST[0], y: BELT_Y, width: ST[1] - ST[0], height: 34, style: "fill:" + C.coral + ";opacity:.9" }, back);
+  var bin = svg("g", {}, back);
+  svg("path", { d: "M1640 760 L1662 846 L2098 846 L2120 760", "stroke-width": 2, style: "fill:rgba(236,227,212,.6);stroke:rgba(20,20,19,.35)" }, bin);
+  svg("text", { x: ST[1], y: 876, "text-anchor": "middle", "font-size": 20, "letter-spacing": 3, style: "fill:" + C.muted }, bin, "FILTERED OUT");
+
+  var STATIONS = [["stg_orders", "01 · CLEAN"], ["int_shipped_orders", "02 · FILTER"], ["fct_daily_revenue", "03 · SUM"]];
+  var gantries = [], plates = [], plateTexts = [], presses = [];
+  STATIONS.forEach(function (st, i) {
+    var cx = ST[i], g = svg("g", {}, front);
+    svg("rect", { x: cx - 300, y: 230, width: 12, height: 504, rx: 3, style: "fill:" + C.ink + ";opacity:.78" }, g);
+    svg("rect", { x: cx + 288, y: 230, width: 12, height: 504, rx: 3, style: "fill:" + C.ink + ";opacity:.78" }, g);
+    var press = svg("g", {}, g);
+    svg("line", { x1: cx, y1: 240, x2: cx, y2: 332, "stroke-width": 4, style: "stroke:" + C.ink }, press);
+    svg("rect", { x: cx - 150, y: 330, width: 300, height: 22, rx: 4, style: "fill:" + C.ink }, press);
+    plates.push(svg("rect", { x: cx - 320, y: 230, width: 640, height: 72, rx: 8, style: "fill:" + C.tileStrong + ";stroke:" + C.hair }, g));
+    plateTexts.push(svg("text", { x: cx, y: 277, "text-anchor": "middle", "font-size": 30, "font-weight": 500, style: "fill:" + C.ink }, g, st[0]));
+    var k = svg("text", { x: cx - 318, y: 212, "font-size": 20, "letter-spacing": 3, style: "fill:" + C.muted }, g);
+    svg("tspan", { style: "fill:" + C.coral }, k, "✱ ");
+    svg("tspan", {}, k, st[1]);
+    gantries.push(g); presses.push(press);
+  });
+  var ring = svg("path", { d: V.ring(SRC, 556, 380, 214), "stroke-width": 5, "stroke-linecap": "round", style: "fill:none;stroke:" + C.coral }, front);
+  var unch = svg("text", { x: SRC, y: 312, "text-anchor": "middle", "font-size": 24, "font-weight": 500, style: "fill:" + C.ink }, front, "raw.orders · unchanged");
+  var DAG = ["source('raw','orders')", "stg_orders", "int_shipped_orders", "fct_daily_revenue"];
+  var dagLabels = [SRC].concat(ST).map(function (x, i) {
+    return svg("text", { x: x, y: 912, "text-anchor": "middle", "font-size": 34, "font-weight": 500, style: "fill:" + C.ink }, front, DAG[i]);
+  });
+  var dagArrows = [785, 1515, 2245].map(function (x) {
+    return svg("text", { x: x, y: 912, "text-anchor": "middle", "font-size": 34, style: "fill:" + C.muted }, front, "→");
+  });
+
+  // ---- the boxes: one layer per table version, so every change is a seekable tween ----
+  var RAW = { cols: ["ID", "AMT_CENTS", "STATUS", "CREATED"],
+    rows: [["1", "1999", "'SHIPPED '", "10/01/26"], ["2", "500", "'shipped'", "10/01/26"], ["3", "1250", "'Returned'", "10/02/26"], ["4", "800", "'SHIPPED'", "10/02/26"]],
+    marks: [[0,1],[1,1],[2,1],[3,1],[0,2],[1,2],[2,2],[3,2],[0,3],[1,3],[2,3],[3,3]], cls: "L-raw" };
+  var STG = { cols: ["order_id", "amount", "status", "order_date"],
+    rows: [["1", "19.99", "shipped", "2026-10-01"], ["2", "5.00", "shipped", "2026-10-01"], ["3", "12.50", "returned", "2026-10-02"], ["4", "8.00", "shipped", "2026-10-02"]],
+    marks: [[2, 2]], cls: "L-stg" };
+  var INT = { cols: STG.cols, rows: [STG.rows[0], STG.rows[1], STG.rows[3]], marks: [[0, 3], [1, 3]], cls: "L-int" };
+  var FCT = { cols: ["order_date", "revenue"], rows: [["2026-10-01", "24.99"], ["2026-10-02", "8.00"]], marks: [[0, 1]], cls: "L-fct" };
+  var boxRaw = q(".box.raw"), boxRun = q(".box.run");
+  boxRaw.innerHTML = '<div class="tv-tab"><span class="tl">raw.orders</span></div><div class="tv-card">' + V.table(RAW) + "</div>";
+  boxRun.innerHTML = '<div class="tv-tab">' + ["raw.orders", "stg_orders", "int_shipped_orders", "fct_daily_revenue"]
+    .map(function (t, i) { return '<span class="tl t' + i + '">' + t + "</span>"; }).join("") + "</div>" +
+    '<div class="tv-card">' + [RAW, STG, INT, FCT].map(V.table).join("") + "</div>";
+  var runCard = boxRun.querySelector(".tv-card");
+  var R = function (s) { return qa(".box.run " + s); };
+
+  // ---- initial state (gsap.set, never CSS transforms on tweened elements) ----
+  gsap.set(S.world, S.cam(SRC, 520, 1));
+  gsap.set(boxRaw, { y: -140, opacity: 0 });
+  gsap.set(boxRun, { opacity: 0 });
+  gsap.set(R(".L-stg .tv-cell"), { opacity: 0 });
+  gsap.set(R(".L-int").concat(R(".L-fct")), { opacity: 0 });
+  gsap.set(R(".tl:not(.t0)"), { opacity: 0 });
+  gsap.set(belt, { scaleX: 0, transformOrigin: "0% 50%" });
+  gsap.set(treads, { strokeDashoffset: 0 });
+  gsap.set(gantries, { opacity: 0, y: -50 });
+  gsap.set(glow, { scaleX: 0, transformOrigin: "0% 50%" });
+  gsap.set([bin, unch].concat(dagLabels, dagArrows, qa(".slip, .scrim, .chip")), { opacity: 0 });
+  V.drawable(ring);
+  gsap.set(q(".code"), { opacity: 0, x: 80 });
+  gsap.set(qa(".code .ln"), { opacity: 0 });
+  gsap.set(q(".code .ul"), { scaleX: 0, transformOrigin: "0% 50%" });
+  gsap.set(q(".wh"), { opacity: 0, y: 40 });
+  gsap.set(qa(".wh .wc, .wh .legend"), { opacity: 0, y: 30 });
+  gsap.set(q(".chip .t"), { clipPath: "inset(0 100% 0 0)" });
+
+  // ---- reusable moves ----
+  function travel(t, stationX, camArgs) {
+    var dx = stationX - SRC;
+    tl.to(S.world, Object.assign(S.cam.apply(null, camArgs), { duration: 1.7 }), t + 0.2);
+    tl.to(boxRun, { x: dx, duration: 1.7 }, t + 0.3);
+    tl.to(treads, { strokeDashoffset: -dx, duration: 1.7 }, t + 0.3);
+  }
+  function stationOn(i, t) { tl.to(plates[i], { fill: C.ink, duration: 0.25 }, t); tl.to(plateTexts[i], { fill: C.cream, duration: 0.25 }, t); }
+  function stationOff(i, t) { tl.to(plates[i], { fill: C.tileStrong, duration: 0.4 }, t); tl.to(plateTexts[i], { fill: C.ink, duration: 0.4 }, t); }
+  function stamp(i, t) {
+    stationOn(i, t);
+    tl.to(presses[i], { y: 54, duration: 0.32, ease: "power2.in" }, t + 0.05);
+    tl.to(presses[i], { y: 0, duration: 0.4, ease: "power2.out" }, t + 0.55);
+    stationOff(i, t + 1.9);
+  }
+  function tab(from, to, t) {
+    tl.to(R(".t" + from), { opacity: 0, duration: 0.3 }, t);
+    tl.to(R(".t" + to), { opacity: 1, duration: 0.3 }, t + 0.1);
+  }
+
+  // ---- beats ----
+  S.beat("Raw orders land messy: cents, stray spaces, dates stored as text.", 4.2, function (t) {
+    tl.to(boxRaw, { y: 0, opacity: 1, duration: 0.9, ease: "power3.out" }, t + 0.2);
+    [1, 2, 3].forEach(function (c, k) { S.mark(qa(".L-raw .c" + c + " .tv-mk"), t + 1.3 + k * 0.35); });
+  });
+  S.beat("dbt is a conveyor belt. Each station is one SQL model.", 4.6, function (t) {
+    tl.to(S.world, Object.assign(S.cam(1600, 410, 0.6), { duration: 1.5 }), t + 0.1);
+    tl.to(belt, { scaleX: 1, duration: 1.1, ease: "power2.out" }, t + 0.7);
+    tl.to(gantries, { opacity: 1, y: 0, duration: 0.6, ease: "power3.out", stagger: 0.25 }, t + 1.4);
+  });
+  S.beat("Station 1 cleans: rename columns, cents to dollars, tidy text and dates.", 5.6, function (t) {
+    tl.set(boxRun, { opacity: 1 }, t);
+    travel(t, ST[0], [ST[0], 520, 1]);
+    stamp(0, t + 2.1);
+    [0, 1, 2, 3].forEach(function (c) {
+      tl.to(R(".L-raw .c" + c), { opacity: 0, duration: 0.35 }, t + 2.45 + c * 0.22);
+      tl.to(R(".L-stg .c" + c), { opacity: 1, duration: 0.35 }, t + 2.55 + c * 0.22);
+    });
+    tab(0, 1, t + 2.5);
+  });
+  S.beat("The raw box never changes. Each station builds a new one.", 4.6, function (t) {
+    tl.to(S.world, Object.assign(S.cam(800, 440, 0.72), { duration: 1.3 }), t + 0.1);
+    S.draw(ring, t + 1.2);
+    tl.to(unch, { opacity: 1, duration: 0.4 }, t + 1.9);
+  });
+  S.beat("Station 2 keeps only shipped orders. The return drops off.", 5.8, function (t) {
+    tl.to([ring, unch], { opacity: 0, duration: 0.4 }, t + 0.1);
+    travel(t + 0.1, ST[1], [ST[1], 520, 1]);
+    tl.to(bin, { opacity: 1, duration: 0.5 }, t + 1.2);
+    stamp(1, t + 2.2);
+    S.mark(R(".L-stg .r2 .c2 .tv-mk"), t + 2.5);
+    // the filtered row lifts out as its own slip and drops into the bin, where it stays
+    tl.set(q(".slip"), { opacity: 1 }, t + 2.95);
+    tl.set(R(".L-stg .r2"), { opacity: 0 }, t + 2.95);
+    tl.to(q(".slip"), { x: 16, y: -12, rotation: -2, duration: 0.25, ease: "power2.out" }, t + 2.95);
+    tl.to(q(".slip"), { x: 10, y: 194, rotation: 3, duration: 0.7, ease: "power2.in" }, t + 3.25);
+    tl.to(R(".L-stg .r3"), { y: -44, duration: 0.5 }, t + 3.5);
+    tl.to(runCard, { height: 212, duration: 0.5 }, t + 3.5);
+    tl.set(R(".L-stg"), { opacity: 0 }, t + 4.2);
+    tl.set(R(".L-int"), { opacity: 1 }, t + 4.2);
+    tab(1, 2, t + 4.1);
+  });
+  S.beat("Station 3 sums revenue per day. Three rows become two.", 5.8, function (t) {
+    travel(t, ST[2], [ST[2], 520, 1]);
+    stamp(2, t + 2.2);
+    S.mark(R(".L-int .c3 .tv-mk"), t + 2.5, { stagger: 0.12 });
+    tl.to(R(".L-int .r1"), { y: -44, opacity: 0, duration: 0.55 }, t + 3.1);
+    tl.to(R(".L-int .r2"), { y: -44, duration: 0.55 }, t + 3.3);
+    tl.to(runCard, { height: 168, duration: 0.5 }, t + 3.3);
+    tl.to(R(".L-int"), { opacity: 0, duration: 0.4 }, t + 3.9);
+    tl.to(R(".L-fct"), { opacity: 1, duration: 0.4 }, t + 4.0);
+    tab(2, 3, t + 3.9);
+    S.mark(R(".L-fct .r0 .c1 .tv-mk"), t + 4.5);
+  });
+  S.beat("Every box stays in the warehouse, as a view or a table.", 5.6, function (t) {
+    tl.to([bin, q(".slip")], { opacity: 0, duration: 0.3 }, t);
+    tl.to(q(".scrim"), { opacity: 0.94, duration: 0.5 }, t + 0.1);
+    tl.to(q(".wh"), { opacity: 1, y: 0, duration: 0.6, ease: "power3.out" }, t + 0.2);
+    tl.to(qa(".wh .wc"), { opacity: 1, y: 0, duration: 0.5, ease: "power3.out", stagger: 0.25 }, t + 0.7);
+    tl.to(q(".wh .legend"), { opacity: 1, y: 0, duration: 0.5 }, t + 2.2);
+  });
+  S.beat("Inside a station is plain SQL. <code>ref()</code> names the station that feeds it.", 6.0, function (t) {
+    tl.to(q(".wh"), { opacity: 0, y: 20, duration: 0.45 }, t);
+    tl.to(q(".scrim"), { opacity: 0, duration: 0.5 }, t + 0.1);
+    tl.to(S.world, Object.assign(S.cam(2040, 520, 0.8), { duration: 1.4 }), t + 0.2);
+    tl.to(q(".code"), { opacity: 1, x: 0, duration: 0.6, ease: "power3.out" }, t + 1.2);
+    tl.to(qa(".code .ln"), { opacity: 1, duration: 0.3, stagger: 0.18 }, t + 1.6);
+    tl.to(q(".code .ul"), { scaleX: 1, duration: 0.5, ease: "power2.out" }, t + 2.7);
+    tl.to(glow, { scaleX: 1, duration: 0.8 }, t + 2.9);
+  });
+  S.beat("<code>dbt run</code> starts the belt and follows every <code>ref()</code> in order.", 6.2, function (t) {
+    tl.to(q(".code"), { opacity: 0, x: 60, duration: 0.45 }, t);
+    tl.to(glow, { opacity: 0, duration: 0.45 }, t);
+    tl.to(S.world, Object.assign(S.cam(1600, 410, 0.6), { duration: 1.4 }), t + 0.2);
+    tl.to(q(".chip"), { opacity: 1, duration: 0.3 }, t + 0.9);
+    tl.to(q(".chip .t"), { clipPath: "inset(0 0% 0 0)", duration: 0.7, ease: "steps(9)" }, t + 1.0);
+    tl.to(dagLabels.concat(dagArrows), { opacity: 0.3, duration: 0.4 }, t + 1.6);
+    dagLabels.forEach(function (lbl, i) {
+      var at = t + 2.1 + i * 0.6;
+      tl.to(lbl, { opacity: 1, duration: 0.3 }, at);
+      if (i > 0) { tl.to(dagArrows[i - 1], { opacity: 1, duration: 0.3 }, at - 0.15); stationOn(i - 1, at); stationOff(i - 1, at + 0.55); }
+    });
+  });
+  S.done();
+})();
+</script>

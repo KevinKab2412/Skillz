@@ -113,6 +113,12 @@ What this spec explicitly does not cover.
 Anything else relevant.
 ```
 
+**Animate the proposed flow when it moves.** If the Solution changes how data or control moves over
+time and a static figure won't carry it (the gate in [`to-visual`](../../../to-visual/SKILL.md)),
+invoke `to-visual` via the Skill tool in `page` mode, with output under the code repo's
+`explanations/`. Add the page path and its numbered beat captions under **Further Notes**, so the
+design can be watched before it exists. The captions keep the epic readable on GitHub without the file.
+
 Show the spec to the user. Ask if anything needs adjusting before opening the issues.
 
 ## Step 4 — Write the GitHub plan

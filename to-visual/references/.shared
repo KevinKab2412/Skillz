@@ -1,0 +1,3 @@
+# Shared reference modules injected from repo-root shared/<module>/ at install time.
+# One module name per line.
+show-me

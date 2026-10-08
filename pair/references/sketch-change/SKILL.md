@@ -75,7 +75,11 @@ grasp the shape here before any pseudo-code.
 **3. Data flow — a figure, if it earns its place.** If the change is about state moving through the
 system, a small figure (a static SVG, or a *light* box-and-arrow diagram) shows what prose can't —
 where data enters, what transforms it, where it lands. Coarse: the flow, not the field list. Cut it if
-prose already carries it.
+prose already carries it. When the *movement* is the decision you want contested (a pipeline's
+stages, a retry loop, work moving between queues) and a static figure can't carry it, invoke the
+[`to-visual`](../../../to-visual/SKILL.md) skill via the Skill tool (its gate is in that file) with
+`mode: fragment`, and paste the fragment here: an animation of the *proposed* flow gives the engineer
+a concrete strawman to argue with, beat by beat.
 
 **4. Intended shape — coarse pseudo-code for the load-bearing parts.** Use the template's `shape`
 blocks. Pseudo-code, *not* real signatures: enough to show the structure of the tricky pieces — the

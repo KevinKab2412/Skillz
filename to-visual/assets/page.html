@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{TV_TITLE}}</title>
+{{TV_HEAD}}
+<style>
+  html, body { margin: 0; background: #EFE9DE; color: #141413; font: 400 18px/1.6 Inter, ui-sans-serif, system-ui, sans-serif; }
+  .tv-page { max-width: 1240px; margin: 0 auto; padding: 48px 24px 96px; }
+  .tv-page-kicker { font: 500 13px/1 "JetBrains Mono", ui-monospace, Menlo, monospace; letter-spacing: .16em;
+    text-transform: uppercase; color: rgba(20,20,19,.58); }
+  .tv-page-kicker b { color: #CC785C; font-weight: 500; }
+  .tv-page h1 { font: 400 52px/1.06 "EB Garamond", Georgia, serif; letter-spacing: -.018em; margin: .35em 0 .35em; }
+  .tv-prose { max-width: 720px; margin: 32px 0; }
+  .tv-prose h2 { font: 400 30px/1.15 "EB Garamond", Georgia, serif; letter-spacing: -.01em; margin: 0 0 .35em; }
+  .tv-prose p { margin: 0 0 1em; }
+  .tv-prose code { font: 400 .88em "JetBrains Mono", ui-monospace, Menlo, monospace; background: #ECE3D4; padding: .08em .35em; border-radius: 4px; }
+  .tv-prose details { border: 1px solid rgba(20,20,19,.2); border-radius: 8px; padding: 12px 16px; background: #FAF9F5; }
+  .tv-prose summary { cursor: pointer; font-weight: 500; }
+  .tv-page .tv { left: 0; transform: none; width: 100%; }
+</style>
+</head>
+<body>
+<main class="tv-page">
+  {{TV_HEADER}}
+  {{TV_BEFORE}}
+  {{TV_FIGURE}}
+  {{TV_AFTER}}
+</main>
+</body>
+</html>

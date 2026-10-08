@@ -108,6 +108,24 @@ Match the product's colours, type, spacing, and components; use real labels and 
 and mobile. Then `open` it for the reader. This is the heavyweight option — reach for it when a text
 format genuinely can't carry the point, not by default.
 
+**Animated walkthrough** — when the point is how something **changes over time**, invoke the
+[`to-visual`](../../../to-visual/SKILL.md) skill via the Skill tool. It builds a live page cut into
+beats that pause after each one, silent with one caption per beat: a Vox-style metaphor for a concept
+(a dbt pipeline as a conveyor belt), code-editorial beats for code, or a step-through walk of code
+running. Pass the concept, an analogy if you have one, small real example values, and the prose
+you've already written; it returns the page (or an inline fragment), the beat captions, and one quiz
+hook. Your text explanation stays as written; the animation sits beside it.
+
+The gate — animate only when **both** hold:
+
+- **The idea moves.** A pipeline or multi-stage transform, a mechanism, a state machine, an event
+  loop or scheduler, concurrency, a migration unfolding, data travelling through layers, a
+  before/after where the *transition* is the lesson.
+- **A static figure has been ruled out.** A tree, a Mermaid diagram or one SVG would not carry it.
+
+Skip it for structure (where code lives, how components nest), for definitions, and for anything a
+paragraph already makes obvious. A decorative animation is worse than none.
+
 ## Taste
 
 - The visual illustrates a point already made in one short sentence. It is never the reader's only

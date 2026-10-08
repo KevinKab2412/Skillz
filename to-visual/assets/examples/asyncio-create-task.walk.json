@@ -1,0 +1,115 @@
+{
+  "title": "create_task lets two waits overlap",
+  "lede": "Two one-second sleeps finish in about one second, because both tasks exist before anyone waits.",
+  "panes": [
+    {
+      "id": "code",
+      "title": "Python thread",
+      "kind": "code",
+      "lines": [
+        "import asyncio",
+        "",
+        "async def fetch(n):",
+        "    await asyncio.sleep(1)",
+        "    return n",
+        "",
+        "async def main():",
+        "    task = asyncio.create_task(fetch(1))",
+        "    second = await fetch(2)",
+        "    first = await task",
+        "    print(first, second)",
+        "",
+        "asyncio.run(main())"
+      ]
+    },
+    { "id": "loop", "title": "Event loop", "kind": "world" },
+    { "id": "io", "title": "Timers", "kind": "world" }
+  ],
+  "steps": [
+    {
+      "caption": "`asyncio.run` starts the event loop and runs `main()`.",
+      "highlight": { "code": [13] },
+      "world": { "loop": [{ "id": "main", "title": "main()", "status": "running" }], "io": [] }
+    },
+    {
+      "caption": "`create_task` schedules `fetch(1)`. It does not run yet.",
+      "highlight": { "code": [8] },
+      "world": {
+        "loop": [
+          { "id": "main", "title": "main()", "status": "running" },
+          { "id": "f1", "title": "fetch(1)", "status": "ready", "note": "Queued. Waits for the loop to be free." }
+        ],
+        "io": []
+      }
+    },
+    {
+      "caption": "`main` awaits `fetch(2)` directly, which starts a one-second sleep.",
+      "highlight": { "code": [9, 4] },
+      "world": {
+        "loop": [
+          { "id": "main", "title": "main()", "status": "suspended", "note": "Inside fetch(2), sleeping." },
+          { "id": "f1", "title": "fetch(1)", "status": "ready" }
+        ],
+        "io": [{ "id": "t-main", "title": "Timer: wake main", "status": "io", "note": "1 s" }]
+      }
+    },
+    {
+      "caption": "The loop is free, so `fetch(1)` finally runs.",
+      "highlight": { "code": [4] },
+      "world": {
+        "loop": [
+          { "id": "main", "title": "main()", "status": "suspended" },
+          { "id": "f1", "title": "fetch(1)", "status": "running" }
+        ],
+        "io": [{ "id": "t-main", "title": "Timer: wake main", "status": "io" }]
+      }
+    },
+    {
+      "caption": "`fetch(1)` sleeps too. Both timers now tick at the same time.",
+      "highlight": { "code": [4] },
+      "world": {
+        "loop": [
+          { "id": "main", "title": "main()", "status": "suspended" },
+          { "id": "f1", "title": "fetch(1)", "status": "suspended" }
+        ],
+        "io": [
+          { "id": "t-main", "title": "Timer: wake main", "status": "io" },
+          { "id": "t-f1", "title": "Timer: wake fetch(1)", "status": "io" }
+        ]
+      }
+    },
+    {
+      "caption": "About one second later `main` wakes first: `second` is 2.",
+      "highlight": { "code": [10] },
+      "world": {
+        "loop": [
+          { "id": "main", "title": "main()", "status": "running", "note": "second = 2" },
+          { "id": "f1", "title": "fetch(1)", "status": "ready", "note": "Its timer fired too." }
+        ],
+        "io": []
+      }
+    },
+    {
+      "caption": "`await task` pauses `main`; `fetch(1)` runs on and returns 1.",
+      "highlight": { "code": [5] },
+      "world": {
+        "loop": [
+          { "id": "main", "title": "main()", "status": "suspended", "note": "Waiting on task." },
+          { "id": "f1", "title": "fetch(1)", "status": "complete", "note": "returned 1" }
+        ],
+        "io": []
+      }
+    },
+    {
+      "caption": "`main` prints `1 2`. Total time is about 1 s, not 2 s.",
+      "highlight": { "code": [11] },
+      "world": {
+        "loop": [
+          { "id": "main", "title": "main()", "status": "complete", "note": "printed: 1 2" },
+          { "id": "f1", "title": "fetch(1)", "status": "complete" }
+        ],
+        "io": []
+      }
+    }
+  ]
+}
