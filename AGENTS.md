@@ -120,6 +120,7 @@ Skills load automatically from `~/.agents/skills/` (shared across Claude Code, C
 - **`/standup`** — Generate a standup update from recent activity.
 - **`/statusline`** — Configure a custom status line in the CLI.
 - **`/to-pr`** — Open a draft pull request for the current branch from work that's already done.
+- **`/to-visual`** — Turn one concept into an animated, beat-by-beat HTML explainer: a 1920×1080 composition that pauses after each beat, silent, with one caption per…
 - **`/update-cli-config`** — View and modify Codex CLI configuration settings in ~/.cursor/cli-config.json.
 - **`/update-cursor-settings`** — Modify Codex/VSCode user settings in settings.json.
 - **`/visualize`** — Use /visualize for creating compact charts, diagrams, or other visuals inline as part of the conversation itself.
