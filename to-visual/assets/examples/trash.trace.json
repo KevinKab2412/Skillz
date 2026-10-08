@@ -1,0 +1,407 @@
+{
+ "meta": {
+  "settings": "trashdemo.settings",
+  "models": [
+   "store.Item"
+  ],
+  "labels": [
+   "store.tests"
+  ],
+  "recorded_at": "2026-10-08T13:49:18",
+  "failures": 0
+ },
+ "tests": {
+  "TrashTests.test_deleted_item_can_be_restored": [
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "POST",
+    "path": "/items/",
+    "params": {
+     "name": "report.pdf",
+     "size": 120
+    },
+    "status": 201,
+    "response": {
+     "id": 1,
+     "name": "report.pdf"
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 1,
+       "name": "report.pdf",
+       "size": 120,
+       "trashed_at": null
+      }
+     ]
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "POST",
+    "path": "/items/1/delete/",
+    "params": null,
+    "status": 200,
+    "response": {
+     "trashed": 1
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 1,
+       "name": "report.pdf",
+       "size": 120,
+       "trashed_at": "-0s"
+      }
+     ]
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "GET",
+    "path": "/items/",
+    "params": null,
+    "status": 200,
+    "response": {
+     "items": []
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 1,
+       "name": "report.pdf",
+       "size": 120,
+       "trashed_at": "-0s"
+      }
+     ]
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "POST",
+    "path": "/items/1/restore/",
+    "params": null,
+    "status": 200,
+    "response": {
+     "restored": 1
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 1,
+       "name": "report.pdf",
+       "size": 120,
+       "trashed_at": null
+      }
+     ]
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "GET",
+    "path": "/items/",
+    "params": null,
+    "status": 200,
+    "response": {
+     "items": [
+      "report.pdf"
+     ]
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 1,
+       "name": "report.pdf",
+       "size": 120,
+       "trashed_at": null
+      }
+     ]
+    }
+   }
+  ],
+  "TrashTests.test_deleting_does_not_free_space_until_the_trash_is_emptied": [
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "POST",
+    "path": "/items/",
+    "params": {
+     "name": "movie.mov",
+     "size": 4000
+    },
+    "status": 201,
+    "response": {
+     "id": 1,
+     "name": "movie.mov"
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 1,
+       "name": "movie.mov",
+       "size": 4000,
+       "trashed_at": null
+      }
+     ]
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "POST",
+    "path": "/items/1/delete/",
+    "params": null,
+    "status": 200,
+    "response": {
+     "trashed": 1
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 1,
+       "name": "movie.mov",
+       "size": 4000,
+       "trashed_at": "-0s"
+      }
+     ]
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "GET",
+    "path": "/usage/",
+    "params": null,
+    "status": 200,
+    "response": {
+     "used": 4000
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 1,
+       "name": "movie.mov",
+       "size": 4000,
+       "trashed_at": "-0s"
+      }
+     ]
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "POST",
+    "path": "/trash/empty/",
+    "params": null,
+    "status": 200,
+    "response": {
+     "removed": 1
+    },
+    "state": {
+     "Item": []
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "GET",
+    "path": "/usage/",
+    "params": null,
+    "status": 200,
+    "response": {
+     "used": 0
+    },
+    "state": {
+     "Item": []
+    }
+   }
+  ],
+  "TrashTests.test_emptying_the_trash_removes_items_for_good": [
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "POST",
+    "path": "/items/",
+    "params": {
+     "name": "draft.txt",
+     "size": 10
+    },
+    "status": 201,
+    "response": {
+     "id": 1,
+     "name": "draft.txt"
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 1,
+       "name": "draft.txt",
+       "size": 10,
+       "trashed_at": null
+      }
+     ]
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "POST",
+    "path": "/items/",
+    "params": {
+     "name": "notes.txt",
+     "size": 20
+    },
+    "status": 201,
+    "response": {
+     "id": 2,
+     "name": "notes.txt"
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 1,
+       "name": "draft.txt",
+       "size": 10,
+       "trashed_at": null
+      },
+      {
+       "id": 2,
+       "name": "notes.txt",
+       "size": 20,
+       "trashed_at": null
+      }
+     ]
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "POST",
+    "path": "/items/1/delete/",
+    "params": null,
+    "status": 200,
+    "response": {
+     "trashed": 1
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 1,
+       "name": "draft.txt",
+       "size": 10,
+       "trashed_at": "-0s"
+      },
+      {
+       "id": 2,
+       "name": "notes.txt",
+       "size": 20,
+       "trashed_at": null
+      }
+     ]
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "POST",
+    "path": "/trash/empty/",
+    "params": null,
+    "status": 200,
+    "response": {
+     "removed": 1
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 2,
+       "name": "notes.txt",
+       "size": 20,
+       "trashed_at": null
+      }
+     ]
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "POST",
+    "path": "/items/1/restore/",
+    "params": null,
+    "status": 404,
+    "response": {
+     "error": "not_in_trash"
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 2,
+       "name": "notes.txt",
+       "size": 20,
+       "trashed_at": null
+      }
+     ]
+    }
+   },
+   {
+    "caller": {
+     "client": 1,
+     "auth": "none"
+    },
+    "method": "GET",
+    "path": "/items/",
+    "params": null,
+    "status": 200,
+    "response": {
+     "items": [
+      "notes.txt"
+     ]
+    },
+    "state": {
+     "Item": [
+      {
+       "id": 2,
+       "name": "notes.txt",
+       "size": 20,
+       "trashed_at": null
+      }
+     ]
+    }
+   }
+  ]
+ }
+}

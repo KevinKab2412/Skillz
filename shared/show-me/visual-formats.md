@@ -112,7 +112,9 @@ format genuinely can't carry the point, not by default.
 [`to-visual`](../../../to-visual/SKILL.md) skill via the Skill tool. It builds a live page cut into
 beats that pause after each one, silent with one caption per beat: a Vox-style metaphor for a concept
 (a dbt pipeline as a conveyor belt), code-editorial beats for code, or a step-through walk of code
-running. Pass the concept, an analogy if you have one, small real example values, and the prose
+running. For a code change with runnable tests it builds a **concept view**: the concepts the change
+touches, a watch recorded from the change's own tests, a playable concept machine, and a quiz. Pass the
+concept or change, a familiar concept if you have one, small real example values, and the prose
 you've already written; it returns the page (or an inline fragment), the beat captions, and one quiz
 hook. Your text explanation stays as written; the animation sits beside it.
 

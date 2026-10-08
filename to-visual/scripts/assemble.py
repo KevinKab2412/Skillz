@@ -4,6 +4,7 @@
     assemble.py --scene my-scene.html --out explanations/visual-my-scene-2026-10-08.html
     assemble.py --walk walk.json --out explanations/explain-x-2026-10-08-walk.html
     assemble.py --scene my-scene.html --mode fragment --out figure.html   # paste into a host page
+    assemble.py --view change.view.json --out explanations/concepts-pr-123.html  # concept view of a change
 
 Everything (kit CSS, GSAP, kit JS, the scene) is inlined, so the result opens from file://.
 Only Google Fonts load from the network, with system fallbacks when offline.
@@ -77,7 +78,7 @@ def parse_walk(data: dict, fallback_id: str) -> dict:
     }
 
 
-def head(walk: bool) -> str:
+def head(walk: bool, view: bool = False) -> str:
     parts = [
         FONTS,
         f"<style>\n{asset('kit.css')}\n</style>",
@@ -87,6 +88,10 @@ def head(walk: bool) -> str:
     ]
     if walk:
         parts.append(f"<script>\n{asset('walk.js')}\n</script>")
+    if view:
+        parts.append(f"<style>\n{asset('concept.css')}\n</style>")
+        parts.append(f"<script>\n{asset('trace.js')}\n</script>")
+        parts.append(f"<script>\n{asset('concept.js')}\n</script>")
     return "\n".join(parts)
 
 
@@ -115,11 +120,13 @@ def prose(path: str | None) -> str:
     return f'<section class="tv-prose">\n{Path(path).read_text().strip()}\n</section>'
 
 
-def build(scene: dict, mode: str, title: str | None, before: str | None, after: str | None) -> str:
+def build(scene: dict, mode: str, title: str | None, before: str = "", after: str = "") -> str:
+    """before/after are ready HTML (prose sections, or a concept view's inventory, play and check)."""
+    view = scene.get("trace", False)
     if mode == "fragment":
         return (
             f"<!-- to-visual fragment: {scene['id']} · paste into the host page's figure slot -->\n"
-            f"{head(scene['walk'])}\n{figure(scene)}\n"
+            f"{head(scene['walk'], view)}\n{before}\n{figure(scene)}\n{after}\n"
         )
     page_title = html.escape(title or scene["title"] or scene["id"])
     # A walk draws its own title inside the frame; a scene's page header names the topic.
@@ -131,10 +138,10 @@ def build(scene: dict, mode: str, title: str | None, before: str | None, after: 
         {
             "TITLE": page_title,
             "HEADER": header,
-            "HEAD": head(scene["walk"]),
-            "BEFORE": prose(before),
+            "HEAD": head(scene["walk"], view),
+            "BEFORE": before,
             "FIGURE": figure(scene),
-            "AFTER": prose(after),
+            "AFTER": after,
         },
     )
 
@@ -144,23 +151,35 @@ def main(argv: list[str] | None = None) -> int:
     src = ap.add_mutually_exclusive_group(required=True)
     src.add_argument("--scene", help="scene file (header + style + markup + script)")
     src.add_argument("--walk", help="step-through walk JSON")
+    src.add_argument("--view", help="concept view spec JSON (inventory · recorded watch · play · check)")
     ap.add_argument("--out", required=True, help="output HTML path")
     ap.add_argument("--mode", choices=["page", "fragment"], default="page")
     ap.add_argument("--title", help="page title (defaults to the scene's)")
-    ap.add_argument("--before", help="HTML file with prose shown above the player (page mode)")
-    ap.add_argument("--after", help="HTML file with prose shown below the player (page mode)")
+    ap.add_argument("--before", help="HTML file with prose shown above the player")
+    ap.add_argument("--after", help="HTML file with prose shown below the player")
     args = ap.parse_args(argv)
 
+    before, after = prose(args.before), prose(args.after)
     if args.scene:
         path = Path(args.scene)
         scene = parse_scene(path.read_text(), slug(path.stem.replace(".scene", "")))
-    else:
+    elif args.walk:
         path = Path(args.walk)
         scene = parse_walk(json.loads(path.read_text()), slug(path.stem))
+    else:
+        from concept_view import build_view  # same directory
+
+        path = Path(args.view)
+        view = json.loads(path.read_text())
+        if not ID_RE.fullmatch(view.get("id", "")):
+            raise SystemExit(f"assemble: view id must be lowercase kebab-case, got {view.get('id')!r}")
+        built = build_view(view, path.parent)
+        scene = built["scene"]
+        before, after = before + built["before"], built["after"] + after
 
     out = Path(args.out)
     out.parent.mkdir(parents=True, exist_ok=True)
-    out.write_text(build(scene, args.mode, args.title, args.before, args.after))
+    out.write_text(build(scene, args.mode, args.title, before, after))
     print(f"wrote {out} ({args.mode}, scene #{scene['id']})")
     return 0
 

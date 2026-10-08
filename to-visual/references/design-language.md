@@ -1,9 +1,34 @@
-# Design language: code-editorial × Vox
+# Design language: concepts first, code-editorial × Vox
 
-Two registers on one stage. **Concepts** get a Vox-style explainer: physical metaphors, objects
-that persist and change, a camera that pushes in for detail and pulls out for context, marker
-highlights and hand-drawn rings. **Code** gets the code-editorial register: a warm-navy code surface,
-monospace, and one coral accent that ties a line of code to the part of the picture it drives.
+The grammar comes from Daniel Jackson's concept design (*The Essence of Software*). The look is
+code-editorial, with Vox's moves.
+
+- **Concepts first.** Each animation shows one **concept**: a unit of behaviour with one purpose,
+  its own state and actions. Its **operational principle** (the smallest scenario that shows the
+  purpose being fulfilled) is the storyboard.
+- **Explain through a familiar concept.** Say what the new thing is an instance of: a dbt model is a
+  spreadsheet *formula*, and `ref()` is a cell *reference*. A physical metaphor (a conveyor belt) is
+  an optional **skin** over that skeleton, never the explanation itself. Jackson: metaphors are "rarely
+  useful for explaining what concepts are for".
+- **Code** gets the code-editorial register: a warm-navy code surface, monospace, and one coral accent
+  that ties a line of code to the part of the picture it drives.
+- **Vox's moves** carry it: objects that persist and change, a camera that pushes in and pulls out,
+  marker highlights, hand-drawn rings.
+
+This is a trial (planning #1446, D3). To go back to metaphor-first, use the metaphor menu below as
+the explanation, and keep the familiar concept as a one-line "familiar as…".
+
+## Concept anatomy → the stage
+
+| Concept part | On screen |
+|---|---|
+| purpose | the headline, said first |
+| state | the objects that stay on screen (boxes, table rows, cards) |
+| action | one motion = one beat |
+| operational principle | the order of the beats |
+| synchronization (A acts → B acts) | a visible wire, or the same coral on both ends |
+| dependence | the order concepts are explained in (never explain upvote before post) |
+| misconception | the trap beat: the reader's likely wrong concept next to the real one, stopping where they split |
 
 ## The rules
 
@@ -16,7 +41,7 @@ monospace, and one coral accent that ties a line of code to the part of the pict
 | **Develop, don't freeze** | Each beat enters, develops, then settles: action first, emphasis last, then a short hold. Never put everything up at t = 0 and wait. |
 | **One coral moment per beat** | Coral marks *what is changing now*: a marker swipe, a ring, a glowing segment, the linked line of code. Everything else is ink, cream and tile. |
 | **Small concrete values** | 4 orders, 19.99, `2026-10-01`. Real-looking numbers you can check by eye. A visual that says "N rows" teaches nothing. |
-| **Show the trap** | One beat shows the misconception being wrong (for dbt: the raw table is still there, unchanged). |
+| **Show the trap** | One beat shows the reader's likely wrong concept failing where the real one holds (trash: deleting frees no space until you empty it; dbt: the raw table is still there). The library card's `misconception` is the starting point. |
 | **Code beat, then behaviour beat** | Show the line, then show what it does, linked by the same coral. Code alone reads flat. |
 
 ## The look (code-editorial tokens, defined in `kit.css`)
@@ -29,9 +54,11 @@ monospace, and one coral accent that ties a line of code to the part of the pict
 - **Surfaces:** 1px hairlines and one soft shadow. No glows, no gradients on content.
 - **Paper:** a faint grain on the ground (kit adds it). Hand-drawn rings use `V.ring` (deterministic wobble).
 
-## Metaphor menu
+## Metaphors: an optional skin
 
-Pick the metaphor whose *motion* matches the idea. The signature move is what the reader should remember.
+When a metaphor helps, pick the one whose *motion* matches the concept's operational principle, and
+keep the familiar concept in the caption or headline. The signature move is what the reader should
+remember. (This menu is also the documented way back if the familiar-concept trial is reversed.)
 
 | Idea | Metaphor | Signature move |
 |---|---|---|

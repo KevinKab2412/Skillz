@@ -1,0 +1,9 @@
+SECRET_KEY = "example-only-not-secret"
+DEBUG = True
+ALLOWED_HOSTS = ["testserver", "localhost"]
+INSTALLED_APPS = ["store"]
+MIDDLEWARE = []
+ROOT_URLCONF = "trashdemo.urls"
+DATABASES = {"default": {"ENGINE": "django.db.backends.sqlite3", "NAME": ":memory:"}}
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+USE_TZ = True

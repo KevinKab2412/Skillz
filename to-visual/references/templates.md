@@ -1,7 +1,12 @@
 # Templates
 
-Two ways in: **walk** (data only) and **scene** (a short script on the kit). Both play in the same
-beat player.
+Three ways in, all in the same beat player:
+
+- **concept view** for a code change with runnable tests: recorded from the tests, data only plus a
+  small play-machine script. See [`concept-view.md`](concept-view.md) and
+  [`../assets/examples/trash.view.json`](../assets/examples/trash.view.json).
+- **walk** for tracing code as it runs (data only).
+- **scene** for an idea with no code to run (a short script on the kit).
 
 ## walk: code tracing, no JavaScript
 

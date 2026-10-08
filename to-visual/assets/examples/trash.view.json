@@ -1,0 +1,80 @@
+{
+  "id": "trash-concept",
+  "title": "A files app learns to undo deletion",
+  "kicker": "Concept view · example",
+  "lede": "Reference example. Imagine an agent's PR that adds a trash to a small files service (<code>examples/trash-app</code>). Read as <em>concepts</em>, it is three things: the item store changes, the trash is new, and storage usage now counts trashed items until the trash is emptied. The watch below is <strong>recorded</strong> from the app's own tests.",
+  "concepts": [
+    {"name": "item store", "status": "CHANGED", "purpose": "Keep the files you're working with. Delete now hides an item instead of erasing it.", "familiar": "any file list", "tests": "store/tests.py"},
+    {"name": "trash", "status": "NEW", "star": true, "purpose": "Let you undo a deletion, until you choose to empty it.", "familiar": "the Trash / Recycle Bin on your desktop", "tests": "3 tests · TrashTests"},
+    {"name": "storage usage", "status": "CHANGED", "purpose": "Tell you how much space your files take. Trashed items still count.", "familiar": "the disk-space bar", "tests": "test_deleting_does_not_free_space_until_the_trash_is_emptied"}
+  ],
+  "order": ["item store → trash", "trash → storage usage"],
+  "syncs": [
+    {"when": "trash: you delete an item", "then": "store: the item leaves your file list (it isn't erased)", "evidence": "test_deleted_item_can_be_restored", "recorded": true},
+    {"when": "trash: you empty it", "then": "store: trashed rows are removed for good; usage drops", "evidence": "test_emptying_the_trash_removes_items_for_good", "recorded": true}
+  ],
+  "watch": {
+    "trace": "trash.trace.json",
+    "intro": "Purpose: undo a deletion. Operational principle: delete → restore brings it back; delete → empty removes it for good. Every beat is a request recorded while <code>store/tests.py</code> ran; every row is the real <code>Item</code> row after it.",
+    "kicker": "concept · trash",
+    "headline": "Deleting moves a file to the trash. Emptying deletes it.",
+    "divider": "OTHER RECORDED TESTS · EMPTYING, AND THE SPACE TRAP",
+    "actors": [
+      {"id": "you", "name": "you", "sub": "test client"},
+      {"id": "app", "name": "files app", "sub": "views · Item table"}
+    ],
+    "routes": [
+      {"method": "POST", "path": "/items/", "from": "you", "to": "app", "label": "create {p_name}", "res": "{status} · id {r_id}"},
+      {"method": "POST", "path": "/items/*/delete/", "from": "you", "to": "app", "label": "delete item {r_trashed}"},
+      {"method": "POST", "path": "/items/*/restore/", "from": "you", "to": "app", "label": "restore"},
+      {"method": "POST", "path": "/trash/empty/", "from": "you", "to": "app", "label": "empty the trash", "res": "{status} · removed {r_removed}"},
+      {"method": "GET", "path": "/items/", "from": "you", "to": "app", "label": "list my files", "res": "{status} · [{r_items}]"},
+      {"method": "GET", "path": "/usage/", "from": "you", "to": "app", "label": "how much space?", "res": "{status} · used {r_used}"}
+    ],
+    "tables": [
+      {"id": "items", "model": "Item", "title": "Items", "widths": ["70px", "190px", "120px", "1fr"], "cols": [
+        {"field": "id", "label": "id"},
+        {"field": "name", "label": "name"},
+        {"field": "size", "label": "size"},
+        {"field": "trashed_at", "label": "where", "fmt": "flag", "labels": ["in the trash", "your files"]}
+      ]}
+    ],
+    "beats": [
+      {"test": "test_deleted_item_can_be_restored", "step": 1, "caption": "A new file lands in your files."},
+      {"test": "test_deleted_item_can_be_restored", "step": 2, "caption": "Delete only marks it as trashed. The row is still there."},
+      {"test": "test_deleted_item_can_be_restored", "step": 3, "caption": "Your file list no longer shows it."},
+      {"test": "test_deleted_item_can_be_restored", "step": 4, "caption": "Restore clears the mark. The deletion is undone."},
+      {"test": "test_emptying_the_trash_removes_items_for_good", "step": 4, "caption": "Emptying removes trashed rows for good.", "trap": true},
+      {"test": "test_emptying_the_trash_removes_items_for_good", "step": 5, "caption": "Now restore has nothing to bring back: 404.", "trap": true},
+      {"test": "test_deleting_does_not_free_space_until_the_trash_is_emptied", "step": 3, "caption": "Trap: deleting freed no space. The trashed file still counts.", "trap": true},
+      {"test": "test_deleting_does_not_free_space_until_the_trash_is_emptied", "step": 5, "caption": "Only emptying the trash frees the space.", "trap": true}
+    ]
+  },
+  "play": {
+    "intro": "Same table, driven by you. Try deleting a big file to make space, then check usage.",
+    "script": "trash.machine.js"
+  },
+  "check_intro": "Two questions (marked) are answered only by the recording.",
+  "check": [
+    {"q": "Right after delete (beat 2), what happened to the item's row?", "tag": "from the recording", "options": [
+      ["It was erased from the table.", false, "The recording shows the row still there, now marked as trashed."],
+      ["It stayed, with trashed_at set.", true, "Delete moves an item to the trash by setting trashed_at; nothing is erased."],
+      ["It was copied into a separate trash table.", false, "There is one Item table; the trash is a mark on the row."],
+      ["Its size was set to zero.", false, "Size is unchanged; usage still counts it."]]},
+    {"q": "You delete a 4,000-byte movie to make space. What does usage say?", "tag": "from the recording", "options": [
+      ["0: deleting frees the space.", false, "That's the trap. Trashed items still count until the trash is emptied."],
+      ["4000: the movie still counts until you empty the trash.", true, "test_deleting_does_not_free_space_until_the_trash_is_emptied."],
+      ["2000: half is kept for undo.", false, "Usage sums sizes of every row, trashed or not."],
+      ["It depends on whether you listed your files first.", false, "Listing doesn't change state."]]},
+    {"q": "After emptying the trash, can you restore the item?", "options": [
+      ["Yes, emptying only hides it.", false, "Emptying deletes the rows; restore returns 404."],
+      ["No: emptying removed the row, so restore returns 404.", true, "test_emptying_the_trash_removes_items_for_good."],
+      ["Only within 30 days.", false, "This app has no retention window."],
+      ["Only if it was the last item deleted.", false, "Every trashed row goes when you empty."]]},
+    {"q": "What is the trash concept's purpose?", "options": [
+      ["Deleting files.", false, "Jackson's point: you could delete without a trash. Its purpose is the opposite."],
+      ["Undoing a deletion.", true, "Delete → restore is the operational principle."],
+      ["Freeing disk space.", false, "Emptying frees space; the trash itself holds on to it."],
+      ["Sorting files by date.", false, "That's a different concept."]]}
+  ]
+}

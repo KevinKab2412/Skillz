@@ -99,3 +99,65 @@ class ToVisualAssembleTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+VIEW = SKILL / "assets/examples/trash.view.json"
+sys.path.insert(0, str(SKILL / "scripts"))
+import concept_view  # noqa: E402
+
+
+class ConceptViewTest(unittest.TestCase):
+    def test_view_page_holds_inventory_recorded_watch_play_and_check(self):
+        out = Path(tempfile.mkdtemp()) / "view.html"
+        result = assemble("--view", str(VIEW), "--out", str(out))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        html = out.read_text()
+
+        self.assertNotRegex(html, r"<script[^>]*\bsrc=")
+        for marker in ("V.inventory(", "V.trace(", "V.machine(MACHINE", "V.quiz(", 'data-composition-id="trash-concept"'):
+            self.assertIn(marker, html)
+        self.assertIn("recorded · test_deleted_item_can_be_restored · step 2/5", html)
+        self.assertIn("OTHER RECORDED TESTS · EMPTYING, AND THE SPACE TRAP", html)
+
+    def test_view_fragment_has_no_document_shell(self):
+        out = Path(tempfile.mkdtemp()) / "frag.html"
+        result = assemble("--view", str(VIEW), "--mode", "fragment", "--out", str(out))
+        self.assertEqual(result.returncode, 0, result.stderr)
+        html = out.read_text()
+        self.assertNotRegex(html, r"<(html|body|head)\b")
+        self.assertIn('class="tvc"', html)
+        self.assertIn('<figure class="tv"', html)
+
+    def test_watch_beats_come_from_the_recorded_trace(self):
+        watch = concept_view.build_watch(json.loads(VIEW.read_text())["watch"], VIEW.parent)
+        delete, restore_after_empty = watch["beats"][1], watch["beats"][5]
+
+        self.assertEqual(delete["req"], "delete item 1")
+        self.assertEqual(delete["tables"]["items"], [{"cells": ["1", "report.pdf", "120", "in the trash"], "flag": "changed"}])
+        self.assertFalse(restore_after_empty["ok"])
+        self.assertEqual(restore_after_empty["res"], "404 · not_in_trash")
+
+    def test_rows_are_flagged_new_changed_and_gone(self):
+        prev = {"t": {1: ["a", "live"], 2: ["b", "live"]}}
+        cur = {"t": {1: ["a", "revoked"], 3: ["c", "live"]}}
+        flags = {tuple(r["cells"]): r["flag"] for r in concept_view.diff(prev, cur)["t"]}
+        self.assertEqual(flags, {("a", "revoked"): "changed", ("c", "live"): "new", ("b", "live"): "gone"})
+
+    def test_cell_formatters(self):
+        fmt = concept_view.fmt_cell
+        self.assertEqual(fmt("+3600s", {"fmt": "duration"}), "1 h")
+        self.assertEqual(fmt("-31s", {"fmt": "duration"}), "31 s")
+        self.assertEqual(fmt(["https://example.com/mcp"], {"fmt": "join", "map": {"example.com": "prod"}}), "prod")
+        self.assertEqual(fmt(None, {"fmt": "flag", "labels": ["revoked", "live"]}), "live")
+        self.assertEqual(fmt("abcdefghijk", {"fmt": "short"}), "abcdef…")
+
+    def test_routes_match_on_method_path_glob_and_params(self):
+        routes = [{"method": "POST", "path": "/oauth/token/", "params": {"grant_type": "refresh_token"}, "label": "refresh", "from": "c", "to": "a"},
+                  {"method": "POST", "path": "/oauth/token/", "label": "exchange", "from": "c", "to": "a"},
+                  {"path": "/items/*/delete/", "label": "delete", "from": "c", "to": "a"}]
+        pick = lambda m, p, params=None: concept_view.route_for({"method": m, "path": p, "params": params}, routes)["label"]
+        self.assertEqual(pick("POST", "/oauth/token/", {"grant_type": "refresh_token"}), "refresh")
+        self.assertEqual(pick("POST", "/oauth/token/", {"grant_type": "authorization_code"}), "exchange")
+        self.assertEqual(pick("POST", "/items/7/delete/"), "delete")
+        with self.assertRaises(SystemExit):
+            pick("GET", "/nowhere/")

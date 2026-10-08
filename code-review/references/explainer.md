@@ -89,6 +89,12 @@ When the change *moves* — the "Animated walkthrough" gate in `visual-formats.m
 [`to-visual`](../../to-visual/SKILL.md) skill via the Skill tool with `mode: fragment`, and paste the
 fragment it returns into the template's figure slot, inline:
 
+- **An agent-written change with runnable tests (Django today)** → a **concept view**: "Concepts this
+  change touches" (cards marked NEW / CHANGED, plus a synchronization table with the test behind each
+  sync), then the central concept's operational principle **recorded from the change's own tests**,
+  then a playable concept machine. to-visual records on an exported copy and never touches the
+  checkout under review (`to-visual/references/concept-view.md`). Prefer this whenever the tests can
+  run: it shows what the code really does, not what an agent imagines it does.
 - **How the machine takes turns** (an event loop, a reducer, a scheduler, blocking vs yielding, a
   migration unfolding) → a **walk**: Corey Schafer's move, source on one side and live state cards on
   the other. Write the walk JSON per [`step-through.md`](step-through.md); no custom JavaScript.
@@ -116,7 +122,7 @@ enough that skimming fails, answerable by someone who actually read and understo
   value flows into — not trivia the reader could guess without reading.
 - If you embedded an animation, make **one** of the five questions answerable only by having stepped
   through it (which card was running when X awaited, which box was still messy at beat 4, which beat
-  scheduled the second task). `to-visual` hands back a quiz hook to start from. That keeps the
+  scheduled the second task; for a concept view, a fact only the recorded rows show). `to-visual` hands back a quiz hook to start from. That keeps the
   animation honest rather than decorative.
 - One clearly-correct option per question, three *plausible* distractors. Weak distractors let the
   reader pass by elimination and defeat the point.

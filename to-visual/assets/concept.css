@@ -1,0 +1,58 @@
+/* to-visual concept-view helpers. Every rule is scoped under .tvc (inventory, machine, quiz). */
+.tvc { --ink: #141413; --cream: #FAF9F5; --tile: #EFE9DE; --tile-strong: #ECE3D4; --coral: #CC785C;
+  --hair: rgba(20,20,19,.12); --hair-strong: rgba(20,20,19,.2); --muted: rgba(20,20,19,.58);
+  --serif: "EB Garamond", Georgia, serif; --sans: Inter, ui-sans-serif, system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+  display: block; margin: 28px 0; color: var(--ink); font: 400 17px/1.6 var(--sans); text-align: left; }
+.tvc *, .tvc *::before, .tvc *::after { box-sizing: border-box; }
+.tvc h2 { font: 400 30px/1.15 var(--serif); letter-spacing: -.01em; margin: 28px 0 10px; padding: 0; border: 0; }
+.tvc h3 { font: 400 23px/1.2 var(--serif); margin: 24px 0 10px; }
+.tvc p { margin: 0 0 10px; }
+.tvc code { font: 400 .88em var(--mono); background: var(--tile-strong); padding: .06em .3em; border-radius: 4px; }
+.tvc .tvc-lede, .tvc .tvc-intro { max-width: 780px; color: rgba(20,20,19,.78); }
+
+.tvc .tvc-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 14px; margin: 14px 0 6px; }
+.tvc .tvc-card { position: relative; padding: 14px 14px 12px; border-radius: 10px; background: var(--cream); border: 1px solid var(--hair-strong); }
+.tvc .tvc-card.star { border: 2px solid var(--ink); }
+.tvc .tvc-card.dashed { background: transparent; border-style: dashed; }
+.tvc .tvc-n { padding-right: 78px; font: 500 15px/1.3 var(--mono); }
+.tvc .tvc-b { position: absolute; right: 10px; top: 10px; padding: 4px 6px; border-radius: 4px; font: 600 11px/1 var(--mono); letter-spacing: .1em; }
+.tvc .tvc-b.new { background: rgba(93,184,114,.2); color: #2f6b3d; }
+.tvc .tvc-b.chg { background: rgba(232,165,90,.25); color: #8a5a1c; }
+.tvc .tvc-card p { margin: 8px 0 0; font-size: 14.5px; line-height: 1.45; }
+.tvc .tvc-fam { color: rgba(20,20,19,.62); font-style: italic; }
+.tvc .tvc-t { margin-top: 8px; font: 400 12px/1.4 var(--mono); color: rgba(20,20,19,.55); word-break: break-all; }
+.tvc .tvc-dep { font: 400 13px/1.5 var(--mono) !important; color: rgba(20,20,19,.62); }
+.tvc .tvc-syncs { width: 100%; border-collapse: collapse; overflow: hidden; border-radius: 10px; background: var(--cream); font-size: 14.5px; }
+.tvc .tvc-syncs td, .tvc .tvc-syncs th { padding: 8px 12px; text-align: left; vertical-align: top; border-bottom: 1px solid var(--hair); }
+.tvc .tvc-syncs th { font: 500 12px/1 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.tvc .tvc-rec { font: 600 11px/1 var(--mono); color: var(--coral); }
+
+.tvc .tvc-machine-grid { display: grid; grid-template-columns: 430px 1fr; gap: 18px; margin-top: 12px; }
+.tvc .tvc-ctl, .tvc .tvc-state { padding: 16px; border-radius: 12px; background: var(--cream); border: 1px solid var(--hair-strong); }
+.tvc .tvc-grp { margin-bottom: 12px; }
+.tvc .tvc-grp h4 { margin: 0 0 8px; font: 500 12px/1 var(--mono); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); }
+.tvc .tvc-ctl button, .tvc .tvc-ctl select { margin: 0 6px 6px 0; padding: 8px 10px; border-radius: 7px; cursor: pointer;
+  border: 1px solid rgba(20,20,19,.25); background: #fff; color: var(--ink); font: 500 13.5px/1 var(--sans); }
+.tvc .tvc-ctl button:hover { border-color: var(--ink); }
+.tvc .tvc-tb h5 { margin: 6px 0 4px; font: 500 12px/1.4 var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.tvc .tvc-r { display: grid; gap: 10px; padding: 5px 8px; border-radius: 4px; border-bottom: 1px solid rgba(20,20,19,.08); font: 400 13.5px/1.3 var(--mono); }
+.tvc .tvc-r.fresh { background: rgba(204,120,92,.2); }
+.tvc .tvc-r.dead { color: rgba(20,20,19,.4); }
+.tvc .tvc-none { padding: 4px 8px; color: rgba(20,20,19,.45); font: 400 13px var(--sans); }
+.tvc .tvc-log { max-height: 260px; margin-top: 12px; overflow: auto; font: 400 13px/1.45 var(--mono); }
+.tvc .tvc-log div { margin-bottom: 6px; padding: 6px 8px; border-radius: 0 6px 6px 0; background: #fff; border-left: 3px solid rgba(20,20,19,.15); }
+.tvc .tvc-log .ok { border-left-color: #5DB872; }
+.tvc .tvc-log .bad { border-left-color: #C64545; }
+.tvc .tvc-log em { display: block; margin-top: 2px; font: italic 400 12.5px/1.4 var(--sans); color: rgba(20,20,19,.62); }
+
+.tvc .tvc-q { max-width: 860px; margin: 12px 0; padding: 16px 18px; border-radius: 12px; background: var(--cream); border: 1px solid var(--hair-strong); }
+.tvc .tvc-stem { margin-bottom: 10px; font-weight: 600; }
+.tvc .tvc-tag { margin-left: 6px; font: 600 11px/1 var(--mono); color: var(--coral); }
+.tvc .tvc-q button { display: block; width: 100%; margin: 6px 0; padding: 9px 12px; border-radius: 8px; cursor: pointer; text-align: left;
+  border: 1px solid rgba(20,20,19,.2); background: #fff; color: var(--ink); font: 400 15px/1.4 var(--sans); }
+.tvc .tvc-q button.right { border-color: #5DB872; background: rgba(93,184,114,.15); }
+.tvc .tvc-q button.wrong { border-color: #C64545; background: rgba(198,69,69,.1); }
+.tvc .tvc-why { display: none; margin-top: 8px; font-size: 14.5px; color: rgba(20,20,19,.78); }
+.tvc .tvc-why.show { display: block; }
+@media (max-width: 1000px) { .tvc .tvc-grid { grid-template-columns: 1fr 1fr; } .tvc .tvc-machine-grid { grid-template-columns: 1fr; } }
