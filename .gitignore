@@ -25,3 +25,9 @@ experiments/skill-router/*
 !experiments/skill-router/deploy.sh
 !experiments/skill-router/refresh.sh
 experiments/skill-router/src/__pycache__/
+
+# to-visual example ports: dependencies install into temp copies, never here
+to-visual/assets/examples/trash-*/vendor/
+to-visual/assets/examples/trash-*/node_modules/
+to-visual/assets/examples/trash-*/composer.lock
+to-visual/assets/examples/trash-*/package-lock.json

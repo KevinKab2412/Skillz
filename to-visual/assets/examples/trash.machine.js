@@ -1,5 +1,5 @@
 // Play rules for the trash concept. MACHINE is the container element (set by assemble.py).
-// Each rule mirrors examples/trash-app/store/views.py and cites the test that proves it.
+// Each rule mirrors examples/trash-django/store/views.py and cites the test that proves it.
 V.machine(MACHINE, {
   groups: [
     { title: "You", controls: [

@@ -1,14 +1,12 @@
 import json
+import os
 import shutil
 import subprocess
 import tempfile
 import unittest
 from pathlib import Path
 
-
-ROOT = Path(__file__).resolve().parents[1]
-APP = ROOT / "to-visual/assets/examples/trash-app"
-RECORDER = ROOT / "to-visual/scripts/record_trace.py"
+from to_visual_reference import RECORDERS, assert_matches_reference, copy_example
 
 
 def uv_django_available() -> bool:
@@ -20,31 +18,24 @@ def uv_django_available() -> bool:
 
 
 @unittest.skipUnless(uv_django_available(), "needs uv with Django in its cache")
-class RecorderEndToEndTest(unittest.TestCase):
+class DjangoRecorderTest(unittest.TestCase):
     def test_records_each_request_with_caller_status_and_model_rows(self):
         with tempfile.TemporaryDirectory() as tmp:
-            work = Path(tmp) / "app"
-            shutil.copytree(APP, work)
+            work = copy_example("trash-django", tmp)
             out = Path(tmp) / "trace.json"
             result = subprocess.run(
-                ["uv", "run", "--offline", "--no-project", "--with", "django", "python", str(RECORDER),
+                ["uv", "run", "--offline", "--no-project", "--with", "django", "python", str(RECORDERS / "record_django.py"),
                  "--settings", "trashdemo.settings", "--models", "store.Item", "--out", str(out), "--", "store.tests"],
-                cwd=work, capture_output=True, text=True, check=False)
+                cwd=work, env=os.environ | {"PYTHONDONTWRITEBYTECODE": "1"}, capture_output=True, text=True, check=False)
             self.assertEqual(result.returncode, 0, result.stderr[-2000:])
             trace = json.loads(out.read_text())
 
-        tests = trace["tests"]
-        self.assertEqual(trace["meta"]["failures"], 0)
-        self.assertEqual(len(tests), 3)
-        restore = tests["TrashTests.test_deleted_item_can_be_restored"]
-        self.assertEqual([(s["method"], s["path"], s["status"]) for s in restore],
-                         [("POST", "/items/", 201), ("POST", "/items/1/delete/", 200), ("GET", "/items/", 200),
-                          ("POST", "/items/1/restore/", 200), ("GET", "/items/", 200)])
+        self.assertEqual(trace["meta"]["stack"], "django")
+        restore = trace["tests"]["TrashTests.test_deleted_item_can_be_restored"]
         self.assertEqual(restore[0]["caller"], {"client": 1, "auth": "none"})
         self.assertIsNone(restore[0]["state"]["Item"][0]["trashed_at"])
         self.assertRegex(restore[1]["state"]["Item"][0]["trashed_at"], r"^[+-]\d+s$")
-        emptied = tests["TrashTests.test_emptying_the_trash_removes_items_for_good"][3]
-        self.assertEqual([r["name"] for r in emptied["state"]["Item"]], ["notes.txt"])
+        assert_matches_reference(self, trace)
 
 
 if __name__ == "__main__":

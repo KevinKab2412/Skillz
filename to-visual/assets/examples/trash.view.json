@@ -2,7 +2,7 @@
   "id": "trash-concept",
   "title": "A files app learns to undo deletion",
   "kicker": "Concept view · example",
-  "lede": "Reference example. Imagine an agent's PR that adds a trash to a small files service (<code>examples/trash-app</code>). Read as <em>concepts</em>, it is three things: the item store changes, the trash is new, and storage usage now counts trashed items until the trash is emptied. The watch below is <strong>recorded</strong> from the app's own tests.",
+  "lede": "Reference example. Imagine an agent's PR that adds a trash to a small files service (<code>examples/trash-django</code>). Read as <em>concepts</em>, it is three things: the item store changes, the trash is new, and storage usage now counts trashed items until the trash is emptied. The watch below is <strong>recorded</strong> from the app's own tests.",
   "concepts": [
     {"name": "item store", "status": "CHANGED", "purpose": "Keep the files you're working with. Delete now hides an item instead of erasing it.", "familiar": "any file list", "tests": "store/tests.py"},
     {"name": "trash", "status": "NEW", "star": true, "purpose": "Let you undo a deletion, until you choose to empty it.", "familiar": "the Trash / Recycle Bin on your desktop", "tests": "3 tests · TrashTests"},

@@ -1,0 +1,12 @@
+[project]
+name = "trash-fastapi"
+version = "0"
+description = "The trash example from trash-django, ported to FastAPI + SQLAlchemy (sync and async)."
+requires-python = ">=3.10"
+dependencies = ["fastapi", "sqlalchemy[asyncio]", "aiosqlite"]
+
+[dependency-groups]
+dev = ["pytest", "httpx"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]

@@ -71,8 +71,9 @@ fire, say so and hand back without a file: a missing animation should read as a 
    **trap** beat: the reader's likely wrong concept, shown being wrong.
 2. **Pick the template.**
    - **concept view** (a code change with runnable tests): inventory → recorded watch → play → check.
-     Follow `concept-view.md`: export the change, record a trace with `scripts/record_trace.py`, and
-     write a view spec. Example: [`assets/examples/trash.view.json`](assets/examples/trash.view.json).
+     Follow `concept-view.md`: export the change, record a trace with the recorder for its stack
+     (`scripts/recorders/`: Django, Laravel, FastAPI, Express), and write a view spec. Example:
+     [`assets/examples/trash.view.json`](assets/examples/trash.view.json).
    - **walk** (tracing code as it runs, no recording): write the walk JSON; schema in `templates.md`.
    - **scene** (an idea with no code to run): adapt [`assets/examples/dbt-conveyor.html`](assets/examples/dbt-conveyor.html)
      with the kit (`authoring.md`).

@@ -161,3 +161,20 @@ class ConceptViewTest(unittest.TestCase):
         self.assertEqual(pick("POST", "/items/7/delete/"), "delete")
         with self.assertRaises(SystemExit):
             pick("GET", "/nowhere/")
+
+    def test_beats_find_their_test_in_any_stacks_naming_style(self):
+        find = lambda tests, name: concept_view.find_test(dict.fromkeys(tests, []), name)[0]
+        self.assertEqual(find(["TrashTests.test_restore", "TrashTests.test_cannot_restore"], "test_restore"), "TrashTests.test_restore")
+        self.assertEqual(find(["test_trash.py::test_restore"], "test_restore"), "test_trash.py::test_restore")
+        self.assertEqual(find(["TrashTests › deleted item can be restored"], "test_deleted_item_can_be_restored"),
+                         "TrashTests › deleted item can be restored")
+        with self.assertRaisesRegex(SystemExit, "ambiguous"):
+            find(["A restore", "B restore"], "test_restore")
+        with self.assertRaisesRegex(SystemExit, "none"):
+            find(["TrashTests.test_restore"], "test_empty")
+
+    def test_provenance_names_the_test_without_its_suite(self):
+        name = concept_view.test_name
+        self.assertEqual(name("TrashTests.test_restore"), "test_restore")
+        self.assertEqual(name("tests/test_trash.py::test_restore"), "test_restore")
+        self.assertEqual(name("TrashTests › returns 2.5 items"), "returns 2.5 items")

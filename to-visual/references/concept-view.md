@@ -13,7 +13,8 @@ in this order:
 4. **Check.** A quiz, with at least one question answerable only from the recording.
 
 Reference example: [`../assets/examples/trash.view.json`](../assets/examples/trash.view.json), recorded
-from [`../assets/examples/trash-app`](../assets/examples/trash-app).
+from [`../assets/examples/trash-django`](../assets/examples/trash-django) (ported to Laravel, FastAPI
+and Express beside it).
 
 ## 1 · Name the concepts
 
@@ -29,25 +30,88 @@ its refresh token), each with the test that proves it. Order the cards by depend
 registration before the grant that needs it). Mark one concept with `star`: the one you'll record.
 Internal mechanisms count as concepts here, because the reader is an engineer.
 
-## 2 · Record the trace (Django today)
+## 2 · Record the trace
 
-Work on an **export**, never the reviewer's checkout:
+Work on an **export**, never the reviewer's checkout, and install the project's dependencies there
+with its own tool:
 
 ```bash
 git -C <clone> fetch origin pull/<N>/head       # or the branch
 mkdir -p <scratch>/pr && git -C <clone> archive <sha> | tar -x -C <scratch>/pr
-cd <scratch>/pr/<dir with manage.py>
-uv run --frozen python <to-visual>/scripts/record_trace.py \
+R=<to-visual>/scripts/recorders
+```
+
+Then run the recorder for the project's stack. All four write the same trace (the shape is in
+`scripts/recorders/tracekit.py`), so the rest of this page doesn't depend on the stack.
+
+**Django**, from the directory with `manage.py`. It hooks the test `Client` and DRF's `APIClient`:
+
+```bash
+uv run --frozen python $R/record_django.py \
   --settings <project>.settings --models <app.Model,...> --out <scratch>/trace.json -- <test labels>
 ```
 
-- **Models** are where the concept's state lives (the tables you'll show). Pick 1–4.
-- **Test labels** are the tests whose names are the operational principle, plus one or two that show
-  the trap. Run the tests first without the recorder if you're unsure they pass.
-- The recorder wraps Django's test `Client` and DRF's `APIClient`. It logs each request (caller,
-  method, path, params, status, response, redirect) and snapshots the models after it. Secret-looking
-  values are shortened and datetimes shown relative.
-- Not Django, or the tests can't run? Skip the recording and use a **walk** or a **scene** (say so).
+**Laravel** (PHPUnit ≥ 10 or Pest), from the directory with `phpunit.xml`. A PHPUnit extension
+listens for each `RequestHandled` event and reads Eloquent models without global scopes, so
+soft-deleted rows stay visible:
+
+```bash
+composer install --no-interaction
+TOVISUAL_OUT=<scratch>/trace.json TOVISUAL_MODELS='App\Models\Item,App\Models\User' \
+php -d auto_prepend_file=$R/laravel/autoload.php \
+  vendor/bin/phpunit --extension 'ToVisual\Laravel\Recorder' <test files> [--filter …]
+```
+
+- For Pest, run the same command with `vendor/bin/pest`.
+- `php artisan test` loses the `-d` flag, so call the runner directly.
+- PHPUnit 10 has no `--extension` flag. Copy `phpunit.xml` to `phpunit.tovisual.xml`, add
+  `<extensions><bootstrap class="ToVisual\Laravel\Recorder"/></extensions>`, and pass `-c phpunit.tovisual.xml`.
+
+**FastAPI** (any Starlette app, pytest), from the project root, with its own environment
+(`uv run --frozen`, `poetry run`, or the venv's `python -m`). A pytest plugin hooks `TestClient` and
+`httpx.AsyncClient` on an `ASGITransport`, and reads SQLAlchemy or SQLModel tables through the
+engine the app's session used:
+
+```bash
+PYTHONPATH=$R uv run --frozen pytest -p record_fastapi \
+  --tovisual-out <scratch>/trace.json --tovisual-models <pkg.models:Item,...> <test paths>
+```
+
+**Express** (Jest + supertest), from the project root. The driver adds a setup file to the project's
+own `setupFilesAfterEnv`, which hooks supertest. It reads state through the app's Knex instance or
+Prisma client. `--models` takes `Label=table` for Knex and `Label=Model` for Prisma:
+
+```bash
+npm ci
+node $R/jest/record.cjs --db <src/db.js> --models Item=items,User=users \
+  --out <scratch>/trace.json -- <jest args>
+```
+
+Projects on native ESM need `NODE_OPTIONS=--experimental-vm-modules` in front.
+
+- **Models** are where the concept's state lives (the tables you'll show). Pick 1–4. The trace keys
+  each one by its short name (`Item`), which is what the view spec's `tables[].model` names.
+- **Tests** are the ones whose names are the operational principle, plus one or two that show the
+  trap. Run them first without the recorder if you're unsure they pass.
+- Every recorder logs each request (caller, method, path, params, status, response, redirect) and
+  snapshots the models after it. It shortens secret-looking values (`recorders/contract.json`) and
+  shows datetimes relative to the snapshot. Check `meta.failures` and `meta.warnings` before you
+  build on a trace.
+- Beats name tests the way you'd say them (`test_deleted_item_can_be_restored`). `find_test`
+  matches the exact id first, then the id's last part, then the same words. So the same spec finds
+  `TrashTests.test_deleted_item_can_be_restored` and the Jest test
+  `TrashTests › deleted item can be restored`. A parametrised test needs its exact name
+  (`test_x[case]`).
+- The four ports of the trash app (`assets/examples/trash-{django,laravel,fastapi,express}`) record
+  the same trace. Read one when a recorder misbehaves on a real project.
+- **Limits.** Only these test clients are recorded:
+  - Django's test `Client` and DRF's `APIClient`;
+  - Laravel's HTTP test helpers (`client` is always 1, and `actingAs` shows `auth: "none"`);
+  - Starlette's `TestClient` and `httpx.AsyncClient` (one process, so no xdist);
+  - Jest with supertest, reading Knex or Prisma (no Vitest or Mocha).
+
+  For another stack, or tests that can't run, skip the recording and use a **walk** or a **scene**
+  (say so).
 
 ## 3 · Write the view spec
 

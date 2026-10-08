@@ -1,14 +1,15 @@
 {
  "meta": {
-  "settings": "trashdemo.settings",
+  "stack": "django",
   "models": [
    "store.Item"
   ],
   "labels": [
    "store.tests"
   ],
-  "recorded_at": "2026-10-08T13:49:18",
-  "failures": 0
+  "recorded_at": "2026-10-08T14:54:06",
+  "failures": 0,
+  "settings": "trashdemo.settings"
  },
  "tests": {
   "TrashTests.test_deleted_item_can_be_restored": [

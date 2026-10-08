@@ -1,6 +1,6 @@
 """Build a concept view (inventory · recorded watch · play · check) from a view spec.
 
-The watch part comes from a trace written by ``record_trace.py``: each beat is one recorded
+The watch part comes from a trace written by a recorder in ``recorders/``: each beat is one recorded
 request and each table row one recorded database row. The spec only says how to *read*
 the trace: which requests go between which actors (routes), which model fields become
 which columns (tables), and which steps to show with which captions (beats).
@@ -10,6 +10,7 @@ from __future__ import annotations
 import fnmatch
 import html
 import json
+import re
 from pathlib import Path
 
 
@@ -23,11 +24,41 @@ def load_trace(path: Path) -> dict:
     return data["tests"] if "tests" in data else data  # legacy: {test: [steps]}
 
 
+SEPARATORS = (".", "::", " › ")
+
+
+def _words(text: str) -> str:
+    return re.sub(r"[^a-z0-9]+", " ", text.lower()).strip()
+
+
 def find_test(tests: dict, name: str) -> tuple[str, list]:
-    matches = [t for t in tests if t == name or t.endswith("." + name) or t.split(".")[-1] == name]
-    if len(matches) != 1:
-        raise SpecError(f"concept view: test {name!r} matched {len(matches)} recorded tests: {sorted(tests)}")
-    return matches[0], tests[matches[0]]
+    """Find a beat's test across naming styles, strictest tier first.
+
+    Exact id; then the id's last part (``Class.test_x``, ``file.py::test_x``, ``Suite › test x``); then
+    the same words, so ``test_deleted_item_can_be_restored`` also finds the Jest test
+    ``TrashTests deleted item can be restored``.
+    """
+    words = re.sub(r"^test ", "", _words(name))
+    tiers = (
+        lambda t: t == name,
+        lambda t: any(t.endswith(sep + name) for sep in SEPARATORS),
+        lambda t: bool(words) and (" " + _words(t)).endswith(" " + words),
+    )
+    for matches in tiers:
+        found = [t for t in tests if matches(t)]
+        if len(found) == 1:
+            return found[0], tests[found[0]]
+        if found:
+            raise SpecError(f"concept view: test {name!r} is ambiguous, it matches {sorted(found)}")
+    raise SpecError(f"concept view: test {name!r} matched none of the recorded tests: {sorted(tests)}")
+
+
+def test_name(test_id: str) -> str:
+    """The test's own name, without its class, module or suite (a description may hold dots)."""
+    for sep in (" › ", "::"):
+        test_id = test_id.rsplit(sep, 1)[-1]
+    _, dot, tail = test_id.rpartition(".")
+    return tail if dot and " " not in tail else test_id
 
 
 # ---------------------------------------------------------------- formatting
@@ -134,7 +165,7 @@ def build_watch(watch: dict, base: Path) -> dict:
         ok = step["status"] < 400 and not ((step.get("redirect") or {}).get("query") or {}).get("error")
         beats.append({
             "caption": beat["caption"],
-            "prov": f"recorded · {test_id.split('.')[-1]} · step {n}/{len(steps)}",
+            "prov": f"recorded · {test_name(test_id)} · step {n}/{len(steps)}",
             "from": route["from"], "to": route["to"],
             "req": (beat.get("label") or route.get("label") or "{method} {path}").format_map(ctx),
             "res": (beat.get("res") or route.get("res") or "").format_map(ctx) or default_response(step),

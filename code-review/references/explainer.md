@@ -89,7 +89,7 @@ When the change *moves* — the "Animated walkthrough" gate in `visual-formats.m
 [`to-visual`](../../to-visual/SKILL.md) skill via the Skill tool with `mode: fragment`, and paste the
 fragment it returns into the template's figure slot, inline:
 
-- **An agent-written change with runnable tests (Django today)** → a **concept view**: "Concepts this
+- **An agent-written change with runnable tests (Django, Laravel, FastAPI, Express)** → a **concept view**: "Concepts this
   change touches" (cards marked NEW / CHANGED, plus a synchronization table with the test behind each
   sync), then the central concept's operational principle **recorded from the change's own tests**,
   then a playable concept machine. to-visual records on an exported copy and never touches the

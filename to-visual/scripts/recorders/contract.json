@@ -1,0 +1,8 @@
+{
+  "about": "Shared by every recorder (Python, PHP, JavaScript). A value under one of these keys, in params, responses or table rows, is shortened to its first 6 characters plus an ellipsis when longer than 8.",
+  "secret_keys": [
+    "code", "code_verifier", "code_challenge", "token", "refresh_token", "access_token", "id_token",
+    "client_id", "client_secret", "registration_access_token", "token_checksum", "key", "jti",
+    "password", "secret", "api_key", "session_key", "remember_token"
+  ]
+}
