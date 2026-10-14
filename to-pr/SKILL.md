@@ -11,8 +11,8 @@ description: >
   at a branch and wants it turned into a PR. Trigger even if they don't say "to-pr" explicitly, as
   long as they point at a branch (or an explainer file) and want it to become a PR. Default base
   branch is `dev` and PRs are always opened as drafts. Stamps a blast-radius banner (Deep read /
-  Spot-check / Skim) at the top of the body so a reviewer calibrates how hard to look — deep on trunk
-  and one-way-door changes, a skim on gated leaf code. Also posts visual proof as a PR comment on
+  Spot-check / Skim) at the top of the body so a reviewer calibrates how hard to look — deep where a
+  bug would be silent or permanent, a skim on gated leaf code. Also posts visual proof as a PR comment on
   every call — real screenshots (captured with a browser) for UI changes, a mermaid state/sequence
   diagram for everything else — without waiting for approval; the user edits or deletes it after.
 ---
@@ -49,11 +49,13 @@ Reviewers now read *less* code, not more — no one can read every line of every
 thing a body carries, after the summary, is **where to spend the reading budget**: which files are a
 one-way door that need every line read, and which are safe to skim. `to-pr` stamps that at the very
 top as a **blast-radius banner** — a one-line band (🔴 Deep read / 🟠 Spot-check / 🟢 Skim) plus a
-four-row signal table.
+five-row signal table.
 
 The band comes from the shape of the diff: how central the changed files are (trunk vs leaf), whether
-the change is gated and reversible or a one-way door, whether it alters existing behavior, and whether
-proof is attached. It is a **structural** signal — it says *how hard to look* and stops there. It
+it alters existing behavior, whether a bug would be loud (seen on first load) or silent (wrong data
+that looks fine), whether a rollback restores everything or it is a one-way door, and whether proof is
+attached. The deep read goes where a bug would be silent or permanent; a wide but loud, revertible
+change with live proof gets a spot-check. It is a **structural** signal — it says *how hard to look* and stops there. It
 carries no opinion on whether the code is good; `to-pr` does not review, and the banner never pretends
 to. Defect severity (blocker / should-fix / nit) is `code-review`'s separate axis. The full rubric —
 how to read each signal off the diff, the band thresholds, the banner format — is in
@@ -160,10 +162,13 @@ build the body from the diff and commits (Step 1).
      content — none of it renders on GitHub.
 
 4. **Score the blast radius.** Read the reviewer's dial off the diff, following
-   [`references/blast-radius.md`](references/blast-radius.md). Rate the changed files on four signals —
-   position (trunk vs leaf), behavior (changes the control experience vs additive-only), reversibility
-   (gated vs one-way door), and proof attached — then set the band to the **worst file** (any trunk or
-   ungated behavior change → 🔴; shared-but-gated → 🟠; leaf + gated/additive + proof → 🟢). When
+   [`references/blast-radius.md`](references/blast-radius.md). Rate the changed files on five signals —
+   position (trunk vs leaf), behavior (changes the control experience vs additive-only), failure (loud
+   vs silent), reversibility (revertible vs one-way door), and proof attached — then set the band to
+   the **worst file**: a silent bug on a trunk file or live path, a one-way door, or a loud trunk
+   change with no live proof → 🔴; a loud, revertible trunk change with live proof, gated shared
+   code, or a silent risk confined to a leaf → 🟠; leaf + gated/additive + proof, or code that never
+   reaches prod → 🟢. A missing flag alone is not a one-way door — a `git revert` undoes it. When
    unsure, round up. Fill the signal table's "This PR" column with the real finding for this diff (a
    count, a filename, "no flag"), never a bare label. **For 🔴 and 🟠, the banner's one-line clause
    must name the specific reason** — the actual subsystem and what breaks if it's missed ("Deep read
@@ -220,8 +225,8 @@ build the body from the diff and commits (Step 1).
   change, you've over-written it.
 - **Banner first, and it's structural.** The blast-radius banner sits above the summary — it's the
   first thing the reviewer reads, and it sets how hard they look (🔴 deep / 🟠 spot-check / 🟢 skim).
-  It reads the *shape* of the diff (trunk vs leaf, gated vs one-way door, proof attached) to set the
-  dial; it never judges the code's quality. That verdict is `code-review`'s job, on a separate
+  It reads the *shape* of the diff (trunk vs leaf, loud vs silent failure, revertible vs one-way door,
+  proof attached) to set the dial; it never judges the code's quality. That verdict is `code-review`'s job, on a separate
   severity axis (blocker / should-fix / nit). Round up when unsure; never invent proof to lower the
   band. Full rubric: [`references/blast-radius.md`](references/blast-radius.md).
 - **Keep the visuals.** Re-expressing the change's shape as a GitHub-native visual — a `mermaid`
