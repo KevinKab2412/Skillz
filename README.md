@@ -43,6 +43,30 @@ The separately installed, Laravel-authored **deploying-to-cloud** skill is retai
 in the current global setup. Unknown third-party skills are preserved unless explicitly retired.
 Vendor/client updates may restore bundled skills; rerun the installer to reapply retirement policy.
 
+## Pair modes — the same instructions across harnesses
+
+```text
+/pair Fix the checkout bug
+/pair --auto Fix the checkout bug
+Use pair with --auto: Fix the checkout bug
+```
+
+The default remains human-guided. `--auto` is an instruction-level mode, not a client extension or a
+permission switch. It skips grilling and routine approval menus, inspects the task, records a small
+execution brief, chooses reasonable reversible defaults, and implements/tests/reviews/polishes within
+the existing scope. A leading standalone `--auto` selects it; quoted flags, issue text, and anything
+after `--` do not. Unknown leading options or a missing task get one focused clarification.
+
+The mode uses available tools and skills without assuming a particular host. Missing workers permit
+a disclosed sequential fallback; missing optional taste/research integrations do not force a pause.
+Existing human gates, contracts, host approvals, and required credentials still block unsafe work.
+No commit, push, PR, merge, deployment, destructive action, or tracker mutation is authorized by the
+flag alone. The task can explicitly authorize an operation, while mandatory confirmations remain.
+
+See [`pair/references/auto.md`](pair/references/auto.md) for the route and stop conditions. The module
+adapts the existing implementation/review guidance rather than sending auto runs into guided menus
+or requiring a newly invented GitHub plan. It does not fabricate accepted decisions for memory.
+
 ## Internal modules — read directly, don't start the parent pipeline
 
 - `pair/references/worktree/` — isolation setup at the start of pair, also reused by code-review.
@@ -92,6 +116,17 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 bash tests/test-install-prune.sh
 bash tests/test-workflow-memory-install.sh
 ```
+
+Auto-mode interpretation cases live in `pair/evals/auto-mode.json`. The checked report records an
+observed instruction-interpretation evaluation, not task execution or cross-harness runtime coverage.
+To refresh it with any model command that accepts a prompt on stdin and returns the documented JSON:
+
+```bash
+python3 scripts/evaluate_pair_auto.py --report pair/evals/auto-mode-report.json -- <model-command> <flags>
+```
+
+The evaluator sends only synthetic cases and the shared instructions. Use a no-tools evaluation
+configuration; never put credentials in the command arguments or checked report.
 
 The automatic-memory release guard remains active. Changed pair instructions or evaluator code
 require fresh observed workflow evidence before installation. Unchanged retrieval evidence remains

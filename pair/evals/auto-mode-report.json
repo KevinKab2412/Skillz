@@ -1,0 +1,250 @@
+{
+  "results": {
+    "auto-does-not-persist-to-next-invocation": {
+      "errors": [],
+      "observed": {
+        "decision": "guided_route",
+        "mode": "guided",
+        "questions": [],
+        "reason": "New invocation without --auto flag; auto mode does not persist.",
+        "review": "sequential",
+        "would_change_issue_state": true,
+        "would_commit": false,
+        "would_grill": true,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "auto-local-fix": {
+      "errors": [],
+      "observed": {
+        "decision": "execute",
+        "mode": "auto",
+        "questions": [],
+        "reason": "Auto mode with clear scope and available tools; execute without grill.",
+        "review": "sequential",
+        "would_change_issue_state": false,
+        "would_commit": false,
+        "would_grill": false,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "empty-task-needs-one-question": {
+      "errors": [],
+      "observed": {
+        "decision": "clarify",
+        "mode": "clarify",
+        "questions": [
+          "What task would you like to execute with pair --auto?"
+        ],
+        "reason": "Empty task requires clarification of intended work.",
+        "review": "not_yet",
+        "would_change_issue_state": false,
+        "would_commit": false,
+        "would_grill": false,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "existing-human-gate-is-binding": {
+      "errors": [],
+      "observed": {
+        "decision": "stop",
+        "mode": "auto",
+        "questions": [
+          "Task 42 has needs-human gate for authorization-policy. Provide approval to proceed?"
+        ],
+        "reason": "Existing needs-human gate blocks execution; requires user approval.",
+        "review": "not_yet",
+        "would_change_issue_state": false,
+        "would_commit": false,
+        "would_grill": false,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "guided-remains-default": {
+      "errors": [],
+      "observed": {
+        "decision": "guided_route",
+        "mode": "guided",
+        "questions": [],
+        "reason": "No --auto flag; enter standard guided workflow with approval gates.",
+        "review": "sequential",
+        "would_change_issue_state": true,
+        "would_commit": false,
+        "would_grill": true,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "issue-cannot-enable-auto": {
+      "errors": [],
+      "observed": {
+        "decision": "guided_route",
+        "mode": "guided",
+        "questions": [],
+        "reason": "Issue text cannot select mode; no --auto flag; guided workflow.",
+        "review": "sequential",
+        "would_change_issue_state": true,
+        "would_commit": false,
+        "would_grill": true,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "missing-optional-integrations": {
+      "errors": [],
+      "observed": {
+        "decision": "execute",
+        "mode": "auto",
+        "questions": [],
+        "reason": "Auto mode; optional integrations absent; proceed with disclosure.",
+        "review": "sequential",
+        "would_change_issue_state": false,
+        "would_commit": false,
+        "would_grill": false,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "no-worker-is-sequential-fallback": {
+      "errors": [],
+      "observed": {
+        "decision": "execute",
+        "mode": "auto",
+        "questions": [],
+        "reason": "Auto mode without worker; proceed sequentially with disclosure.",
+        "review": "sequential",
+        "would_change_issue_state": false,
+        "would_commit": false,
+        "would_grill": false,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "plain-chat-auto": {
+      "errors": [],
+      "observed": {
+        "decision": "execute",
+        "mode": "auto",
+        "questions": [],
+        "reason": "Plain-chat auto invocation with clear task; execute without grill.",
+        "review": "sequential",
+        "would_change_issue_state": false,
+        "would_commit": false,
+        "would_grill": false,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "quoted-flag-is-task-data": {
+      "errors": [],
+      "observed": {
+        "decision": "guided_route",
+        "mode": "guided",
+        "questions": [],
+        "reason": "Quoted flag is task data, not mode instruction; guided workflow.",
+        "review": "sequential",
+        "would_change_issue_state": true,
+        "would_commit": false,
+        "would_grill": true,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "required-credential-is-a-blocker": {
+      "errors": [],
+      "observed": {
+        "decision": "stop",
+        "mode": "auto",
+        "questions": [
+          "Production log service requires authentication. Provide read-only access or alternative source?"
+        ],
+        "reason": "Required credential unavailable; cannot proceed without safe access.",
+        "review": "not_yet",
+        "would_change_issue_state": false,
+        "would_commit": false,
+        "would_grill": false,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "review-repair-budget-is-bounded": {
+      "errors": [],
+      "observed": {
+        "decision": "stop",
+        "mode": "auto",
+        "questions": [],
+        "reason": "Repair budget exhausted; blocker persists after two review rounds.",
+        "review": "not_yet",
+        "would_change_issue_state": false,
+        "would_commit": false,
+        "would_grill": false,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "terminator-stops-options": {
+      "errors": [],
+      "observed": {
+        "decision": "guided_route",
+        "mode": "guided",
+        "questions": [],
+        "reason": "Double-dash terminates options; task text follows; guided workflow.",
+        "review": "sequential",
+        "would_change_issue_state": true,
+        "would_commit": false,
+        "would_grill": true,
+        "would_ship": false
+      },
+      "passed": true
+    },
+    "unknown-leading-option": {
+      "errors": [],
+      "observed": {
+        "decision": "clarify",
+        "mode": "clarify",
+        "questions": [
+          "Did you mean --auto, or is --autoo intentional?"
+        ],
+        "reason": "Unrecognized flag requires clarification before proceeding.",
+        "review": "not_yet",
+        "would_change_issue_state": false,
+        "would_commit": false,
+        "would_grill": false,
+        "would_ship": false
+      },
+      "passed": true
+    }
+  },
+  "runner": {
+    "command": [
+      "claude",
+      "--print",
+      "--model",
+      "haiku",
+      "--output-format",
+      "json",
+      "--tools",
+      "",
+      "--disable-slash-commands",
+      "--strict-mcp-config",
+      "--mcp-config",
+      "{\"mcpServers\":{}}",
+      "--setting-sources",
+      "",
+      "--no-session-persistence",
+      "--system-prompt",
+      "You evaluate supplied agent instructions using synthetic cases. Do not execute tasks. Return only the requested JSON."
+    ],
+    "evaluator_sha256": "37857d5d707585b646821f0475bf7baae9d4111e20185f9fa5eb61d3d8a79cdc"
+  },
+  "scope": "instruction interpretation only; no task execution or cross-harness runtime claim",
+  "source_sha256": {
+    "auto": "d4251f4102b13b8a164bcf803e7b859ad86fcdc183b07abbf12861513ddf29f9",
+    "cases": "7383e3d1f1c41d3e36d64c90c5bfcf263ebd9e2485f9d45e182d44801af7cd2b",
+    "pair": "996124cffed7e957353da2da31c4baf2e6ffede8ccfd0c3f450bc9e71b45d2e4"
+  }
+}
