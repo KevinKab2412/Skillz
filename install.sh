@@ -336,7 +336,7 @@ fi
 for HOME_AGENTS_MD in "$HOME/AGENTS.md" "$HOME/.codex/AGENTS.md"; do
 if [ -f "$HOME_AGENTS_MD" ] && [ ! -L "$HOME_AGENTS_MD" ] \
   && grep -q '^## Available Skills$' "$HOME_AGENTS_MD" \
-  && grep -q 'managed via .*Skillz' "$HOME_AGENTS_MD"; then
+  && grep -qi 'managed via .*Skillz' "$HOME_AGENTS_MD"; then
   home_tmp=$(mktemp)
   {
     awk '/^## Available Skills$/ { exit } { print }' "$HOME_AGENTS_MD" \

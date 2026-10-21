@@ -77,4 +77,12 @@ grep -qx pair "$manifest"
 ! grep -qx oldskill "$manifest"                      # manifest drops the pruned skill
 ! grep -qx codex-tool "$manifest"                    # external skill never enters manifest
 
+# Repeated runs must refresh listings generated with the capitalized 'Managed via' footer too.
+mkdir -p "$skills_dir/new-external"
+printf -- '---\nname: new-external\ndescription: another external tool.\n---\n' \
+  > "$skills_dir/new-external/SKILL.md"
+run_install
+grep -q '/new-external' "$fixture/home/AGENTS.md"
+grep -q 'Keep this custom rule.' "$fixture/home/AGENTS.md"
+
 echo "PRUNE TEST PASSED"
