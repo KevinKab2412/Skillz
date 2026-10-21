@@ -13,7 +13,7 @@ mkdir -p "$fixture/scripts"
 cp -f "$repo_root/scripts/prune-retired-skills.py" "$fixture/scripts/prune-retired-skills.py"
 cp -rf "$repo_root/shared" "$fixture/shared"
 cp -rf "$repo_root/workflow_memory_release" "$fixture/workflow_memory_release"
-for skill in pair code-review explain-this-like-I-am-an-intern; do
+for skill in pair code-review explain-this-like-I-am-an-intern visualise; do
   cp -rf "$repo_root/$skill" "$fixture/$skill"
 done
 mkdir -p "$fixture/home/.claude" "$fixture/home/.codex/skills"
@@ -26,12 +26,22 @@ run_install() {
   bash "$fixture/install.sh" >/dev/null
 }
 
+# Renaming must preserve the private overlay without exporting its cards as a global skill.
+mkdir -p "$fixture/agents/to-visual/library/concepts"
+printf 'private-card\n' > "$fixture/agents/to-visual/library/concepts/test.md"
+
 # First run: installs the repo skills and records the manifest.
 run_install
+test -f "$fixture/agents/visualise/library/concepts/test.md"
+test ! -e "$fixture/agents/to-visual"
+grep -qx private-card "$fixture/agents/visualise/library/concepts/test.md"
 skills_dir="$fixture/agents/skills"
 manifest="$skills_dir/.skillz-manifest"
 test -f "$manifest"
 grep -qx pair "$manifest"
+grep -qx visualise "$manifest"
+test -f "$skills_dir/visualise/SKILL.md"
+test ! -e "$skills_dir/to-visual"
 
 # A skill installed by another tool: on disk but not in our manifest.
 mkdir -p "$skills_dir/codex-tool"
@@ -88,7 +98,12 @@ grep -qx pair "$manifest"
 mkdir -p "$skills_dir/new-external"
 printf -- '---\nname: new-external\ndescription: another external tool.\n---\n' \
   > "$skills_dir/new-external/SKILL.md"
+# A pre-existing destination must never be overwritten or silently merged.
+mkdir -p "$fixture/agents/to-visual/library/concepts"
+printf 'retained-old-card\n' > "$fixture/agents/to-visual/library/concepts/test.md"
 run_install
+grep -qx private-card "$fixture/agents/visualise/library/concepts/test.md"
+grep -qx retained-old-card "$fixture/agents/to-visual/library/concepts/test.md"
 grep -q '/new-external' "$fixture/home/AGENTS.md"
 grep -q 'Keep this custom rule.' "$fixture/home/AGENTS.md"
 

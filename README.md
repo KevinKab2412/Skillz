@@ -36,7 +36,7 @@ Nine skills ship globally from this repository:
 - **research** — primary-source investigation with citations.
 - **retro** — evidence-led improvements to the agent's working environment.
 - **standup** — recent activity and yesterday/today/blockers updates.
-- **to-visual** — animated, beat-by-beat standalone HTML explanations.
+- **visualise** — animated, beat-by-beat standalone HTML explanations.
 - **wayfinder** — multi-session decision maps for large, uncertain work.
 
 The separately installed, Laravel-authored **deploying-to-cloud** skill is retained, making ten
@@ -59,6 +59,14 @@ Pair still owns spec, plan review, implementation, architecture, prototype, sket
 and stack-specific best-practices modules. Approval gates remain intact. Shared formatting policy
 lives in `shared/` and is injected through top-level `references/.shared` manifests. Internal modules
 use their parent's injected references; they are not separately advertised or installed.
+
+## Visualise rename compatibility
+
+The global skill is now `visualise` (`/visualise`). The installer migrates the private concept-card
+library from `~/.agents/to-visual/` to `~/.agents/visualise/` only when the destination does not exist;
+if both exist, it preserves both for a manual merge. Private cards never enter this repository.
+Saved scenes using the old `to-visual scene` header still work. The recorder's `TOVISUAL_*`
+environment variables, JavaScript APIs, and CSS classes stay unchanged for compatibility.
 
 ## Project-local skill creator
 

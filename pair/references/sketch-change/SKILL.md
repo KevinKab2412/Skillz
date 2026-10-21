@@ -77,7 +77,7 @@ system, a small figure (a static SVG, or a *light* box-and-arrow diagram) shows 
 where data enters, what transforms it, where it lands. Coarse: the flow, not the field list. Cut it if
 prose already carries it. When the *movement* is the decision you want contested (a pipeline's
 stages, a retry loop, work moving between queues) and a static figure can't carry it, invoke the
-[`to-visual`](../../../to-visual/SKILL.md) skill via the Skill tool (its gate is in that file) with
+[`visualise`](../../../visualise/SKILL.md) skill via the Skill tool (its gate is in that file) with
 `mode: fragment`, and paste the fragment here: an animation of the *proposed* flow gives the engineer
 a concrete strawman to argue with, beat by beat.
 

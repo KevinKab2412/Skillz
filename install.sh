@@ -48,6 +48,16 @@ PY
 
 mkdir -p "$AGENTS_DIR" "$PI_INSTRUCTIONS_DIR" "$PI_EXTENSIONS_DIR"
 
+# Preserve private concept cards when renaming the visual skill. Never overwrite an existing overlay.
+if [ -d "$AGENTS_HOME_DIR/to-visual" ]; then
+  if [ ! -e "$AGENTS_HOME_DIR/visualise" ]; then
+    mv -n "$AGENTS_HOME_DIR/to-visual" "$AGENTS_HOME_DIR/visualise"
+    echo "Migrated private visual library: $AGENTS_HOME_DIR/visualise"
+  else
+    echo "WARN: both visual overlay directories exist; retained both for a manual merge." >&2
+  fi
+fi
+
 if [ -f "$MEMORY_SOURCE/pyproject.toml" ]; then
   if ! command -v uv >/dev/null 2>&1; then
     echo "ERROR: uv is required to install agent-memory" >&2

@@ -74,7 +74,7 @@ answer to the wrong X.
   separate HTML file if they explicitly ask to *see* it.
 - **Animate it when it moves.** When the subject is a process or mechanism (something that changes
   over time) and the "Animated walkthrough" gate in `visual-formats.md` fires, write your explanation
-  first, then invoke the [`to-visual`](../to-visual/SKILL.md) skill via the Skill tool. Pass the
+  first, then invoke the [`visualise`](../visualise/SKILL.md) skill via the Skill tool. Pass the
   concept, the analogy you used, small real example values, and your explanation text. Your chat
   explanation stays exactly as you'd write it; the animated page opens beside it to deepen it. When
   you're running inside code-review's explain mode, leave this to code-review: it embeds the animation
@@ -96,7 +96,7 @@ happens when *they* produce something, not when they nod.
 - After the explanation, ask **one or two** short questions that make them use the idea, not just
   echo it: "so what would break if we dropped this?", "given that, what would you expect X to do?",
   "where else have you seen this shape?". Aim just past what you just said — a small reach, not a
-  quiz on the definition. If you made an animation, one question can be the quiz hook `to-visual`
+  quiz on the definition. If you made an animation, one question can be the quiz hook `visualise`
   handed back (something only answerable by having watched it).
 - **Don't validate to be nice.** If their answer is off, say so plainly and re-explain *the sticky
   part a different way* — a new analogy, smaller numbers, a different angle. The same explanation

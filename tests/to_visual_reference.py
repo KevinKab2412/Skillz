@@ -12,7 +12,7 @@ import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "to-visual"
+SKILL = ROOT / "visualise"
 EXAMPLES = SKILL / "assets/examples"
 RECORDERS = SKILL / "scripts/recorders"
 REFERENCE = EXAMPLES / "trash.trace.json"

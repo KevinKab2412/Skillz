@@ -37,6 +37,7 @@ skill-creator
 split-to-prs
 statusline
 to-pr
+to-visual
 update-cli-config
 update-cursor-settings
 visualize

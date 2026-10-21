@@ -4,19 +4,20 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "to-visual"
+SKILL = ROOT / "visualise"
 LIBRARY = SKILL / "library"
 REQUIRED = {
     "concept": {"name", "kind", "purpose", "familiar_as", "misconception", "op", "state", "actions", "visual", "sources", "origin", "tags"},
     "pattern": {"name", "kind", "purpose", "when", "how", "sources", "origin", "tags"},
 }
-OVERLAY = Path.home() / ".agents/to-visual/library"
+# Scan both paths until every machine has run the rename migration.
+OVERLAYS = [Path.home() / ".agents/visualise/library", Path.home() / ".agents/to-visual/library"]
 
 
 def private_terms() -> set:
     """Repo names from the private overlay's origin tags (org/repo#N): they must never ship publicly."""
     terms = set()
-    for card in OVERLAY.glob("*/*.md"):
+    for card in (card for overlay in OVERLAYS for card in overlay.glob("*/*.md")):
         origin = next((line for line in card.read_text().splitlines() if line.startswith("origin:")), "")
         for org, repo in re.findall(r"([\w.-]+)/([\w.-]+)#\d+", origin):
             terms.update(t for t in (org, repo) if len(t) > 3)

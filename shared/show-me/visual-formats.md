@@ -109,7 +109,7 @@ and mobile. Then `open` it for the reader. This is the heavyweight option — re
 format genuinely can't carry the point, not by default.
 
 **Animated walkthrough** — when the point is how something **changes over time**, invoke the
-[`to-visual`](../../../to-visual/SKILL.md) skill via the Skill tool. It builds a live page cut into
+[`visualise`](../../../visualise/SKILL.md) skill via the Skill tool. It builds a live page cut into
 beats that pause after each one, silent with one caption per beat: a Vox-style metaphor for a concept
 (a dbt pipeline as a conveyor belt), code-editorial beats for code, or a step-through walk of code
 running. For a code change with runnable tests it builds a **concept view**: the concepts the change

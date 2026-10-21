@@ -168,6 +168,13 @@ class WiringTests(unittest.TestCase):
                         continue
                     self.assertTrue((file.parent / target).is_file(), (relative, target))
 
+    def test_visualise_replaces_the_old_global_entry_and_caller_paths(self):
+        self.assertIn('name: visualise\n', (ROOT / 'visualise/SKILL.md').read_text())
+        self.assertFalse((ROOT / 'to-visual/SKILL.md').exists())
+        self.assertIn('to-visual', retire.retired_names(ROOT / 'retired-skills.txt'))
+        for file in ROOT.rglob('*.md'):
+            self.assertNotRegex(file.read_text(), r'\]\([^)]*to-visual/SKILL\.md\)', str(file))
+
     def test_review_backends_are_optional_and_honest(self):
         skill = (ROOT / 'code-review/SKILL.md').read_text()
         for marker in ('bugbot.md', 'security.md', 'backend is unavailable', 'partial'):

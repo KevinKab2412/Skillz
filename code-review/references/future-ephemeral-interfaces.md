@@ -1,6 +1,6 @@
 # Future extension: ephemeral interfaces & micro-worlds
 
-> Two of these are now active skill behaviour through [`to-visual`](../../to-visual/SKILL.md)'s
+> Two of these are now active skill behaviour through [`visualise`](../../visualise/SKILL.md)'s
 > beat player: the **step-through walk** (code + live runtime cards, see
 > [`step-through.md`](step-through.md)) and **animated concept scenes** (a metaphor that moves,
 > one beat per keypress). This file remains the roadmap for what that player does not cover:

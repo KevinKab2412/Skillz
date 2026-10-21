@@ -8,7 +8,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SKILL = ROOT / "to-visual"
+SKILL = ROOT / "visualise"
 ASSEMBLE = SKILL / "scripts/assemble.py"
 SCENE = SKILL / "assets/examples/dbt-conveyor.html"
 WALK = SKILL / "assets/examples/asyncio-create-task.walk.json"
@@ -60,7 +60,7 @@ class ToVisualAssembleTest(unittest.TestCase):
     def test_fragment_mode_emits_a_pasteable_figure_without_a_document(self):
         html = self.build("--scene", str(SCENE), "--mode", "fragment")
 
-        self.assertTrue(html.startswith("<!-- to-visual fragment: dbt-conveyor"))
+        self.assertTrue(html.startswith("<!-- visualise fragment: dbt-conveyor"))
         self.assertIn('<figure class="tv" data-tv="dbt-conveyor">', html)
         self.assertNotRegex(html, r"<(html|body|head)\b")
         self.assertIn("if (!window.gsap)", html, "GSAP loads once when several fragments share a page")
@@ -89,6 +89,15 @@ class ToVisualAssembleTest(unittest.TestCase):
         result = assemble("--scene", str(bad), "--out", str(self.out / "b.html"))
         self.assertNotEqual(result.returncode, 0)
         self.assertIn("kebab-case", result.stderr)
+
+    def test_new_and_legacy_scene_headers_both_remain_supported(self):
+        for label in ('visualise', 'to-visual'):
+            scene = self.out / f'{label}.scene.html'
+            scene.write_text(f'<!-- {label} scene\nid: compatible-scene\ntitle: Compatible scene\n-->\n<p>Content</p>')
+            html = self.build('--scene', str(scene), name=f'{label}.html')
+            self.assertIn('id="compatible-scene"', html)
+            self.assertIn('<h1>Compatible scene</h1>', html)
+            self.assertNotIn(f'<!-- {label} scene', html)
 
     def test_every_kit_css_rule_is_scoped_under_tv(self):
         css = re.sub(r"/\*.*?\*/", "", (SKILL / "assets/kit.css").read_text(), flags=re.S)
