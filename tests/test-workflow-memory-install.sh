@@ -30,7 +30,7 @@ mkdir -p "$fixture/scripts"
 cp -f "$repo_root/scripts/prune-retired-skills.py" "$fixture/scripts/prune-retired-skills.py"
 cp -rf "$repo_root/shared" "$fixture/shared"
 cp -rf "$repo_root/workflow_memory_release" "$fixture/workflow_memory_release"
-for skill in pair grill code-review; do
+for skill in pair code-review; do
   cp -rf "$repo_root/$skill" "$fixture/$skill"
 done
 mkdir -p "$fixture/home/.claude"
@@ -55,7 +55,7 @@ for skill in pair; do
   test ! -d "$repo_root/$skill/references/memory"
 done
 
-for skill in grill code-review; do
+for skill in pair/references/grill pair/references/experts code-review; do
   test ! -d "$fixture/agents/skills/$skill/references/memory"
 done
 

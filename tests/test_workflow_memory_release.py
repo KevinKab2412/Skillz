@@ -223,7 +223,8 @@ class WorkflowMemoryReleaseTest(unittest.TestCase):
             for path in (
                 "shared/memory",
                 "pair/references",
-                "grill",
+                "pair/references/grill",
+                "pair/references/experts",
                 "code-review",
             ):
                 (root / path).mkdir(parents=True, exist_ok=True)
@@ -236,7 +237,7 @@ class WorkflowMemoryReleaseTest(unittest.TestCase):
                 (root / workflow / "SKILL.md").write_text(
                     "Workflow memory lifecycle (automatic)"
                 )
-            for workflow in ("grill", "code-review"):
+            for workflow in ("pair/references/grill", "pair/references/experts", "code-review"):
                 (root / workflow / "SKILL.md").write_text("")
             with self.assertRaisesRegex(GateRefused, "exactly the tracked"):
                 validate_release_tree(root)

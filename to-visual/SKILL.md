@@ -105,7 +105,7 @@ fire, say so and hand back without a file: a missing animation should read as a 
 |---|---|---|
 | `code-review` explain mode | an agent-written change: concept view when the tests can be recorded, else a walk or scene | fragment in the explainer |
 | `explain-this-like-I-am-an-intern` | the subject is a process or mechanism and the gate fires | page, opened beside the chat explanation |
-| `show-me` | the shape changes over time | page |
+| explanation's internal `show-me` module | the shape changes over time | page |
 | `spec`, `sketch-change` (via `pair`) | the proposed flow is easier watched than read | page, linked from the spec / sketch |
 
 ## What this is not

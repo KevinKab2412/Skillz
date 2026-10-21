@@ -221,7 +221,7 @@
     "artifacts": {
       "protocol_sha256": "d713f4d9e5a74c908bef4718fa7c6d2dc6ad5f8cb61ec73674114a02c47484d0",
       "skill_sha256": {
-        "pair": "99f1df863e984d0b4d81976861127ced6d17f019ca5d19816b877e02d26af218"
+        "pair": "0cdc15c6230669062ecbdc688670cc0bced6b464b092d34a938a8f5738a35106"
       }
     },
     "fixture": {
@@ -234,14 +234,14 @@
       },
       "cache_hits": [],
       "duration_ms": {
-        "pair": 97190
+        "pair": 113056
       },
       "harness_sha256": {
-        "evaluator": "f6d2ea005fb8d985036985eaf9d3a49523ab68234d53bc2f73937daba1626753",
+        "evaluator": "dbcdebf189906b9ea4065c2cebfdf3faaceb750650a249bed966bbf31503c13f",
         "fake_server": "2d9c2493d7106635acca21c9e6f9cc4d8e7f9e3c89acba663c740d6a7254955b"
       },
       "instruction_mutation": {
-        "duration_ms": 82364,
+        "duration_ms": 73536,
         "name": "nested-session-recall-and-flush",
         "observed_nested_calls": [
           "recall",

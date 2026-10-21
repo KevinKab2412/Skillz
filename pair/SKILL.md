@@ -1,15 +1,44 @@
 ---
 name: pair
-description: Full spec-to-ship pipeline that orchestrates the individual engineering skills with human strategic gates and bounded agent autonomy — optional research and design sketch, grill, optional prototype and architecture contract, spec, plan review, test-backed implementation in fenced slices, architecture checkpoints, code review, taste, and polish. Use when the user says /pair, "pair with me", "pair on this", "let's build this together", "walk me through building", or wants to take a feature or fix end-to-end without surrendering architectural judgment to agents. Each stage remains usable alone; pair sequences them and loops when evidence changes the design.
+description: >-
+  Guide work from requirements through planning, bounded implementation, architecture checkpoints,
+  review, taste, and polish, with human approval gates. Use for /pair, "pair with me", or building
+  a feature end-to-end. Also owns requirements-only interviews ("grill me", "challenge this idea",
+  "nail down the design") and domain-standard lookups ("ask the experts", "what does the Python
+  expert say?", "review against domain standards"). These focused modes read internal grill or
+  experts modules and stop; they do not start a build. Other skills may read the same modules
+  directly without running the pipeline. Also owns draft PR preparation, splitting, and logical
+  stacking ("open a PR", "split this into PRs", "manage this stack") through an internal shipping
+  module; shipping never implies running the build. Research and code-review remain standalone.
 ---
 
 # /pair — Spec-to-Ship Pipeline (orchestrator)
 
 `pair` doesn't do the work itself — it **sequences the stages** and holds the human gates and
 loop-backs between them. Most stages are reference modules under [`references/`](references/) that
-`pair` reads and follows in turn; a few — `grill`, `research`, `code-review` — remain standalone
-skills it calls. Worktree setup is an internal module, also reused by `code-review`.
-The detail lives in each stage's file, not here.
+`pair` reads and follows in turn; `research` and `code-review` remain standalone skills it calls.
+Worktree setup, grill, experts guidance, and PR preparation are internal modules other skills may
+read directly.
+The detail lives in each module's file, not here.
+
+## Entry modes — select before the pipeline
+
+- **Build end-to-end** → use the staged pipeline below with its existing human gates.
+- **Requirements only** ("grill me", "scope this", "challenge the design") → select Stage 1 only:
+  read [grill](references/grill/SKILL.md), reach shared understanding, return the decision log, and
+  stop. Do not automatically create a spec or start implementation. Apply the repository worktree
+  rule before changing project records; a conversation with no repo changes needs no worktree.
+- **Experts only** ("ask the experts", a named domain's standards, or an explicit corpus review) →
+  read [experts](references/experts/SKILL.md), call the existing MCP tools, cite returned Standard
+  IDs, and stop. This read-only lookup does not create a worktree or start workflow memory.
+
+- **PR / stack only** ("open a PR", "split into PRs", "stack these branches") → read
+  [to-pr](references/to-pr/SKILL.md) and follow only its shipping/layout steps. Do not start a
+  requirements interview, implementation, or unrelated review. A full pipeline offers shipping
+  after polish only when the user explicitly requests it; never open a PR automatically.
+
+Any caller can read these modules directly; that is reuse, not entry into the pair pipeline.
+In particular, wayfinder reads grill, while review, research, and explanation can read experts.
 
 ## Workflow memory lifecycle (automatic)
 
@@ -112,7 +141,7 @@ Keep it coarse — a strawman to steer, not a spec. Exact fields and signatures 
 
 ## Stage 1 — Grill
 
-Run [`grill`](../grill/SKILL.md) to reach shared understanding and maintain the domain model. It
+Read the internal [`grill` module](references/grill/SKILL.md) to reach shared understanding and maintain the domain model. It
 finishes with a decision log plus any CONTEXT.md / ADR updates. Those feed the spec.
 
 ## Stage 1.5 — Prototype (optional)
@@ -230,7 +259,8 @@ stripping bead ids and bead-speak, ticket references, local-artifact mentions (`
 agent-to-user chatter, and comments the code already says, keeping only the load-bearing WHY. And it
 **simplifies**: tightening naming, structure, and derivability so the change reads the way a teammate
 would have written it in the first place. This is the last stage: after it the change is ready for a
-human to open the PR (e.g. via `to-pr`).
+human to request PR preparation via the internal [to-pr module](references/to-pr/SKILL.md).
+That request is a separate gate after polish; it does not run automatically.
 
 ## Escape hatches
 

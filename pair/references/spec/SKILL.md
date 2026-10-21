@@ -5,7 +5,7 @@ description: >
   into a written spec, then commit it to GitHub as an epic with bounded behavioral child tasks. Use
   for "write a spec", "spec this out", "turn this into issues", "break this into tasks", or as the
   planning stage of /pair. Explores the repo and identifies test seams first, but preserves rather
-  than invents architecture decisions. Do not interview the user here — that is /grill — or redesign
+  than invents architecture decisions. Do not interview the user here — that is the internal grill module — or redesign
   an unsettled seam — that is /architecture.
 ---
 
@@ -13,7 +13,7 @@ description: >
 
 Turn shared understanding (a grill decision log, a discussion, or a rough idea the user hands you)
 into a written spec and an atomic plan of **GitHub issues in `KevinKab2412/planning`** (private). **Don't
-interview here** — that's [`grill`](../../../grill/SKILL.md). Synthesise from what's already decided plus
+interview here** — that's [internal grill module](../grill/SKILL.md). Synthesise from what's already decided plus
 what you find in the code.
 
 ## Where the plan lives — always the personal planning repo
@@ -35,7 +35,7 @@ Confirm scope with AskUserQuestion before writing anything:
 question: "Ready to synthesise into a spec and open the GitHub issues?"
 options:
   - "Yes, write spec and issues (Recommended)" → proceed
-  - "Revise something first" → resolve the open point (loop back to /grill if it needs interviewing)
+  - "Revise something first" → resolve the open point (loop back to the internal grill module if it needs interviewing)
   - "Summarise in chat only, skip issues" → produce markdown checklist and stop
 ```
 

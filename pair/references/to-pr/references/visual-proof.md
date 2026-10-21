@@ -1,6 +1,6 @@
 # Visual proof — capture evidence, post it as a comment
 
-Every `/to-pr` prepares **proof of the finished change** and **posts it as a PR comment**. This is the
+Every shipping request prepares **proof of the finished change** and **posts it as a PR comment**. This is the
 video's core move: hand the reviewer evidence — a screenshot, a flow — so they trust and skim instead of
 re-deriving.
 
@@ -37,9 +37,9 @@ worktree its own isolated dev stack instead of one shared app/DB that concurrent
   generic start command would have bound.
 - **Don't tear this down in A6** — it's meant to persist across runs and other skills
   (`/pair`, `/code-review`) in the same worktree, and gets torn down with the worktree itself, not
-  with this one `/to-pr` call.
+  with this one shipping request.
 
-No `.worktree-stack.local.env` → fall back to the [`run`](../run/SKILL.md) skill to find and run the
+No `.worktree-stack.local.env` → use the repository's documented run command to find and run the
 start command — it already knows the patterns (a project skill, `package.json` scripts, `Procfile`,
 `docker-compose`, `Makefile`, the README). Launch it in the background; wait for the port to answer
 before capturing. This is the path A6 tears down.
@@ -49,7 +49,7 @@ before capturing. This is the path A6 tears down.
 Use `agent-browser` pointed at the local app, in a **session scoped to this worktree**: call
 `agent_browser_session_id` (default `scope: "worktree"`) once and reuse the name it returns as
 `session` on every call below, with `headed: false`. Without this, two worktrees running
-`/to-pr`/`/pair`/`/code-review` at the same time fight over the same browser tab, and a headed browser
+PR preparation, `/pair`, or `/code-review` at the same time fight over the same browser tab, and a headed browser
 steals screen focus from whatever else is on screen.
 
 - `agent_browser_open` the route(s) the diff changed. Reach the state the change needs (log in, select
@@ -117,13 +117,13 @@ report the error and hand the user the draft and the PNG paths to post by hand. 
 
 Tear down the local app process started in A1 — **unless A1 used a worktree-scoped stack**
 (`.worktree-stack.local.env` was present), in which case leave it running. That stack is reused by later
-`/to-pr`/`/pair`/`/code-review` calls in the same worktree and is torn down with the worktree itself
-(see the [internal worktree module](../../pair/references/worktree/SKILL.md) skill's cleanup note), not after one visual-check run.
+PR preparation, `/pair`, or `/code-review` in the same worktree and is torn down with the worktree itself
+(see the [internal worktree module](../../worktree/SKILL.md) skill's cleanup note), not after one visual-check run.
 
 ## Section B — Diagram proof (no UI, or launch failed)
 
 Build the **smallest** mermaid that shows how the code's behavior changed, following the figure rules
-in [`references/show-me/visual-formats.md`](references/show-me/visual-formats.md):
+in [`../../show-me/visual-formats.md`](../../show-me/visual-formats.md):
 
 - a `sequenceDiagram` for a call/request/message flow that changed,
 - a `stateDiagram-v2` for a state machine or lifecycle that changed,
@@ -135,7 +135,7 @@ so no `--attach` is needed. Give the user the comment's URL.
 
 ## Rules
 
-- **Prepare and post proof every call.** Default on for every `/to-pr` (`--no-proof` to skip). Capture,
+- **Prepare and post proof every call.** Default on for every shipping request (`--no-proof` to skip). Capture,
   write, post, then hand the user the comment link. Don't wait for approval; the user edits or deletes
   it afterwards.
 - **Comment, never body.** The body stays lean (blast-radius banner + summary). Proof is a separate

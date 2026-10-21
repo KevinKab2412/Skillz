@@ -13,7 +13,7 @@ mkdir -p "$fixture/scripts"
 cp -f "$repo_root/scripts/prune-retired-skills.py" "$fixture/scripts/prune-retired-skills.py"
 cp -rf "$repo_root/shared" "$fixture/shared"
 cp -rf "$repo_root/workflow_memory_release" "$fixture/workflow_memory_release"
-for skill in pair grill code-review; do
+for skill in pair code-review explain-this-like-I-am-an-intern; do
   cp -rf "$repo_root/$skill" "$fixture/$skill"
 done
 mkdir -p "$fixture/home/.claude" "$fixture/home/.codex/skills"
@@ -64,6 +64,13 @@ run_install
 test ! -d "$skills_dir/review"
 test ! -d "$skills_dir/synced/vendor/canvas"
 test -f "$skills_dir/pair/references/worktree/SKILL.md"
+test -f "$skills_dir/pair/references/grill/SKILL.md"
+test -f "$skills_dir/pair/references/experts/SKILL.md"
+test -f "$skills_dir/pair/references/to-pr/SKILL.md"
+test -f "$skills_dir/pair/references/brevity/output-discipline.md"
+test -f "$skills_dir/explain-this-like-I-am-an-intern/references/show-me.md"
+test -f "$skills_dir/explain-this-like-I-am-an-intern/references/show-me/visual-formats.md"
+for retired in grill experts show-me to-pr; do test ! -e "$skills_dir/$retired"; done
 test -L "$fixture/home/.cursor/skills/pair"
 grep -q 'Keep this custom rule.' "$fixture/home/AGENTS.md"
 ! grep -q 'stale listing' "$fixture/home/AGENTS.md"

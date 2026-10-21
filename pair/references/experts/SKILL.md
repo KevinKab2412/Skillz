@@ -8,12 +8,18 @@ description: >
   it, then reason over the returned standards + rubric and answer citing each Standard by id.
   Use when the user hands you an artifact to judge (a diff, module, design, note, draft) → review;
   asks what a domain holds on a topic → find; or the owning domain is unclear / they want several
-  domains' views → route. Triggers on "/experts", "ask the experts", "what do the experts say
+  domains' views → route. Use for "ask the experts", "what do the experts say
   about…", "run this by the expert", "which expert owns this", "get the standards on…", "review
   this against the <domain> standards", and on naming any one of the 11 experts directly. The
   server holds no LLM — every tool returns standards for *you* to reason over, not a finished
   answer.
 ---
+
+# Experts — internal MCP guidance module
+
+Read this module directly from pair, code-review, explanation, research, or any other caller.
+It does not start the pair pipeline. The MCP server, tools, domain corpora, and their ownership
+remain unchanged; only the standalone skill entry has been retired.
 
 Reach the **`experts`** MCP gateway — a local server exposing 11 domain corpora, each a named
 **expert** with its own **standards**. Every tool returns standards + a rubric for *you* to reason

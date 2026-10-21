@@ -1,17 +1,14 @@
 ---
 name: explain-this-like-i-am-an-intern
-description: >
-  Get clarity on anything — a subject you want to finally understand, or a message of mine that
-  just didn't land. It re-explains from scratch as if to a bright intern on their first day:
-  someone sharp but brand-new, who shares none of this thread's history or jargon. It
-  leads with the missing premise and the *why*, spells out every acronym and domain term on first
-  use, drops to plain English and a concrete example — and *then* probes with a question or two,
-  because a nod is not understanding and the point is that you hold it, not that it merely sounded
-  clear. Reach for it with "/explain-this-like-I-am-an-intern", "eli-intern", "explain this like
-  I'm an intern", "you lost me", "wait, what?", "I'm lost", "that didn't land", "back up", "break
-  this down for me from scratch", "I want to actually understand X". code-review also invokes it to
-  construct the explanation of a change — its explain / deep-dive pass runs this skill so the
-  walkthrough leads with the why, glosses the jargon, and probes that it landed.
+description: >-
+  Explain subjects or confusing messages from scratch for a bright intern: lead with the missing
+  premise and why, define jargon, give concrete examples, then check understanding. Use for
+  "explain this like I'm an intern", "eli-intern", "you lost me", "wait, what?", or "break this down".
+  Also owns visual-only requests: "show me", "diagram this", "visualise the flow", "draw the call
+  tree", or "sketch the file layout". That mode reads the internal show-me module and returns the
+  smallest useful visual without a quiz or teaching ceremony. Code-review reuses the teaching mode;
+  any caller may read its visual module directly. Domain standards can be grounded through pair's
+  shared experts module when requested or needed.
 argument-hint: "What should I explain? (or nothing — I'll re-pitch whatever lost you)"
 ---
 
@@ -25,6 +22,20 @@ said that didn't land. Your one job now is to make it *click*, then check that i
 The frame is **a bright intern on their first day**: sharp, capable, quick — but brand-new here.
 They share none of this thread's history and none of its jargon. Explain to *them*. Then, because
 a nod is cheap and understanding is not, ask them something back.
+
+## Select the mode first
+
+- **Visual only** ("show me", "diagram this", a call tree or file layout) → read
+  [the internal show-me module](references/show-me.md), produce the smallest grounded visual, and
+  stop. Do not force the full teaching sequence or ask quiz questions for a diagram request.
+- **Explain / re-explain** → follow the teaching steps below; reuse the same visual module when
+  a shape is clearer than prose.
+
+For explicit expert questions or claims that need domain standards, read the shared
+[experts module](../pair/references/experts/SKILL.md) directly. Use the existing MCP tools and cite
+returned Standard IDs. This does not run pair. Missing tools or low confidence are reported plainly;
+never pass general knowledge off as a corpus-backed answer. Do not add an experts pass to every
+simple explanation.
 
 ## 1. Find the real thing to explain
 
@@ -57,7 +68,8 @@ answer to the wrong X.
   component tree, a shallow file tree, a Mermaid sequence/state diagram, or a shape-matched diff. The
   intern's eyes glaze at a dense paragraph; a five-node tree they read for free. Keep it tiny, put it
   right next to the one line it supports, and don't overwhelm. The format menu is in
-  [`references/show-me/visual-formats.md`](references/show-me/visual-formats.md). Stay stateless —
+  [the internal show-me module](references/show-me.md), which uses the shared
+  [format menu](references/show-me/visual-formats.md). Stay stateless —
   inline text visuals, no workspace; the only files you write are the animated page below, or a
   separate HTML file if they explicitly ask to *see* it.
 - **Animate it when it moves.** When the subject is a process or mechanism (something that changes

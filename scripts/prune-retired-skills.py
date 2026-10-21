@@ -50,7 +50,8 @@ def prune(policy, home, agents_dir, pi_home, dry_run=False):
     names = retired_names(policy)
     roots = [agents_dir, home / '.claude/skills', home / '.codex/skills',
              home / '.cursor/skills', pi_home / 'skills', home / '.config/opencode/skills',
-             home / '.config/opencode/skill', home / '.opencode/skills']
+             home / '.config/opencode/skill', home / '.opencode/skills',
+             home / '.codex/skills/.system']
     seen = set()
     backup = home / '.agents/skill-backups' / datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ')
     for index, root in enumerate(roots):

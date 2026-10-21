@@ -1,6 +1,8 @@
 """Regression checks for explicit retirements and the consolidated skill entry points."""
 import importlib.util
 from pathlib import Path
+import re
+import shutil
 import tempfile
 import unittest
 
@@ -17,7 +19,7 @@ class RetirementTests(unittest.TestCase):
         self.home = Path(self.temp.name)
         self.skills = self.home / '.agents/skills'
         self.policy = self.home / 'retired.txt'
-        self.policy.write_text('review\nworktree\ncanvas\n')
+        self.policy.write_text('review\nworktree\ncanvas\nskill-creator\n')
 
     def skill(self, relative, name=None):
         directory = self.home / relative
@@ -77,6 +79,15 @@ class RetirementTests(unittest.TestCase):
         self.prune()
         self.assertFalse(path.exists())
 
+    def test_retired_system_skill_removed_but_project_local_copy_preserved(self):
+        system = self.skill('.codex/skills/.system/skill-creator')
+        unrelated = self.skill('.codex/skills/.system/skill-installer')
+        local = self.skill('project/.agents/skills/skill-creator')
+        self.prune()
+        self.assertFalse(system.exists())
+        self.assertTrue(unrelated.exists())
+        self.assertTrue(local.exists())
+
     def test_invalid_policy_refused_before_deletion(self):
         path = self.skill('.agents/skills/review')
         self.policy.write_text('review\n../pair\n')
@@ -96,11 +107,66 @@ class WiringTests(unittest.TestCase):
         self.assertIn('(../pair/references/worktree/SKILL.md)', (ROOT / 'code-review/SKILL.md').read_text())
 
     def test_to_pr_inspects_both_branch_scopes_and_requires_approval(self):
-        layout = (ROOT / 'to-pr/references/pr-layout.md').read_text()
+        layout = (ROOT / 'pair/references/to-pr/references/pr-layout.md').read_text()
         for marker in ('git branch --no-merged', 'git branch -r --no-merged',
                        'Ask for approval', 'does not include untracked', 'drafts only'):
             self.assertIn(marker, layout)
-        self.assertIn('(references/pr-layout.md)', (ROOT / 'to-pr/SKILL.md').read_text())
+        self.assertIn('(references/pr-layout.md)', (ROOT / 'pair/references/to-pr/SKILL.md').read_text())
+
+    def test_internal_grill_and_experts_are_reachable_without_pipeline(self):
+        pair = (ROOT / 'pair/SKILL.md').read_text()
+        self.assertIn('(references/grill/SKILL.md)', pair)
+        self.assertIn('(references/experts/SKILL.md)', pair)
+        self.assertIn('(references/to-pr/SKILL.md)', pair)
+        self.assertIn('Do not automatically create a spec or start implementation', pair)
+        for path in ('wayfinder/SKILL.md', 'research/SKILL.md'):
+            self.assertIn('pair/references/grill/SKILL.md', (ROOT / path).read_text())
+        for path in ('code-review/references/experts-lane.md', 'research/SKILL.md',
+                     'explain-this-like-I-am-an-intern/SKILL.md'):
+            self.assertIn('pair/references/experts/SKILL.md', (ROOT / path).read_text())
+
+    def test_visual_only_mode_and_local_creator_are_preserved(self):
+        explanation = ROOT / 'explain-this-like-I-am-an-intern'
+        self.assertIn('(references/show-me.md)', (explanation / 'SKILL.md').read_text())
+        self.assertIn('Do not force the full teaching sequence', (explanation / 'SKILL.md').read_text())
+        self.assertTrue((explanation / 'references/show-me.md').is_file())
+        creator = ROOT / '.agents/skills/skill-creator'
+        self.assertTrue((creator / 'SKILL.md').is_file())
+        self.assertTrue((creator / 'scripts/quick_validate.py').is_file())
+        for client in ('.claude', '.cursor'):
+            link = ROOT / client / 'skills/skill-creator'
+            self.assertTrue(link.is_symlink())
+            self.assertEqual(link.resolve(), creator.resolve())
+
+    def test_moved_module_links_resolve_after_shared_injection(self):
+        with tempfile.TemporaryDirectory() as directory:
+            installed = Path(directory)
+            for source in ROOT.iterdir():
+                if not source.is_dir() or not (source / 'SKILL.md').is_file():
+                    continue
+                destination = installed / source.name
+                shutil.copytree(source, destination)
+                manifest = destination / 'references/.shared'
+                if manifest.is_file():
+                    for line in manifest.read_text().splitlines():
+                        module = line.split('#', 1)[0].strip()
+                        if module:
+                            shutil.copytree(ROOT / 'shared' / module,
+                                            destination / 'references' / module)
+            for relative in (
+                'pair/references/grill/SKILL.md',
+                'pair/references/experts/SKILL.md',
+                'pair/references/to-pr/SKILL.md',
+                'pair/references/to-pr/references/visual-proof.md',
+                'explain-this-like-I-am-an-intern/references/show-me.md',
+                'code-review/references/experts-lane.md',
+            ):
+                file = installed / relative
+                text = re.sub(r'```.*?```', '', file.read_text(), flags=re.S)
+                for target in re.findall(r'\]\(([^)]+)\)', text):
+                    if '://' in target or not target.endswith('.md'):
+                        continue
+                    self.assertTrue((file.parent / target).is_file(), (relative, target))
 
     def test_review_backends_are_optional_and_honest(self):
         skill = (ROOT / 'code-review/SKILL.md').read_text()

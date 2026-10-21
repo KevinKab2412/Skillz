@@ -4,9 +4,12 @@ description: >-
   Interview the user relentlessly about an idea until you reach shared understanding, while actively maintaining the project's domain model (glossary + ADRs) as terms and decisions crystallise. Use when the user wants requirements pinned down before building: "grill me on this", "interrogate this idea", "help me nail down the design", "challenge my thinking on X", "what am I not considering?", "let's scope this properly", or as the first stage of /pair. Produces a decision log plus any CONTEXT.md / ADR updates that later spec or planning work builds on. Do NOT use it to write code or a spec — this stage only reaches shared understanding.
 ---
 
-# Grill — interview to shared understanding, with active domain modelling
+# Grill — internal requirements interview module
 
-> **Output discipline (hard rule).** Every output this skill produces obeys [`references/brevity/output-discipline.md`](references/brevity/output-discipline.md): **≤150 words of prose**, plain dumbed-down English, point first. Anything past 150 words becomes a **visual** — table, tree, diff, or code block (format menu: [`references/show-me/visual-formats.md`](references/show-me/visual-formats.md)). Words inside a visual don't count. Ask **few questions at a time** and keep each turn under the cap; a decision log or glossary belongs in a table, not a paragraph.
+Read directly from pair, wayfinder, or any caller that needs requirements pinned down. Reading this
+module does not run pair's build pipeline, open a separate memory session, or authorize implementation.
+
+> **Output discipline (hard rule).** Every output this skill produces obeys [`../brevity/output-discipline.md`](../brevity/output-discipline.md): **≤150 words of prose**, plain dumbed-down English, point first. Anything past 150 words becomes a **visual** — table, tree, diff, or code block (format menu: [`../show-me/visual-formats.md`](../show-me/visual-formats.md)). Words inside a visual don't count. Ask **few questions at a time** and keep each turn under the cap; a decision log or glossary belongs in a table, not a paragraph.
 
 Interview the user relentlessly about every aspect of the idea until reaching shared understanding.
 Walk down each branch of the design tree, resolving dependencies between decisions one at a time.
@@ -20,7 +23,7 @@ settle that first; grill funnels toward pinned requirements and doesn't reopen w
 
 If the work is **too big for one session** — you hit questions you can't answer without research, a
 prototype, or more grilling, and find yourself lost in fog — a single grill won't clear it. That's
-[`wayfinder`](../wayfinder/SKILL.md), which charts the whole thing as a map of decision tickets over
+[`wayfinder`](../../../wayfinder/SKILL.md), which charts the whole thing as a map of decision tickets over
 many sessions (and dispatches this skill for its grilling tickets). Grill is the single-session
 primitive; wayfinder is the multi-session orchestrator around it.
 
@@ -110,4 +113,4 @@ Continue until the user signals completion ("ready", "ship it", "let's go", "do 
 - Any new/updated `CONTEXT.md` entries.
 - Any new ADR file paths.
 
-Whatever consumes this next — a spec, a prototype, or the user's own head — builds on those three. If a look/feel/behaviour question surfaced that only a running artifact can settle, say so and point at [`prototype`](../pair/references/prototype/SKILL.md).
+Whatever consumes this next — a spec, a prototype, or the user's own head — builds on those three. If a look/feel/behaviour question surfaced that only a running artifact can settle, say so and point at [`prototype`](../prototype/SKILL.md).

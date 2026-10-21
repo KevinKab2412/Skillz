@@ -6,6 +6,10 @@ zettelkasten, and more. It's **off by default**: it's slower and it was the bigg
 review's overload. Run it only when the user asks for a domain deep-dive ("hold this to the experts",
 "run the experts pass") or passes `--experts`.
 
+First read the shared [experts module](../../pair/references/experts/SKILL.md) directly and pass
+its path to the reviewer. This reuses MCP guidance without starting the pair pipeline or invoking
+a retired standalone skill. The module owns tool selection, citation, and low-confidence rules.
+
 When you do run it, add a **third subagent** alongside Standards and Spec, in the same parallel
 message, with this prompt:
 
@@ -16,6 +20,7 @@ Hold the change below to the relevant expert's domain standards from the `expert
 <paste the diff>
 
 ## What to do
+Read the shared experts module at <absolute path to pair/references/experts/SKILL.md> first.
 1. Summarise the diff in 1–2 sentences — which domain does it touch (software engineering, Python,
    Laravel, AI engineering, data engineering/analysis, GTM, zettelkasten)?
 2. If the owning domain is obvious, call review(artifact=<that summary>, expert=<domain>) directly.

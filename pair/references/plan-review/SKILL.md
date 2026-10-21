@@ -45,4 +45,4 @@ options:
   - "Accept with caveats — annotate the issues and proceed"
 ```
 
-If "loop back": carry the findings as the opening context for a new [`grill`](../../../grill/SKILL.md) session. Update the task issues after the revised grill (via [`spec`](../spec/SKILL.md)). Re-run this review. Repeat until the plan passes or the user explicitly accepts.
+If "loop back": carry the findings as the opening context for a new [internal grill module](../grill/SKILL.md) session. Update the task issues after the revised grill (via [`spec`](../spec/SKILL.md)). Re-run this review. Repeat until the plan passes or the user explicitly accepts.

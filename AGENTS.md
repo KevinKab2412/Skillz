@@ -78,6 +78,13 @@ authoritative state; shared modules own only policy that must remain identical a
     prod config, it's the staging one"). What's banned is the contrast used as *emphasis* — inventing
     a weak frame just to dramatically overrule it.
 
+## Project-local skill
+
+`skill-creator` is available only in this repository at
+[`.agents/skills/skill-creator/SKILL.md`](.agents/skills/skill-creator/SKILL.md).
+Claude Code and Cursor have project-local compatibility links to that same copy. Do not install it
+globally; `install.sh` exports only the top-level global skills.
+
 <!-- skillz:available-skills -->
 ## Available Skills
 
@@ -85,18 +92,13 @@ Skills load automatically from `~/.agents/skills/` (shared across Claude Code, C
 
 - **`/code-review`** — Review a PR, branch, or working diff and give one clear merge call in a short plain-English report.
 - **`/deploying-to-cloud`** — Deploys and manages Laravel applications on Laravel Cloud using the `cloud` CLI.
-- **`/experts`** — Reach the `experts` MCP gateway — a local server holding 11 domain corpora (software_engineer, python, laravel, ai_engineer, data_engineer,…
-- **`/explain-this-like-i-am-an-intern`** — Get clarity on anything — a subject you want to finally understand, or a message of mine that just didn't land.
-- **`/grill`** — Interview the user relentlessly about an idea until you reach shared understanding, while actively maintaining the project's domain model (glossary +…
+- **`/explain-this-like-i-am-an-intern`** — Explain subjects or confusing messages from scratch for a bright intern: lead with the missing premise and why, define jargon, give concrete…
 - **`/meetily`** — Read, search, and summarise meeting transcripts recorded by the local Meetily app, which stores them in a SQLite database on this Mac.
 - **`/morning`** — Render the user's morning brief as a styled HTML artifact, or set it up as a recurring weekday task.
-- **`/pair`** — Full spec-to-ship pipeline that orchestrates the individual engineering skills with human strategic gates and bounded agent autonomy — optional…
+- **`/pair`** — Guide work from requirements through planning, bounded implementation, architecture checkpoints, review, taste, and polish, with human approval gates.
 - **`/research`** — Investigate a question against high-trust primary sources, web search, site scraping and crawling (Firecrawl), and Mobbin UI examples, then capture…
 - **`/retro`** — Run a retrospective on a coding session, a PR, or a batch of recent PRs — to improve the environment agents work in next time, not to fix the code…
-- **`/show-me`** — Explain the current topic *visually* instead of in a wall of prose — a compact diagram, a code-shape sketch, or one focused HTML artifact.
-- **`/skill-creator`** — Create new skills, modify and improve existing skills, and measure skill performance.
 - **`/standup`** — Generate a standup update from recent activity.
-- **`/to-pr`** — Prepare draft PRs from finished work, with concise descriptions, blast-radius banners, and visual proof.
 - **`/to-visual`** — Turn one concept into an animated, beat-by-beat HTML explainer: a 1920×1080 composition that pauses after each beat, silent, with one caption per…
 - **`/wayfinder`** — Plan a chunk of work too big for one session — wrapped in fog, where the way from here to the destination isn't visible yet — as a shared map of…
 

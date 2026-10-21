@@ -56,7 +56,8 @@ checklist pass produces noise, not signal.
 
 For each surviving candidate: the category, the one sentence of evidence that triggered it, the
 concrete fix, and — for anything editing `CODING_STANDARDS.md` or a lint/CI config — a ready **diff**,
-not a description. Use a `show-me` visual (file tree, diff) where it reads faster than prose. End with
+not a description. Read the shared [visual module](../explain-this-like-I-am-an-intern/references/show-me.md)
+for a file tree or diff where it reads faster than prose. End with
 one question: which to apply.
 
 ```

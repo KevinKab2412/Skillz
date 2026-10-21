@@ -350,7 +350,7 @@ pays best.>
 Append ` (trunk)` after the path on either form — e.g. `### 🟡 Should fix · path/file.py:88 (trunk)` —
 when the owning lane tagged the file a hub; omit it for leaf files. This is the position signal from
 `to-pr`'s blast-radius rubric, kept lightweight here (full version:
-[`to-pr/references/blast-radius.md`](../to-pr/references/blast-radius.md)). It never changes severity —
+[pair's internal blast-radius reference](../pair/references/to-pr/references/blast-radius.md)). It never changes severity —
 blocker/should-fix still means what it always meant — it just tells the reader which findings to act
 on first when they can't get to all of them.
 <Plain English, intern-level: what's wrong, no unglossed jargon — 1 sentence.>
@@ -369,7 +369,7 @@ wasn't run:> Domain-standards (experts) pass not run — ask for `--experts` if 
 
 ## Want the deep dive?
 If any of the above didn't land, say "explain it" and I'll build the full walkthrough — background →
-intuition → literate diff → a short quiz — the same explainer /to-pr distils into a PR body.
+intuition → literate diff → a short quiz — the same explainer pair's internal PR module can distil into a PR body.
 ````
 
 **The review plan — order by when the author's reasoning becomes legible, not by the diff.** The user

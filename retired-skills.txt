@@ -10,10 +10,12 @@ create-subagent
 data-viz-selection
 docs
 docx
+experts
 find-flexible-oneworld-awards
 gh-stack
 goal
 google-workspace
+grill
 import-memory
 loop
 migrate-to-skills
@@ -29,8 +31,11 @@ review-security
 sdk
 share
 shell
+show-me
+skill-creator
 split-to-prs
 statusline
+to-pr
 update-cli-config
 update-cursor-settings
 visualize

@@ -9,9 +9,13 @@ description: >-
   Default base is dev; PRs are drafts. Does not review code or generate explainers.
 ---
 
-# to-pr
+# To-pr — internal shipping module
 
-> **Output discipline (hard rule).** Every output this skill produces obeys [`references/brevity/output-discipline.md`](references/brevity/output-discipline.md): **≤150 words of prose**, plain dumbed-down English, point first. Anything past 150 words becomes a **visual** — table, tree, diff, or code block (format menu: [`references/show-me/visual-formats.md`](references/show-me/visual-formats.md)). Words inside a visual don't count. The cap covers the PR body itself — keep its prose under 150 words and put the change's shape in a diff or table.
+Read directly for PR preparation, splitting, or stack management. This does not start pair's
+requirements/build pipeline. The user must explicitly request shipping after a full pair run;
+polish alone is not permission to open a PR.
+
+> **Output discipline (hard rule).** Every output this module produces obeys [output discipline](../brevity/output-discipline.md): **≤150 words of prose**, plain English, point first. Anything past 150 words becomes a **visual** — table, tree, diff, or code block ([format menu](../show-me/visual-formats.md)). Words inside a visual don't count. The cap covers the PR body itself — keep its prose under 150 words and put the change's shape in a diff or table.
 
 Open a **draft** PR for the current branch, with a clean, **concise** Markdown body distilled from
 the work that's already finished. `to-pr` does not review the code and does not build a review
@@ -56,7 +60,7 @@ how to read each signal off the diff, the band thresholds, the banner format —
 
 ## Inputs
 
-Parse these from the user's invocation. Nothing here is required — with a bare `/to-pr` on a branch,
+Parse these from the user's shipping request. Nothing here is required — with "open a PR" on a branch,
 build the body from the diff and commits (Step 1).
 
 - **Explainer path** (optional) — an existing `.html` file to distil (e.g.
@@ -92,7 +96,7 @@ is only a candidate, never permission to change it. Independent work stays indep
 
 Get approval of branches, scopes, bases, and order before splitting or forming/restructuring a stack.
 Snapshot committed, dirty, and untracked work before moving it. Never auto-stash, delete branches,
-force-push, rewrite history, or merge a PR merely because `/to-pr` was invoked. Explicit requests for
+force-push, rewrite history, or merge a PR merely because this shipping module was requested. Explicit requests for
 those operations still require checking their affected scope. For every approved PR, run Steps 1–9
 against **that layer's base**, not trunk; with `gh stack submit --auto`, use Step 7 to update each
 created draft's title/body rather than opening duplicates.
@@ -105,7 +109,7 @@ created draft's title/body rather than opening duplicates.
      back to the diff rather than stopping.
    - **If they didn't**, look for an existing branch explainer (e.g.
      `explanations/explain-<slug>-<date>.html`). If one is there, distil from it.
-   - **If there's no explainer** (the common case for a bare `/to-pr`), work straight from the
+   - **If there's no explainer** (the common case for a simple PR request), work straight from the
      branch: read the diff with `git diff <base>...HEAD`, the file list with
      `git diff --name-only <base>...HEAD`, and the commit messages with
      `git log <base>..HEAD`. Those are your raw material for the summary, the "why", and the change
@@ -145,7 +149,7 @@ created draft's title/body rather than opening duplicates.
      flow and interaction; a fenced text **file tree** for where code moved; a **call tree** for
      control flow; a **component tree** for UI structure; a ` ```diff ``` ` block shaped to match
      (a diffed file tree for a layout change, a diffed component tree for a UI change). The menu is
-     in [`references/show-me/visual-formats.md`](references/show-me/visual-formats.md). Read the
+     in [`../show-me/visual-formats.md`](../show-me/visual-formats.md). Read the
      figure's structure from the explainer's SVG or widget markup and reconstruct it faithfully. If a
      figure is purely decorative or can't be faithfully re-expressed, drop it rather than paste
      broken markup.
@@ -215,8 +219,8 @@ created draft's title/body rather than opening duplicates.
 
 8. **Prepare visual proof and post it as a comment** (on by default, every call — `--no-proof` to
    skip). Follow [`references/visual-proof.md`](references/visual-proof.md). Read the
-   diff: if it touches UI and the app can be started, launch it (reuse the [`run`](../run/SKILL.md)
-   skill), drive the changed screen(s) with `agent-browser` (**real coordinate clicks** on finicky
+   diff: if it touches UI and the app can be started, launch it using the repository's documented
+   run command, drive the changed screen(s) with `agent-browser` (**real coordinate clicks** on finicky
    React/Radix/Reflex controls — `eval`/`@ref` clicks are silently dropped), and screenshot them —
    **empty states are valid, labelled, evidence; never fake data**. If there's no UI or the app won't
    start, build a mermaid **state/sequence diagram** of the changed flow instead. Write the comment —
@@ -232,9 +236,9 @@ created draft's title/body rather than opening duplicates.
 
 ## Notes
 
-- **No explainer? Work from the diff.** A bare `/to-pr` on a branch is the common case — build the
+- **No explainer? Work from the diff.** A simple PR request on a branch is the common case — build the
   body straight from `git diff <base>...HEAD` and the commit messages. Don't run `code-review` and
-  don't write an explainer; reviewing the change is a separate step the user does before `/to-pr`.
+  don't write an explainer; reviewing the change is a separate step the user does before PR preparation.
 - **Shorter than the diff.** The reviewer reads the code on GitHub; the body just orients them. Lead
   with the summary and the "why", keep any figure, and cut the rest. If the body is longer than the
   change, you've over-written it.

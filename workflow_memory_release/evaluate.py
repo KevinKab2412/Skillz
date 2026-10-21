@@ -73,7 +73,7 @@ def validate_release_tree(root: Path = ROOT) -> dict[str, Any]:
         skill = (root / workflow / "SKILL.md").read_text()
         if "Workflow memory lifecycle (automatic)" not in skill or "evaluation-only" in skill:
             raise GateRefused(f"{workflow} is not active")
-    for workflow in ("grill", "code-review"):
+    for workflow in ("pair/references/grill", "pair/references/experts", "code-review"):
         manifest = root / workflow / "references/.shared"
         if manifest.exists() and "memory" in manifest.read_text().splitlines():
             raise GateRefused(f"excluded workflow activated: {workflow}")

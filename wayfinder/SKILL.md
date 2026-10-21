@@ -1,7 +1,7 @@
 ---
 name: wayfinder
 description: >-
-  Plan a chunk of work too big for one session — wrapped in fog, where the way from here to the destination isn't visible yet — as a shared map of decision tickets on GitHub, then resolve them one at a time until the route is clear. Use for ambitious, foggy, multi-session planning: "I don't even know where to start with X", "this is too big to plan in one go", "chart a map for X", "help me wayfind X", or when a grilling session hits questions it can't answer without research, a prototype, or more discussion. The map and tickets are GitHub issues in the personal planning repo, so they're branch-independent and never make noise in a shared code repo. If the work fits in one session — you can already see the way — use /grill instead, not this.
+  Plan a chunk of work too big for one session — wrapped in fog, where the way from here to the destination isn't visible yet — as a shared map of decision tickets on GitHub, then resolve them one at a time until the route is clear. Use for ambitious, foggy, multi-session planning: "I don't even know where to start with X", "this is too big to plan in one go", "chart a map for X", "help me wayfind X", or when a grilling session hits questions it can't answer without research, a prototype, or more discussion. The map and tickets are GitHub issues in the personal planning repo, so they're branch-independent and never make noise in a shared code repo. If the work fits in one session — you can already see the way — use pair's requirements-only mode instead.
 disable-model-invocation: true
 ---
 
@@ -16,7 +16,7 @@ whose resolution is a *decision*, not a slice of a build — and works them one 
 route is clear.
 
 If you can already see the way to the destination — the whole thing fits in one session — you don't
-need a map. Use [`grill`](../grill/SKILL.md). Wayfinder is for when you *can't* see it yet.
+need a map. Read [pair's internal grill module](../pair/references/grill/SKILL.md). Wayfinder is for when you *can't* see it yet.
 
 ## Where the map lives — always the personal planning repo
 
@@ -98,7 +98,8 @@ answers its own questions) or **AFK** (agent alone).
   [`prototype`](../pair/references/prototype/SKILL.md). Use when "how should it look/behave?" is the question. Links the
   prototype branch as the asset. Prototypes are how a big up-front plan stays out of waterfall — they
   give high-fidelity feedback on what you're actually building.
-- **`wayfinder:grilling`** (HITL) — a discussion to settle a decision, via [`grill`](../grill/SKILL.md)
+- **`wayfinder:grilling`** (HITL) — a discussion to settle a decision, via the internal
+  [grill module](../pair/references/grill/SKILL.md); this does not run pair.
   (with domain modelling). **The default type.**
 - **`wayfinder:task`** (HITL or AFK) — real-world work that must happen before a decision can be made
   (provision access, sign up for a service so its API can be judged, move data so its shape is visible).
@@ -130,12 +131,12 @@ ticket keeps each inside the smart zone of the context window.
 
 ### Chart the map (user invokes with a loose idea)
 
-1. **Name the destination.** Run [`grill`](../grill/SKILL.md) (with domain modelling) to pin what this
+1. **Name the destination.** Read [grill](../pair/references/grill/SKILL.md) (with domain modelling) to pin what this
    map finds its way to — a spec, a decision, or a change. It recommends a spec for most build efforts.
    The destination fixes scope, so settle it first.
 2. **Map the frontier** — grill again, **breadth-first**, fanning across the whole space to surface the
    open decisions and the first steps takeable now. **If no fog surfaces** — the way is already clear —
-   stop: you don't need a map, use `/grill` → `/spec`.
+   stop: you don't need a map; use pair's internal grill module, then its spec module when approved.
 3. **Create the map** issue (`wayfinder:map`) with Destination, Code repo, Notes filled, Decisions-so-far
    empty, the fog sketched into Not yet specified.
 4. **Create the tickets you can specify now** as sub-issues, then wire blocking in a second pass (issues
