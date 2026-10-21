@@ -57,8 +57,19 @@ Set `AGENT_MEMORY_SOURCE` when the memory-service checkout is not beside this re
   work without committing to the pair pipeline.
 - `show-me` and `to-visual` remain shared entry points: explanation, review, specs, and sketches
   use their visual capabilities. Their shared formatting rules already live in `shared/show-me/`.
-- `standup`, `morning`, and `find-flexible-oneworld-awards` are also versioned here, preserving the
-  installed utilities. `deploying-to-cloud` remains an external Laravel-authored skill.
+- `standup` and `morning` are also versioned here, preserving the installed utilities.
+  `deploying-to-cloud` remains an external Laravel-authored skill.
+
+## Standalone private repositories
+
+Chart selection and flight search have moved out of Skillz and are intentionally absent from the
+shared/global skill list:
+
+- [Data visualization selection](https://github.com/KevinKab2412/data-viz-selection)
+- [Flexible oneworld award search](https://github.com/KevinKab2412/find-flexible-oneworld-awards)
+
+Their source and supporting files live in those repositories; read their `SKILL.md` files on demand.
+Both names remain in `retired-skills.txt` solely to prevent global reinstallation.
 
 The retirement list is deliberate user policy, not a general purge of third-party skills. Unknown
 external skills are preserved. A vendor/client may reinstall its bundled skills on update; rerun

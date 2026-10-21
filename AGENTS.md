@@ -84,11 +84,9 @@ authoritative state; shared modules own only policy that must remain identical a
 Skills load automatically from `~/.agents/skills/` (shared across Claude Code, Codex, and OpenCode). Invoke with `/skill-name` or just describe what you need:
 
 - **`/code-review`** — Review a PR, branch, or working diff and give one clear merge call in a short plain-English report.
-- **`/data-viz-selection`** — Pick the right chart for a dataset and message, then design it well.
 - **`/deploying-to-cloud`** — Deploys and manages Laravel applications on Laravel Cloud using the `cloud` CLI.
 - **`/experts`** — Reach the `experts` MCP gateway — a local server holding 11 domain corpora (software_engineer, python, laravel, ai_engineer, data_engineer,…
 - **`/explain-this-like-i-am-an-intern`** — Get clarity on anything — a subject you want to finally understand, or a message of mine that just didn't land.
-- **`/find-flexible-oneworld-awards`** — Find and validate live oneworld business- or first-class award availability across flexible dates, trip lengths, origins, destinations, and booking…
 - **`/grill`** — Interview the user relentlessly about an idea until you reach shared understanding, while actively maintaining the project's domain model (glossary +…
 - **`/meetily`** — Read, search, and summarise meeting transcripts recorded by the local Meetily app, which stores them in a SQLite database on this Mac.
 - **`/morning`** — Render the user's morning brief as a styled HTML artifact, or set it up as a recurring weekday task.

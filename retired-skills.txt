@@ -7,8 +7,10 @@ create-hook
 create-rule
 create-skill
 create-subagent
+data-viz-selection
 docs
 docx
+find-flexible-oneworld-awards
 gh-stack
 goal
 google-workspace
