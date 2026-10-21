@@ -1,9 +1,9 @@
 ---
-name: explain-this-like-I-am-an-intern
+name: explain-this-like-i-am-an-intern
 description: >
   Get clarity on anything — a subject you want to finally understand, or a message of mine that
   just didn't land. It re-explains from scratch as if to a bright intern on their first day:
-  someone sharp but brand-new, who shares none of this thread's history and none of its jargon. It
+  someone sharp but brand-new, who shares none of this thread's history or jargon. It
   leads with the missing premise and the *why*, spells out every acronym and domain term on first
   use, drops to plain English and a concrete example — and *then* probes with a question or two,
   because a nod is not understanding and the point is that you hold it, not that it merely sounded

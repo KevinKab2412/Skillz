@@ -83,49 +83,24 @@ authoritative state; shared modules own only policy that must remain identical a
 
 Skills load automatically from `~/.agents/skills/` (shared across Claude Code, Codex, and OpenCode). Invoke with `/skill-name` or just describe what you need:
 
-- **`/automate`** — Use this skill to create Codex Automations.
-- **`/autopilot`** — Keep a PR merge-ready by triaging comments, resolving clear conflicts, and fixing CI in a loop.
-- **`/canvas`** — A Codex Canvas is a live React app that the user can open beside the chat.
 - **`/code-review`** — Review a PR, branch, or working diff and give one clear merge call in a short plain-English report.
-- **`/create-hook`** — Create Codex hooks.
-- **`/create-rule`** — Create Codex rules for persistent AI guidance.
-- **`/create-skill`** — Create Codex Agent Skills.
-- **`/create-subagent`** — Create custom subagents for specialized AI tasks.
 - **`/data-viz-selection`** — Pick the right chart for a dataset and message, then design it well.
-- **`/experts`** — Reach the `experts` MCP gateway from any message — a local server holding 11 domain corpora (software_engineer, python, laravel, ai_engineer,…
-- **`/explain-this-like-I-am-an-intern`** — Get clarity on anything — a subject you want to finally understand, or a message of mine that just didn't land.
+- **`/deploying-to-cloud`** — Deploys and manages Laravel applications on Laravel Cloud using the `cloud` CLI.
+- **`/experts`** — Reach the `experts` MCP gateway — a local server holding 11 domain corpora (software_engineer, python, laravel, ai_engineer, data_engineer,…
+- **`/explain-this-like-i-am-an-intern`** — Get clarity on anything — a subject you want to finally understand, or a message of mine that just didn't land.
 - **`/find-flexible-oneworld-awards`** — Find and validate live oneworld business- or first-class award availability across flexible dates, trip lengths, origins, destinations, and booking…
-- **`/gh-stack`** — Manages stacked PRs and splits multi-part work into reviewable branches with gh-stack.
-- **`/goal`** — Set a goal that Codex will pursue to completion.
 - **`/grill`** — Interview the user relentlessly about an idea until you reach shared understanding, while actively maintaining the project's domain model (glossary +…
-- **`/loop`** — Run a prompt or skill in this session on a recurring or variable interval (e.g.
 - **`/meetily`** — Read, search, and summarise meeting transcripts recorded by the local Meetily app, which stores them in a SQLite database on this Mac.
-- **`/migrate-to-skills`** — Convert 'Applied intelligently' Codex rules (.cursor/rules/*.mdc) and slash commands (.cursor/commands/*.md) to Agent Skills format (.cursor/skills/).
-- **`/new-repo`** — Create a Codex-hosted repo for the current project and push it.
-- **`/onboard`** — Use /onboard for a focused Codex onboarding flow that learns basic preferences, picks a first goal, and routes the user to the right next action.
-- **`/origin`** — Install, sign in, update, or repair the origin CLI for repos hosted on Codex (origin.cursor.com).
+- **`/morning`** — Render the user's morning brief as a styled HTML artifact, or set it up as a recurring weekday task.
 - **`/pair`** — Full spec-to-ship pipeline that orchestrates the individual engineering skills with human strategic gates and bounded agent autonomy — optional…
-- **`/rename-chat`** — Rename the current chat to match its focus.
 - **`/research`** — Investigate a question against high-trust primary sources, web search, site scraping and crawling (Firecrawl), and Mobbin UI examples, then capture…
 - **`/retro`** — Run a retrospective on a coding session, a PR, or a batch of recent PRs — to improve the environment agents work in next time, not to fix the code…
-- **`/review-bugbot`** — Review code changes with Bugbot subagent.
-- **`/review-security`** — Review code changes with Security Review subagent.
-- **`/review`** — Review code changes with the Bugbot or Security Review subagent.
-- **`/sdk`** — Guide users building apps, scripts, CI pipelines, or automations on top of the Codex SDK - TypeScript (`@cursor/sdk`) or Python (`cursor-sdk` /…
-- **`/share`** — Save, back up, or share the current project on Codex — creates a repo (a saved, versioned copy that isn't public) even for users who have never used…
-- **`/shell`** — Runs the rest of a /shell request as a literal shell command.
 - **`/show-me`** — Explain the current topic *visually* instead of in a wall of prose — a compact diagram, a code-shape sketch, or one focused HTML artifact.
 - **`/skill-creator`** — Create new skills, modify and improve existing skills, and measure skill performance.
-- **`/split-to-prs`** — Split current work into small reviewable PRs.
 - **`/standup`** — Generate a standup update from recent activity.
-- **`/statusline`** — Configure a custom status line in the CLI.
-- **`/to-pr`** — Open a draft pull request for the current branch from work that's already done.
+- **`/to-pr`** — Prepare draft PRs from finished work, with concise descriptions, blast-radius banners, and visual proof.
 - **`/to-visual`** — Turn one concept into an animated, beat-by-beat HTML explainer: a 1920×1080 composition that pauses after each beat, silent, with one caption per…
-- **`/update-cli-config`** — View and modify Codex CLI configuration settings in ~/.cursor/cli-config.json.
-- **`/update-cursor-settings`** — Modify Codex/VSCode user settings in settings.json.
-- **`/visualize`** — Use /visualize for creating compact charts, diagrams, or other visuals inline as part of the conversation itself.
 - **`/wayfinder`** — Plan a chunk of work too big for one session — wrapped in fog, where the way from here to the destination isn't visible yet — as a shared map of…
-- **`/worktree`** — Spin up a local git worktree for a branch in one step, then drop into it ready to work.
 
 > Skill source of truth: `~/.agents/skills/` — managed via the Skillz repo. Run its `install.sh` to sync.
 <!-- /skillz:available-skills -->

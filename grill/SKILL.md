@@ -1,6 +1,7 @@
 ---
 name: grill
-description: Interview the user relentlessly about an idea until you reach shared understanding, while actively maintaining the project's domain model (glossary + ADRs) as terms and decisions crystallise. Use when the user wants requirements pinned down before building: "grill me on this", "interrogate this idea", "help me nail down the design", "challenge my thinking on X", "what am I not considering?", "let's scope this properly", or as the first stage of /pair. Produces a decision log plus any CONTEXT.md / ADR updates that later spec or planning work builds on. Do NOT use it to write code or a spec — this stage only reaches shared understanding.
+description: >-
+  Interview the user relentlessly about an idea until you reach shared understanding, while actively maintaining the project's domain model (glossary + ADRs) as terms and decisions crystallise. Use when the user wants requirements pinned down before building: "grill me on this", "interrogate this idea", "help me nail down the design", "challenge my thinking on X", "what am I not considering?", "let's scope this properly", or as the first stage of /pair. Produces a decision log plus any CONTEXT.md / ADR updates that later spec or planning work builds on. Do NOT use it to write code or a spec — this stage only reaches shared understanding.
 ---
 
 # Grill — interview to shared understanding, with active domain modelling

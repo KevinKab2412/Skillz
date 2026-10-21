@@ -8,6 +8,7 @@ description: >
   "review this branch", "did the build match the plan", "code review", or as /pair's review stage.
   Also use when the user asks to understand a change: "explain this diff", "walk me through this PR",
   or "help me understand this change"; in that case build the full HTML teaching artifact and quiz.
+  Also owns bug-focused and security-focused reviews, including Bugbot when available.
   Prefer this skill over a raw diff whenever the user wants to judge or understand a change.
 ---
 
@@ -71,7 +72,8 @@ so the review never disturbs your current checkout:
 
 - **Reviewing a branch or a GitHub PR** (a named head branch) → check `git worktree list --porcelain`
   for a `branch refs/heads/<branch>` line. If one exists, `cd` into that path. If not, run
-  [`worktree`](../worktree/SKILL.md) for that branch and `cd` into the worktree it reports. Then
+  the internal [worktree module](../pair/references/worktree/SKILL.md) for that branch and `cd` into
+  the worktree it reports. Then
   resolve the target and gather the goal there.
 - **Reviewing the working diff** ("my changes", "what I just did") → skip this step. The uncommitted
   work lives in the current checkout; a worktree can't carry it, and moving would lose it.
@@ -138,6 +140,21 @@ Read whatever exists in full —
 has the maturity rubric. Pass whatever you found, or its absence, into the Standards subagent verbatim.
 
 ## Step 2 — Run Standards and Spec in parallel
+
+**Choose the scope first.** A normal review keeps both lanes below. An explicit bug-only or
+security-only request uses the matching focused lane instead; do not force a menu or run unrelated
+lanes. For security, trace changed trust boundaries, authentication/authorization, tenant isolation,
+untrusted inputs, secret handling, and injection paths; report concrete exploitable consequences,
+not speculative checklists. Label a focused review as partial, never a full merge clearance.
+
+**Optional specialised backends.** If the caller asks for Bugbot or the host's Security Review
+subagent and that exact backend exists, read [Bugbot](references/review-backends/bugbot.md) or
+[Security Review](references/review-backends/security.md). These are internal adapters, not separate
+skills. Reuse the resolved target/worktree; never stash or switch the user's checkout silently.
+If the backend is unavailable, say so and perform a regular bug/security-focused review if useful;
+label it honestly rather than claiming Bugbot ran. Backend failures get at most one retry. Fold
+backend findings into this skill's verification and report; do not emit a second competing verdict.
+When no parallel-agent tool exists, run the lanes sequentially and disclose the lack of independence.
 
 Send **one message with two `Agent` calls** (`subagent_type: "claude"`). They share the diff, commit
 list, and goal from Step 1; each gets its own clean context. Keep each subagent's brief **under 400

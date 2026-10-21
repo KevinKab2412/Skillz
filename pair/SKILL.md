@@ -8,7 +8,8 @@ description: Full spec-to-ship pipeline that orchestrates the individual enginee
 `pair` doesn't do the work itself — it **sequences the stages** and holds the human gates and
 loop-backs between them. Most stages are reference modules under [`references/`](references/) that
 `pair` reads and follows in turn; a few — `grill`, `research`, `code-review` — remain standalone
-skills it calls. The detail lives in each stage's file, not here.
+skills it calls. Worktree setup is an internal module, also reused by `code-review`.
+The detail lives in each stage's file, not here.
 
 ## Workflow memory lifecycle (automatic)
 
@@ -48,7 +49,7 @@ before opening the workflow-memory session above — settle the worktree:
 2. **Check whether a worktree already exists for it:** `git worktree list --porcelain` — a
    `branch refs/heads/<branch>` line means one is already checked out; `cd` into that path and
    continue.
-3. **If none exists, run [`worktree`](../worktree/SKILL.md)** for that branch (it cuts a new branch
+3. **If none exists, follow the internal [`worktree` module](references/worktree/SKILL.md)** for that branch (it cuts a new branch
    from the base when the branch doesn't exist yet, or attaches to the local/origin branch when it
    does) and `cd` into the worktree it reports before proceeding.
 

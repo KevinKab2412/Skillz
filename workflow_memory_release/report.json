@@ -221,7 +221,7 @@
     "artifacts": {
       "protocol_sha256": "d713f4d9e5a74c908bef4718fa7c6d2dc6ad5f8cb61ec73674114a02c47484d0",
       "skill_sha256": {
-        "pair": "03a9628834de179bf764ebfccfc676bf25e097ab61912ffed018ffae3909df3e"
+        "pair": "99f1df863e984d0b4d81976861127ced6d17f019ca5d19816b877e02d26af218"
       }
     },
     "fixture": {
@@ -234,24 +234,25 @@
       },
       "cache_hits": [],
       "duration_ms": {
-        "pair": 151951
+        "pair": 97190
       },
       "harness_sha256": {
         "evaluator": "f6d2ea005fb8d985036985eaf9d3a49523ab68234d53bc2f73937daba1626753",
         "fake_server": "2d9c2493d7106635acca21c9e6f9cc4d8e7f9e3c89acba663c740d6a7254955b"
       },
       "instruction_mutation": {
-        "duration_ms": 83798,
+        "duration_ms": 82364,
         "name": "nested-session-recall-and-flush",
         "observed_nested_calls": [
           "recall",
+          "remember",
           "flush"
         ],
         "rejected": true
       },
       "model": "haiku",
       "name": "claude-code-print",
-      "version": "2.1.197 (Claude Code)"
+      "version": "2.1.285 (Claude Code)"
     },
     "workflows": {
       "pair": {
@@ -268,7 +269,7 @@
           "top_five": true
         },
         "filtered_conflicts": 1,
-        "observed_memory_calls": 15,
+        "observed_memory_calls": 14,
         "rejected_candidates": 6,
         "warning_count": 1
       }

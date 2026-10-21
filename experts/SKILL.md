@@ -1,7 +1,7 @@
 ---
 name: experts
 description: >
-  Reach the `experts` MCP gateway from any message — a local server holding 11 domain corpora
+  Reach the `experts` MCP gateway — a local server holding 11 domain corpora
   (software_engineer, python, laravel, ai_engineer, data_engineer, data_analyst, sales_gtm,
   retention_gtm, customer_research_gtm, positioning_branding_gtm, zettelkasten), each a named
   expert with its own standards. Infer the right tool and expert from what the user asks, invoke

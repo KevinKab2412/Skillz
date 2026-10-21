@@ -9,7 +9,11 @@ python3 - "$repo_root/install.sh" <<'PY'
 import sys
 from pathlib import Path
 
-install = [line.strip() for line in Path(sys.argv[1]).read_text().splitlines()]
+# Accept the best-effort `if ... && ...; then` wrapper as well as bare commands.
+install = [
+    line.strip().removeprefix('if ').removeprefix('&& ').removesuffix('\\').removesuffix('; then').strip()
+    for line in Path(sys.argv[1]).read_text().splitlines()
+]
 commands = [
     'uv tool install --editable "$MEMORY_SOURCE"',
     "agent-memory-init",
@@ -21,6 +25,9 @@ assert positions == sorted(positions), positions
 PY
 
 cp -f "$repo_root/install.sh" "$fixture/install.sh"
+cp -f "$repo_root/retired-skills.txt" "$fixture/retired-skills.txt"
+mkdir -p "$fixture/scripts"
+cp -f "$repo_root/scripts/prune-retired-skills.py" "$fixture/scripts/prune-retired-skills.py"
 cp -rf "$repo_root/shared" "$fixture/shared"
 cp -rf "$repo_root/workflow_memory_release" "$fixture/workflow_memory_release"
 for skill in pair grill code-review; do

@@ -1,6 +1,7 @@
 ---
 name: wayfinder
-description: Plan a chunk of work too big for one session — wrapped in fog, where the way from here to the destination isn't visible yet — as a shared map of decision tickets on GitHub, then resolve them one at a time until the route is clear. Use for ambitious, foggy, multi-session planning: "I don't even know where to start with X", "this is too big to plan in one go", "chart a map for X", "help me wayfind X", or when a grilling session hits questions it can't answer without research, a prototype, or more discussion. The map and tickets are GitHub issues in the personal planning repo, so they're branch-independent and never make noise in a shared code repo. If the work fits in one session — you can already see the way — use /grill instead, not this.
+description: >-
+  Plan a chunk of work too big for one session — wrapped in fog, where the way from here to the destination isn't visible yet — as a shared map of decision tickets on GitHub, then resolve them one at a time until the route is clear. Use for ambitious, foggy, multi-session planning: "I don't even know where to start with X", "this is too big to plan in one go", "chart a map for X", "help me wayfind X", or when a grilling session hits questions it can't answer without research, a prototype, or more discussion. The map and tickets are GitHub issues in the personal planning repo, so they're branch-independent and never make noise in a shared code repo. If the work fits in one session — you can already see the way — use /grill instead, not this.
 disable-model-invocation: true
 ---
 

@@ -1,20 +1,12 @@
 ---
 name: to-pr
-description: >
-  Open a draft pull request for the current branch from work that's already done. Read the finished
-  change — the diff, the commits, and any artifacts already in the branch (a code-review explainer,
-  a design sketch) — and distil a concise Markdown PR body from them. Does NOT review the code and
-  does NOT generate an explainer: reviewing happens before /to-pr, not inside it. Use whenever the
-  user wants to ship the current branch as a PR — "/to-pr", "make a draft PR for this branch", "open
-  a PR for my current branch", "make a draft PR from this explainer", "turn <explainer>.html into a
-  PR description", "open a PR using this explainer", "convert my explainer to a PR body", or points
-  at a branch and wants it turned into a PR. Trigger even if they don't say "to-pr" explicitly, as
-  long as they point at a branch (or an explainer file) and want it to become a PR. Default base
-  branch is `dev` and PRs are always opened as drafts. Stamps a blast-radius banner (Deep read /
-  Spot-check / Skim) at the top of the body so a reviewer calibrates how hard to look — deep where a
-  bug would be silent or permanent, a skim on gated leaf code. Also posts visual proof as a PR comment on
-  every call — real screenshots (captured with a browser) for UI changes, a mermaid state/sequence
-  diagram for everything else — without waiting for approval; the user edits or deletes it after.
+description: >-
+  Prepare draft PRs from finished work, with concise descriptions, blast-radius banners, and visual
+  proof. Use for opening a PR, turning an HTML explainer into a PR body, splitting changes into
+  reviewable PRs, or creating/managing a logical stack of dependent branches. Inspect local and
+  remote unmerged branches; propose splits or stacks only for real dependencies, with approval
+  before moving work or rewriting history. Owns gh-stack operations; no separate stacking skill.
+  Default base is dev; PRs are drafts. Does not review code or generate explainers.
 ---
 
 # to-pr
@@ -23,8 +15,9 @@ description: >
 
 Open a **draft** PR for the current branch, with a clean, **concise** Markdown body distilled from
 the work that's already finished. `to-pr` does not review the code and does not build a review
-artifact — **that happens before you call it**. Its only job is to turn a done change into a
-scannable PR description and open the draft.
+artifact — **that happens before you call it**. It shapes finished work into reviewable PRs,
+then writes a scannable description and opens each draft. Splitting and stacking are conditional
+preparation steps, not mandatory ceremony for a single coherent branch.
 
 It distils from whatever source best describes the change:
 
@@ -71,7 +64,7 @@ build the body from the diff and commits (Step 1).
   the diff instead. Never generate one.
 - **Base branch** (default `dev`) — the PR target and the range the body describes (`<base>...HEAD`).
   Honor an explicit "base X" / "into X" / "against X".
-- **Draft** (default true) — always open as a draft unless the user clearly asks for a ready PR.
+- **Draft** — always open as a draft; the user marks it ready separately.
 - **Title** (optional) — if the user gives one, use it; otherwise derive it from the explainer's
   `<h1>` if there is one, else from the branch's commit history.
 - **Quiz** (default off) — only relevant when distilling an existing explainer; leave it out unless
@@ -81,6 +74,28 @@ build the body from the diff and commits (Step 1).
   keep the signal table as the evidence.
 - **Proof** (default on) — every call prepares visual proof and posts it as a PR comment (Step 8).
   Pass `--no-proof` to skip it (e.g. when the app can't run in this environment).
+
+## Step 0 — Choose single PR, split, or stack
+
+Before preparing a PR, follow [PR layout](references/pr-layout.md): inspect the current work plus
+local and remote branches that have not merged, and open PRs. Inspect existing refs read-only;
+fetch the relevant remote when available, and disclose stale/offline results. Use actual code and
+commit dependencies, ownership, and PR history to decide what belongs together. An unmerged branch
+is only a candidate, never permission to change it. Independent work stays independent.
+
+- One coherent change → continue below with one PR.
+- Independent concerns → propose separate PRs.
+- Real foundation → consumer dependencies → propose a linear stack; consult the internal
+  [gh-stack guide](references/gh-stack/guide.md) and its design reference.
+- Stack maintenance only (view, sync, rebase, checkout, merge) → follow that guide for the requested
+  operation and stop; do not create unrelated PRs. Inspect help before using version-dependent flags.
+
+Get approval of branches, scopes, bases, and order before splitting or forming/restructuring a stack.
+Snapshot committed, dirty, and untracked work before moving it. Never auto-stash, delete branches,
+force-push, rewrite history, or merge a PR merely because `/to-pr` was invoked. Explicit requests for
+those operations still require checking their affected scope. For every approved PR, run Steps 1–9
+against **that layer's base**, not trunk; with `gh stack submit --auto`, use Step 7 to update each
+created draft's title/body rather than opening duplicates.
 
 ## Steps
 
@@ -243,7 +258,7 @@ build the body from the diff and commits (Step 1).
   clicks, which are silently dropped. Full procedure:
   [`references/visual-proof.md`](references/visual-proof.md).
 - **Drafts by default.** This user always opens PRs as drafts and marks them ready manually — do
-  not use `--web` or open a non-draft unless explicitly told.
+  not use `--web` or open a non-draft in this workflow.
 - **Don't paste the raw HTML.** It renders as broken, unstyled text. Always convert. Only
   `<details>`, `<summary>`, `<table>`, `<img>`, `<a>`, `<kbd>`, `<sub>`, `<sup>`, `<br>`, and
   ` ```mermaid ``` ` fences survive GitHub's sanitizer.

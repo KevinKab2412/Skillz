@@ -120,7 +120,8 @@ emit_skill_bullets() {
   local skill_dir sname desc
   for skill_dir in "$AGENTS_DIR"/*/; do
     [ -f "$skill_dir/SKILL.md" ] || continue
-    sname=$(basename "$skill_dir")
+    sname=$(awk '/^name:/ { sub(/^name:[[:space:]]*/, ""); print; exit }' "$skill_dir/SKILL.md")
+    [ -n "$sname" ] || sname=$(basename "$skill_dir")
     desc=$(skill_description "$skill_dir/SKILL.md")
     printf -- '- **`/%s`** — %s\n' "$sname" "$(summarize_description "$desc")"
   done
@@ -130,6 +131,8 @@ emit_skill_bullets() {
 TOOL_DIRS=(
   "$HOME/.claude/skills"
   "$HOME/.codex/skills"
+  "$HOME/.cursor/skills"
+  "$HOME/.config/opencode/skills"
 )
 
 # Manifest of the skills THIS installer manages, so a later run can prune ones
@@ -220,6 +223,14 @@ if [ -f "$MANIFEST" ]; then
   done < "$MANIFEST"
 fi
 
+# Explicit retirements also cover externally installed and synced skills. Keep backups outside
+# discovery; retained skills own their nested reference modules (e.g. pair's worktree module).
+if [ -f "$SCRIPT_DIR/retired-skills.txt" ]; then
+  python3 "$SCRIPT_DIR/scripts/prune-retired-skills.py" \
+    --policy "$SCRIPT_DIR/retired-skills.txt" --home "$HOME" \
+    --agents-dir "$AGENTS_DIR" --pi-home "${PI_HOME:-$HOME/.pi/agent}"
+fi
+
 # Record the skills we manage this run for the next run's prune pass.
 printf '%s' "$current_skills" | LC_ALL=C sort > "$MANIFEST"
 
@@ -251,14 +262,21 @@ AGENTS_MD="$AGENTS_HOME_DIR/AGENTS.md"
 
 ## Standing Rules
 
-- **Planning always lives in [`KevinKab2412/planning`](https://github.com/KevinKab2412/planning)** (private).
+- **Always do repository work in a dedicated git worktree.** Follow the internal module at
+  `~/.agents/skills/pair/references/worktree/SKILL.md`; `pair` runs it at the start, and
+  `code-review` reuses it for isolated branch reviews.
+- **Planning always lives in [`K2412/planning`](https://github.com/K2412/planning)** (private).
   Every spec epic, task sub-issue and wayfinder map goes there — never in a code repo, and never in
-  the tracker the work came from. Pass `-R KevinKab2412/planning` on every `gh issue` / `gh label` /
+  the tracker the work came from. Pass `-R K2412/planning` on every `gh issue` / `gh label` /
   `gh api repos/...` call; `gh` otherwise targets the repo you're standing in.
 - **Never write to a shared team tracker** (Linear, Jira) — read tickets, but don't comment, edit or
   change status. What appears there is the user's to write.
 - **Prototypes are throwaway**: never branch and never commit one. The artifact goes to a gitignored
   directory in the repo; only the verdict, its numbers, and the settings it depends on carry forward.
+- **Interactive visual explainers must be standalone HTML** that opens directly in a browser;
+  a `.tsx` or `.canvas.tsx` file alone is not a deliverable.
+- **Retired skills are listed in the Skillz repo's `retired-skills.txt`.** Do not reinstall them
+  without explicit user approval; use the retained parent skill for merged functionality.
 
 ## Writing Style
 
@@ -313,6 +331,28 @@ if [ -f "$REPO_AGENTS_MD" ] \
 else
   echo "Skipped: $REPO_AGENTS_MD (missing skillz:available-skills markers)"
 fi
+
+# Refresh an existing home-level generated listing without overwriting its standing rules.
+for HOME_AGENTS_MD in "$HOME/AGENTS.md" "$HOME/.codex/AGENTS.md"; do
+if [ -f "$HOME_AGENTS_MD" ] && [ ! -L "$HOME_AGENTS_MD" ] \
+  && grep -q '^## Available Skills$' "$HOME_AGENTS_MD" \
+  && grep -q 'managed via .*Skillz' "$HOME_AGENTS_MD"; then
+  home_tmp=$(mktemp)
+  {
+    awk '/^## Available Skills$/ { exit } { print }' "$HOME_AGENTS_MD" \
+      | python3 -c 'import sys; print(sys.stdin.read().replace("Use `/worktree` when creating one", "Use the internal module at `~/.agents/skills/pair/references/worktree/SKILL.md` when creating one"), end="")'
+    echo '## Available Skills'
+    echo ''
+    echo 'Skills load from `~/.agents/skills/`; nested modules are reached through their parent skill.'
+    echo ''
+    emit_skill_bullets
+    echo ''
+    echo '> Managed via Skillz; run `install.sh` to sync. Retirements: `retired-skills.txt`.'
+  } > "$home_tmp"
+  mv -f "$home_tmp" "$HOME_AGENTS_MD"
+  echo "Regenerated: $HOME_AGENTS_MD (skill listing only)"
+fi
+done
 
 # Symlink ~/.claude/CLAUDE.md -> ~/.agents/AGENTS.md for Claude Code global context
 CLAUDE_MD="$HOME/.claude/CLAUDE.md"

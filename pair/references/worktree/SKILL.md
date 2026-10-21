@@ -2,10 +2,8 @@
 name: worktree
 description: >
   Spin up a local git worktree for a branch in one step, then drop into it ready to work. Given a
-  source repo and a branch name, it figures out where that branch lives — already local, only on
-  origin, or not yet existing — and runs the right `git worktree add` for that case: attach to the
-  local branch, create a tracking branch from origin, or cut a brand-new branch from a base (default
-  origin/dev). The worktree lands in the directory the skill was launched from, named
+  source repo and branch, run `git worktree add`: attach to a local branch, track an origin branch,
+  or create a new branch from the base (default origin/dev). The worktree lands in the directory the skill was launched from, named
   <repo>-<branch>, the repo's gitignored .env and personal `.local.*` files (e.g. AGENTS.local.md,
   a personal script, a compose override) are copied in, and the agent cd's into it so work can begin
   immediately. Use whenever the user wants a worktree for a branch — "make a worktree
@@ -16,7 +14,11 @@ description: >
   of a branch to work in.
 ---
 
-# worktree
+# Worktree — internal pair pre-flight module
+
+This module runs at the start of `pair`; `code-review` and global repository-work instructions
+may also read it directly. It is not registered as a standalone skill. Below, `<skill-dir>` means
+this module's directory (`pair/references/worktree`), so the bundled script path stays relative here.
 
 Create a git worktree for a branch and start working in it — without the caller having to remember
 which of the three `git worktree add` incantations applies.

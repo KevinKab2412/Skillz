@@ -1,0 +1,36 @@
+# Explicit user-approved retirements. install.sh removes matching global skills.
+# Shared reference modules inside retained skills are not standalone skills.
+automate
+autopilot
+canvas
+create-hook
+create-rule
+create-skill
+create-subagent
+docs
+docx
+gh-stack
+goal
+google-workspace
+import-memory
+loop
+migrate-to-skills
+new-repo
+onboard
+origin
+pdf
+pptx
+rename-chat
+review
+review-bugbot
+review-security
+sdk
+share
+shell
+split-to-prs
+statusline
+update-cli-config
+update-cursor-settings
+visualize
+worktree
+xlsx

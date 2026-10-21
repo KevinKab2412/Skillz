@@ -118,7 +118,7 @@ report the error and hand the user the draft and the PNG paths to post by hand. 
 Tear down the local app process started in A1 — **unless A1 used a worktree-scoped stack**
 (`.worktree-stack.local.env` was present), in which case leave it running. That stack is reused by later
 `/to-pr`/`/pair`/`/code-review` calls in the same worktree and is torn down with the worktree itself
-(see the [`worktree`](../worktree/SKILL.md) skill's cleanup note), not after one visual-check run.
+(see the [internal worktree module](../../pair/references/worktree/SKILL.md) skill's cleanup note), not after one visual-check run.
 
 ## Section B — Diagram proof (no UI, or launch failed)
 
