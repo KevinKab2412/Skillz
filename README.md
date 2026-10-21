@@ -27,12 +27,11 @@ without changing the memory-service installation. Reload or restart agents after
 
 ## Global skills
 
-Ten skills ship globally from this repository:
+Nine skills ship globally from this repository:
 
 - **code-review** — requirements/standards review, focused bug/security review, and teaching mode.
 - **explain-this-like-i-am-an-intern** — plain-English teaching and compact visual-only explanations.
 - **meetily** — find and summarise locally recorded meetings.
-- **morning** — render the morning brief.
 - **pair** — gated end-to-end work, or focused requirements, experts, and PR/stack modes.
 - **research** — primary-source investigation with citations.
 - **retro** — evidence-led improvements to the agent's working environment.
@@ -40,7 +39,7 @@ Ten skills ship globally from this repository:
 - **to-visual** — animated, beat-by-beat standalone HTML explanations.
 - **wayfinder** — multi-session decision maps for large, uncertain work.
 
-The separately installed, Laravel-authored **deploying-to-cloud** skill is retained, making eleven
+The separately installed, Laravel-authored **deploying-to-cloud** skill is retained, making ten
 in the current global setup. Unknown third-party skills are preserved unless explicitly retired.
 Vendor/client updates may restore bundled skills; rerun the installer to reapply retirement policy.
 

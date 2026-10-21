@@ -19,6 +19,7 @@ grill
 import-memory
 loop
 migrate-to-skills
+morning
 new-repo
 onboard
 origin

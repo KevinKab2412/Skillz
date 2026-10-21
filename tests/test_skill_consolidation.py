@@ -66,8 +66,8 @@ class RetirementTests(unittest.TestCase):
         self.assertFalse((self.home / '.agents/skill-backups').exists())
 
     def test_only_duplicate_of_installed_canonical_is_removed(self):
-        canonical = self.skill('.agents/skills/morning')
-        duplicate = self.skill('.agents/skills/synced/import/morning')
+        canonical = self.skill('.agents/skills/standup')
+        duplicate = self.skill('.agents/skills/synced/import/standup')
         unique = self.skill('.agents/skills/synced/import/unique')
         self.prune()
         self.assertTrue(canonical.exists())
