@@ -12,7 +12,7 @@ cp -f "$repo_root/retired-skills.txt" "$fixture/retired-skills.txt"
 mkdir -p "$fixture/scripts"
 cp -f "$repo_root/scripts/prune-retired-skills.py" "$fixture/scripts/prune-retired-skills.py"
 cp -rf "$repo_root/shared" "$fixture/shared"
-for skill in pair code-review explain visualise; do
+for skill in pair code-review explain visualise utils; do
   cp -rf "$repo_root/$skill" "$fixture/$skill"
 done
 mkdir -p "$fixture/home/.claude" "$fixture/home/.codex/skills"
@@ -84,8 +84,32 @@ cp -f "$skills_dir/$legacy/SKILL.md" "$fixture/pi/skills/synced/$legacy/SKILL.md
 printf '%s\n' "$legacy" >> "$manifest"
 ln -sfn "$skills_dir/$legacy" "$fixture/home/.codex/skills/$legacy"
 
+# Upgrade standalone utilities, including synced imports outside our manifest.
+for old in meetily standup retro; do
+  mkdir -p "$skills_dir/$old" "$fixture/pi/skills/synced/$old"
+  printf -- '---\nname: %s\ndescription: old utility.\n---\n' "$old" > "$skills_dir/$old/SKILL.md"
+  cp -f "$skills_dir/$old/SKILL.md" "$fixture/pi/skills/synced/$old/SKILL.md"
+  printf '%s\n' "$old" >> "$manifest"
+  ln -sfn "$skills_dir/$old" "$fixture/home/.codex/skills/$old"
+done
+mkdir -p "$fixture/home/Desktop"
+printf 'history sentinel\n' > "$fixture/home/Desktop/standups.db"
+
 # Second run: prune removed/retired skills, keep unrelated external and current ones.
 run_install
+for old in meetily standup retro; do
+  test ! -e "$skills_dir/$old"
+  test ! -L "$fixture/home/.codex/skills/$old"
+  test ! -e "$fixture/pi/skills/synced/$old"
+  test -f "$skills_dir/utils/references/$old/SKILL.md"
+done
+grep -qx 'history sentinel' "$fixture/home/Desktop/standups.db"
+test -f "$skills_dir/utils/references/meetily/scripts/meetily.py"
+test -f "$skills_dir/utils/references/standup/schema.sql"
+test -f "$skills_dir/utils/references/brevity/output-discipline.md"
+test -f "$skills_dir/utils/references/coding-standards/coding-standards.md"
+grep -q '/utils' "$fixture/home/AGENTS.md"
+! grep -Eq '/(meetily|standup|retro)`' "$fixture/home/AGENTS.md"
 test ! -e "$skills_dir/$legacy"
 test ! -L "$fixture/home/.codex/skills/$legacy"
 test ! -e "$fixture/pi/skills/synced/$legacy"

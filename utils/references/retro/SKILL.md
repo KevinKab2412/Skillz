@@ -15,7 +15,7 @@ disable-model-invocation: true
 # Retro — improve the environment, not the diff
 
 > **Output discipline (hard rule).** Every output this skill produces obeys
-> [`references/brevity/output-discipline.md`](references/brevity/output-discipline.md): **≤150 words of
+> [`../brevity/output-discipline.md`](../brevity/output-discipline.md): **≤150 words of
 > prose**, plain English, worst-first. A table of candidates isn't prose — use one.
 
 A retro looks backward at how a session, a PR, or a week of PRs actually went, and asks what in the
@@ -47,7 +47,7 @@ checklist pass produces noise, not signal.
 |---|---|---|
 | **Navigation** | Was a hidden file dependency hard to find? Would a pointer in `AGENTS.md`/`CONTEXT.md` have helped? | the session spent real time locating something |
 | **Automated checks** | Read the repo's own `lint`/`check`/CI config first — is there a check sitting unwired or silently broken? A repo with **no** guardrail at all (no pre-commit hook, no CI lint/typecheck/test job) is itself a finding. | an agent mistake could have been caught mechanically, or no guardrail exists |
-| **Coding standards** | Classify the violation per [`references/coding-standards/coding-standards.md`](references/coding-standards/coding-standards.md): mechanical → a linter rule/pre-commit hook/CI job; judgment call → one line in `CODING_STANDARDS.md`. Default to the mechanical check whenever one is possible. | `code-review`'s Standards lane failed to catch it, or flagged it as a nit repeatedly |
+| **Coding standards** | Classify the violation per [`../coding-standards/coding-standards.md`](../coding-standards/coding-standards.md): mechanical → a linter rule/pre-commit hook/CI job; judgment call → one line in `CODING_STANDARDS.md`. Default to the mechanical check whenever one is possible. | `code-review`'s Standards lane failed to catch it, or flagged it as a nit repeatedly |
 | **Steering-file bloat** | Is `AGENTS.md`/`CONTEXT.md` (repo or global) large? Any instruction in it that never changed behavior this session (a no-op)? | the steering file is large or the agent ignored part of it |
 | **Tool economy** | Any expensive or token-inefficient tool call — a custom CLI/MCP call that could be cheaper? | an agent made a visibly expensive call |
 | **Information access** | Was a crucial fact unavailable — dev-server logs, a third-party service, read access to something? | the agent or a human reviewer was missing information that existed somewhere |
@@ -56,7 +56,7 @@ checklist pass produces noise, not signal.
 
 For each surviving candidate: the category, the one sentence of evidence that triggered it, the
 concrete fix, and — for anything editing `CODING_STANDARDS.md` or a lint/CI config — a ready **diff**,
-not a description. Read the shared [visual module](../explain/references/show-me.md)
+not a description. Read the shared [visual module](../../../explain/references/show-me.md)
 for a file tree or diff where it reads faster than prose. End with
 one question: which to apply.
 
@@ -76,11 +76,11 @@ else in this toolset.
 
 All work here goes through two stages with very different context pressure. **Implement** carries the
 most: it explores, writes, and debugs, one task at a time — see
-[`pair/references/implement/SKILL.md`](../pair/references/implement/SKILL.md), which already scopes its
+[`pair/references/implement/SKILL.md`](../../../pair/references/implement/SKILL.md), which already scopes its
 own cleanup step to the current batch and nothing wider. **Review** carries the least — it receives a
 diff, so no exploration is needed — which is why `code-review`'s Standards lane, not `implement`, is the
 one that reads and enforces `CODING_STANDARDS.md`
-([`references/coding-standards/coding-standards.md`](references/coding-standards/coding-standards.md)).
+([`../coding-standards/coding-standards.md`](../coding-standards/coding-standards.md)).
 A retro candidate that would ask `implement` to additionally check a repo-wide standards file is the
 wrong fix — it re-overloads the stage that's already carrying the most. Route it to `code-review`'s
 Standards lane instead.

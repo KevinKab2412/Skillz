@@ -11,7 +11,7 @@ description: >
   name Meetily, as long as the meeting was recorded on this machine.
 ---
 
-# meetily
+# Meetily — internal utils module
 
 Meetily records meetings locally and writes transcripts to
 `~/Library/Application Support/com.meetily.ai/meeting_minutes.sqlite`. This skill reads that
@@ -25,7 +25,8 @@ fails with "unable to open database file", and `?immutable=1` silently skips dat
 so a meeting that just ended can be missing.
 
 ```bash
-S=~/.agents/skills/meetily/scripts/meetily.py
+# Resolve this module's directory first; this is the default installed location.
+S=~/.agents/skills/utils/references/meetily/scripts/meetily.py
 python3 $S list                        # newest first: date, segments, chars, title, id
 python3 $S search "jason" --context 2  # hits across every meeting, with surrounding segments
 python3 $S show 2026-09-21             # full transcript; accepts an id, a date prefix, or "latest"

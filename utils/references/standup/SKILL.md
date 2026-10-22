@@ -4,7 +4,7 @@ description: Generate a standup update from recent activity. Use when preparing 
 argument-hint: "[yesterday | today | blockers]"
 ---
 
-# /standup
+# Standup — internal utils module
 
 > Check which Git, PR, tracker, and meeting tools are actually connected. Skip missing integrations
 > and state the resulting coverage gap; never assume a platform-specific connector exists.
@@ -125,7 +125,7 @@ PR numbers are fine — they are how the team finds the work to review.
 ## What I Need From You
 
 **Option A: Let me pull it**
-If your tools are connected, just say `/standup` and I'll gather everything automatically.
+If your tools are connected, just say `/utils write today's standup` and I'll gather everything automatically.
 
 **Option B: Tell me what you did**
 "Worked on the auth migration, reviewed 3 PRs, got blocked on the API rate limiting issue."

@@ -324,7 +324,7 @@ Use this exact shape:
 **🔴 Don't merge yet** — <n> blocker(s): <the one-line worst>.
 
 **Standards:** <🔴 none set / 🟡 partial / 🟢 solid> — <the Standards lane's one-clause why>. <if 🔴 or
-🟡:> consider running `retro` to start one.
+🟡:> consider running `/utils retro` to start one.
 
 ## The goal
 <1–2 sentences, plain English: what problem this change set out to solve. From Linear + the PR.>

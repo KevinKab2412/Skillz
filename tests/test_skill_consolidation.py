@@ -101,6 +101,20 @@ class WiringTests(unittest.TestCase):
         for name in retire.retired_names(ROOT / 'retired-skills.txt'):
             self.assertFalse((ROOT / name / 'SKILL.md').exists(), name)
 
+    def test_utils_bundles_everyday_workflows_and_keeps_creator_local(self):
+        router = (ROOT / 'utils/SKILL.md').read_text()
+        for name in ('meetily', 'standup', 'retro'):
+            self.assertIn(f'(references/{name}/SKILL.md)', router)
+            self.assertFalse((ROOT / name).exists())
+            self.assertIn(name, retire.retired_names(ROOT / 'retired-skills.txt'))
+        self.assertIn('Keep Linear and Jira read-only', router)
+        self.assertIn('-R K2412/planning', router)
+        self.assertIn('Distinguish commitments from completed', router)
+        self.assertNotIn('(references/skill-creator/', router)
+        script = ROOT / 'utils/references/meetily/scripts/meetily.py'
+        self.assertTrue(script.is_file())
+        self.assertTrue((ROOT / 'utils/references/standup/schema.sql').is_file())
+
     def test_worktree_is_internal_and_reused(self):
         self.assertTrue((ROOT / 'pair/references/worktree/scripts/mkworktree.sh').is_file())
         self.assertIn('(references/worktree/SKILL.md)', (ROOT / 'pair/SKILL.md').read_text())
@@ -172,6 +186,10 @@ class WiringTests(unittest.TestCase):
                             shutil.copytree(ROOT / 'shared' / module,
                                             destination / 'references' / module)
             for relative in (
+                'utils/SKILL.md',
+                'utils/references/meetily/SKILL.md',
+                'utils/references/standup/SKILL.md',
+                'utils/references/retro/SKILL.md',
                 'pair/references/research/SKILL.md',
                 'pair/references/auto.md',
                 'pair/references/grill/SKILL.md',

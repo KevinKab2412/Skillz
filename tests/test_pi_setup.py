@@ -33,7 +33,7 @@ class PiSetupTests(unittest.TestCase):
             repo.mkdir()
             for name in ('install.sh', 'retired-skills.txt'):
                 shutil.copy2(ROOT / name, repo / name)
-            for name in ('pi', 'scripts', 'shared', 'instructions', 'standup', 'explain'):
+            for name in ('pi', 'scripts', 'shared', 'instructions', 'utils', 'explain'):
                 shutil.copytree(ROOT / name, repo / name)
             dest.mkdir()
             original = {'deviceId': 'local-only', 'lastChangelogVersion': '1.3.0', 'theme': 'dark'}

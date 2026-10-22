@@ -33,20 +33,30 @@ live in [`pi/`](pi/README.md). After installing the pinned Pi runtime, run
 
 ## Global skills
 
-Eight skills ship globally from this repository:
+Six skills ship globally from this repository:
 
 - **code-review** — requirements/standards review, focused bug/security review, and teaching mode.
 - **explain** — plain-English teaching and compact visual-only explanations.
-- **meetily** — find and summarise locally recorded meetings.
 - **pair** — gated end-to-end work, or focused requirements, research, experts, and PR/stack modes.
-- **retro** — evidence-led improvements to the agent's working environment.
-- **standup** — recent activity and yesterday/today/blockers updates.
+- **utils** — standups, local Meetily meetings, meeting follow-up drafts, and coding retros.
 - **visualise** — animated, beat-by-beat standalone HTML explanations.
 - **wayfinder** — multi-session decision maps for large, uncertain work.
 
-The separately installed, Laravel-authored **deploying-to-cloud** skill is retained, making nine
+The separately installed, Laravel-authored **deploying-to-cloud** skill is retained, making seven
 in the current global setup. Unknown third-party skills are preserved unless explicitly retired.
 Vendor/client updates may restore bundled skills; rerun the installer to reapply retirement policy.
+
+## Utils — everyday workflows
+
+Use `/utils write today's standup`, `/utils summarise my last meeting`,
+`/utils draft tickets from yesterday's meeting`, or `/utils retro on this week's PRs`.
+Natural-language requests work too; bare `/utils` offers a short menu. Meeting-backed standups
+combine the meeting and standup modules automatically. Linear and Jira remain read-only;
+meeting tickets are paste-ready drafts unless planning issues in `K2412/planning` are requested.
+
+The former standalone Meetily, Standup, and Retro skills now live under `utils/references/`.
+Installation removes their old global entry points, preserving standup history and Meetily data.
+Skill Creator remains project-local.
 
 ## Pair modes — the same instructions across harnesses
 

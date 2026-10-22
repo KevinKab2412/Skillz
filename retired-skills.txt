@@ -20,6 +20,7 @@ grill
 import-memory
 loop
 migrate-to-skills
+meetily
 morning
 new-repo
 onboard
@@ -28,6 +29,7 @@ pdf
 pptx
 rename-chat
 research
+retro
 review
 review-bugbot
 review-security
@@ -37,6 +39,7 @@ shell
 show-me
 skill-creator
 split-to-prs
+standup
 statusline
 to-pr
 to-visual
