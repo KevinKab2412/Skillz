@@ -12,7 +12,7 @@ cp -f "$repo_root/retired-skills.txt" "$fixture/retired-skills.txt"
 mkdir -p "$fixture/scripts"
 cp -f "$repo_root/scripts/prune-retired-skills.py" "$fixture/scripts/prune-retired-skills.py"
 cp -rf "$repo_root/shared" "$fixture/shared"
-for skill in pair code-review explain-this-like-I-am-an-intern visualise; do
+for skill in pair code-review explain visualise; do
   cp -rf "$repo_root/$skill" "$fixture/$skill"
 done
 mkdir -p "$fixture/home/.claude" "$fixture/home/.codex/skills"
@@ -76,8 +76,20 @@ Keep this custom rule.
 > managed via Skillz
 EOF
 
+# Upgrade the renamed explanation skill, including a synced copy outside our manifest.
+legacy=explain-this-like-I-am-an-intern
+mkdir -p "$skills_dir/$legacy" "$fixture/pi/skills/synced/$legacy"
+printf -- '---\nname: explain-this-like-i-am-an-intern\n---\n' > "$skills_dir/$legacy/SKILL.md"
+cp -f "$skills_dir/$legacy/SKILL.md" "$fixture/pi/skills/synced/$legacy/SKILL.md"
+printf '%s\n' "$legacy" >> "$manifest"
+ln -sfn "$skills_dir/$legacy" "$fixture/home/.codex/skills/$legacy"
+
 # Second run: prune removed/retired skills, keep unrelated external and current ones.
 run_install
+test ! -e "$skills_dir/$legacy"
+test ! -L "$fixture/home/.codex/skills/$legacy"
+test ! -e "$fixture/pi/skills/synced/$legacy"
+! grep -qxF "$legacy" "$manifest"
 
 test ! -d "$skills_dir/review"
 test ! -d "$skills_dir/synced/vendor/canvas"
@@ -88,8 +100,9 @@ test -f "$skills_dir/pair/references/grill/SKILL.md"
 test -f "$skills_dir/pair/references/experts/SKILL.md"
 test -f "$skills_dir/pair/references/to-pr/SKILL.md"
 test -f "$skills_dir/pair/references/brevity/output-discipline.md"
-test -f "$skills_dir/explain-this-like-I-am-an-intern/references/show-me.md"
-test -f "$skills_dir/explain-this-like-I-am-an-intern/references/show-me/visual-formats.md"
+test -f "$skills_dir/explain/references/show-me.md"
+test -f "$skills_dir/explain/references/show-me/visual-formats.md"
+grep -qx 'name: explain' "$skills_dir/explain/SKILL.md"
 for retired in grill experts show-me to-pr; do test ! -e "$skills_dir/$retired"; done
 test -L "$fixture/home/.cursor/skills/pair"
 grep -q 'Keep this custom rule.' "$fixture/home/AGENTS.md"

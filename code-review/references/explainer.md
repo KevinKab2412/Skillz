@@ -57,7 +57,7 @@ honour that and tighten the background accordingly.
 ## Step 2 — Write the explainer in teaching order
 
 **Construct the teaching content by invoking the
-[`explain-this-like-I-am-an-intern`](../../explain-this-like-I-am-an-intern/SKILL.md) skill via the
+[`explain`](../../explain/SKILL.md) skill via the
 Skill tool** — it is the source of truth for *how* to explain: lead with the why and the missing
 premise, spell out every acronym and domain term on first use, reach for a concrete example before any
 abstraction, and name the trap a newcomer would form. Author the sections below from what it produces.

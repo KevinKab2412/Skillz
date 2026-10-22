@@ -122,7 +122,7 @@ class WiringTests(unittest.TestCase):
         for path in ('wayfinder/SKILL.md',):
             self.assertIn('pair/references/grill/SKILL.md', (ROOT / path).read_text())
         for path in ('code-review/references/experts-lane.md',
-                     'explain-this-like-I-am-an-intern/SKILL.md'):
+                     'explain/SKILL.md'):
             self.assertIn('pair/references/experts/SKILL.md', (ROOT / path).read_text())
 
     def test_research_is_internal_and_review_experts_are_automatic(self):
@@ -144,7 +144,7 @@ class WiringTests(unittest.TestCase):
         self.assertNotIn('ask for `--experts`', review)
 
     def test_visual_only_mode_and_local_creator_are_preserved(self):
-        explanation = ROOT / 'explain-this-like-I-am-an-intern'
+        explanation = ROOT / 'explain'
         self.assertIn('(references/show-me.md)', (explanation / 'SKILL.md').read_text())
         self.assertIn('Do not force the full teaching sequence', (explanation / 'SKILL.md').read_text())
         self.assertTrue((explanation / 'references/show-me.md').is_file())
@@ -178,7 +178,7 @@ class WiringTests(unittest.TestCase):
                 'pair/references/experts/SKILL.md',
                 'pair/references/to-pr/SKILL.md',
                 'pair/references/to-pr/references/visual-proof.md',
-                'explain-this-like-I-am-an-intern/references/show-me.md',
+                'explain/references/show-me.md',
                 'code-review/references/experts-lane.md',
             ):
                 file = installed / relative

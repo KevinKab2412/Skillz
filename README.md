@@ -30,7 +30,7 @@ Reload or restart agents after syncing.
 Eight skills ship globally from this repository:
 
 - **code-review** — requirements/standards review, focused bug/security review, and teaching mode.
-- **explain-this-like-i-am-an-intern** — plain-English teaching and compact visual-only explanations.
+- **explain** — plain-English teaching and compact visual-only explanations.
 - **meetily** — find and summarise locally recorded meetings.
 - **pair** — gated end-to-end work, or focused requirements, research, experts, and PR/stack modes.
 - **retro** — evidence-led improvements to the agent's working environment.
@@ -76,7 +76,7 @@ or requiring a newly invented GitHub plan.
   explanation, research, or any other caller. Standards require citations and honest confidence.
 - `pair/references/to-pr/` — draft PR preparation, visual proof, safe splitting, and logical stacking.
   Opening a PR requires an explicit shipping request; polishing a pair change does not open one.
-- `explain-this-like-I-am-an-intern/references/show-me.md` — compact visual-only mode, with no forced
+- `explain/references/show-me.md` — compact visual-only mode, with no forced
   quiz or teaching ceremony. Other skills can read it directly.
 - `code-review/references/experts-lane.md` — automatic domain-standards pass alongside Standards
   and Spec; missing tools and low confidence are disclosed. Explicit focused scope is preserved.

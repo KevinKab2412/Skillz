@@ -53,6 +53,6 @@ layout so the design is legible before it's built.
 Lightweight and stateless — one or more visuals inline (or one HTML file), then move on. It doesn't
 open a workspace, run a quiz, or persist anything. For a full teaching walkthrough of a code change
 (background → intuition → literate diff → quiz), that's `code-review`'s explain mode; for
-re-explaining something that lost the reader from scratch, that's `explain-this-like-I-am-an-intern`;
+re-explaining something that lost the reader from scratch, that's `explain`;
 for an animated, beat-by-beat walkthrough, that's `visualise`. The first two already reach for these
 same visuals — this module supplies the direct "just show me" mode.

@@ -25,7 +25,7 @@ It has two modes:
 
 - **Review** (default) — the verdict pass. Runs below.
 - **Explain** — the teaching pass. Invokes the
-  [`explain-this-like-I-am-an-intern`](../explain-this-like-I-am-an-intern/SKILL.md) skill via the
+  [`explain`](../explain/SKILL.md) skill via the
   Skill tool to construct the explanation, then packages that into the full HTML explainer + quiz.
   Triggered when the user asks to *understand* rather than *judge* ("explain this diff", "help me
   understand this change", "walk me through this PR"), or when a review didn't land and they want the
@@ -485,7 +485,7 @@ options:
   commit** — that's always the user's call, the same rule that keeps the paste-comment path below from
   posting on its own.
 - **Explain it** → switch to explain mode: invoke the
-  [`explain-this-like-I-am-an-intern`](../explain-this-like-I-am-an-intern/SKILL.md) skill via the
+  [`explain`](../explain/SKILL.md) skill via the
   Skill tool on the same change so the walkthrough leads with the why, glosses the jargon, and probes
   that it landed; then follow [`references/explainer.md`](references/explainer.md) to package it into
   the HTML explainer + quiz and hand back the path.

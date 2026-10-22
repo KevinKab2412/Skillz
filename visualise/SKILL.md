@@ -8,7 +8,7 @@ description: >
   idea, it animates the concept, explained through a familiar concept first and code-editorial beats
   for code. Also plays the step-through walk JSON. Draws on a concept library (Jackson's concepts,
   Litt's patterns) that agents extend. Other skills call it when their gate says the idea changes
-  over time: explain-this-like-I-am-an-intern, code-review's explain mode, show-me, spec,
+  over time: explain, code-review's explain mode, show-me, spec,
   sketch-change. Or run it directly with "/visualise <concept or PR>". Writes one self-contained HTML
   page (or an inline fragment), checks every beat in a browser, and opens it.
 argument-hint: "What should I animate? (a concept, a PR or diff, a mechanism — or a walk JSON)"
@@ -104,7 +104,7 @@ fire, say so and hand back without a file: a missing animation should read as a 
 | Caller | When | Mode |
 |---|---|---|
 | `code-review` explain mode | an agent-written change: concept view when the tests can be recorded, else a walk or scene | fragment in the explainer |
-| `explain-this-like-I-am-an-intern` | the subject is a process or mechanism and the gate fires | page, opened beside the chat explanation |
+| `explain` | the subject is a process or mechanism and the gate fires | page, opened beside the chat explanation |
 | explanation's internal `show-me` module | the shape changes over time | page |
 | `spec`, `sketch-change` (via `pair`) | the proposed flow is easier watched than read | page, linked from the spec / sketch |
 
