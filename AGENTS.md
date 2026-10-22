@@ -82,7 +82,7 @@ globally; `install.sh` exports only the top-level global skills.
 <!-- skillz:available-skills -->
 ## Available Skills
 
-Skills load automatically from `~/.agents/skills/` (shared across Claude Code, Codex, and OpenCode). Invoke with `/skill-name` or just describe what you need:
+Skills load automatically from `~/.agents/skills/` (shared across Pi, Claude Code, Codex, and Cursor). Invoke with `/skill-name` or just describe what you need:
 
 - **`/code-review`** — Review a PR, branch, or working diff and give one clear merge call in a short plain-English report.
 - **`/deploying-to-cloud`** — Deploys and manages Laravel applications on Laravel Cloud using the `cloud` CLI.

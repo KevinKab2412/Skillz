@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Installs all skills to ~/.agents/skills/ (the source-of-truth),
 # regenerates ~/.agents/AGENTS.md and ~/.claude/CLAUDE.md (symlink) so Claude
-# Code and OpenCode always reflect the current skill set,
+# Code and Pi always reflect the current skill set,
 # installs orchestrator-only instruction modules to ~/.pi/agent/instructions/,
 # installs Pi extensions to ~/.pi/agent/extensions/, and symlinks skills into
 # ~/.claude/skills/ and ~/.codex/skills/ so those CLIs pick them up. Tool dirs
@@ -94,7 +94,6 @@ TOOL_DIRS=(
   "$HOME/.claude/skills"
   "$HOME/.codex/skills"
   "$HOME/.cursor/skills"
-  "$HOME/.config/opencode/skills"
 )
 
 # Manifest of the skills THIS installer manages, so a later run can prune ones
@@ -280,7 +279,7 @@ if [ -f "$REPO_AGENTS_MD" ] \
     echo "$BEGIN_MARKER"
     echo "## Available Skills"
     echo ""
-    echo "Skills load automatically from \`~/.agents/skills/\` (shared across Claude Code, Codex, and OpenCode). Invoke with \`/skill-name\` or just describe what you need:"
+    echo "Skills load automatically from \`~/.agents/skills/\` (shared across Pi, Claude Code, Codex, and Cursor). Invoke with \`/skill-name\` or just describe what you need:"
     echo ""
     emit_skill_bullets
     echo ""
@@ -333,4 +332,4 @@ if [ "$linked" -gt 0 ]; then
 else
   echo "      No tool dirs found (~/.claude/skills, ~/.codex/skills)."
 fi
-echo "Restart Claude Code or OpenCode to pick up skill changes."
+echo "Reload or restart your agents to pick up skill changes."

@@ -1,6 +1,6 @@
 # Skillz
 
-The source for my Pi, Claude Code, Codex, Cursor, and OpenCode skills. Global entry points stay small;
+The source for my Pi, Claude Code, Codex, and Cursor skills. Global entry points stay small;
 workflow-specific capabilities live in reusable reference modules.
 
 ## Install / sync globally
@@ -12,7 +12,7 @@ bash install.sh
 The installer:
 
 - copies top-level skill directories into `~/.agents/skills/`, replacing previous copies;
-- links them into existing Claude Code, Codex, Cursor, and OpenCode global skill directories;
+- links them into existing Claude Code, Codex, and Cursor global skill directories;
 - regenerates global guidance and the repository's global skill listing;
 - refreshes generated listings in `~/AGENTS.md` and `~/.codex/AGENTS.md` without replacing their rules;
 - removes explicitly retired global skills using [`retired-skills.txt`](retired-skills.txt), including
@@ -20,10 +20,16 @@ The installer:
 - removes synced duplicates when a canonical global skill exists;
 - installs instruction modules into `~/.pi/agent/instructions/`.
 
-Pi and OpenCode read the shared global directory natively. `AGENTS_HOME` and `PI_HOME`
+Pi reads the shared global directory natively. `AGENTS_HOME` and `PI_HOME`
 override installation paths. The experimental agent-memory integration has been removed;
 installation does not install a memory service or require model-generated evaluation evidence.
 Reload or restart agents after syncing.
+
+## Restore Pi on a new system
+
+The version-pinned Pi setup, local model configuration, prompts, and restore instructions
+live in [`pi/`](pi/README.md). After installing the pinned Pi runtime, run
+`bash pi/setup.sh` to restore it. Credentials and session history are excluded.
 
 ## Global skills
 
