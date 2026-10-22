@@ -119,11 +119,29 @@ class WiringTests(unittest.TestCase):
         self.assertIn('(references/experts/SKILL.md)', pair)
         self.assertIn('(references/to-pr/SKILL.md)', pair)
         self.assertIn('Do not automatically create a spec or start implementation', pair)
-        for path in ('wayfinder/SKILL.md', 'research/SKILL.md'):
+        for path in ('wayfinder/SKILL.md',):
             self.assertIn('pair/references/grill/SKILL.md', (ROOT / path).read_text())
-        for path in ('code-review/references/experts-lane.md', 'research/SKILL.md',
+        for path in ('code-review/references/experts-lane.md',
                      'explain-this-like-I-am-an-intern/SKILL.md'):
             self.assertIn('pair/references/experts/SKILL.md', (ROOT / path).read_text())
+
+    def test_research_is_internal_and_review_experts_are_automatic(self):
+        pair = (ROOT / 'pair/SKILL.md').read_text()
+        research = (ROOT / 'pair/references/research/SKILL.md').read_text()
+        review = (ROOT / 'code-review/SKILL.md').read_text()
+        lane = (ROOT / 'code-review/references/experts-lane.md').read_text()
+        self.assertIn('Research only', pair)
+        self.assertIn('(references/research/SKILL.md)', pair)
+        self.assertIn('(../experts/SKILL.md)', research)
+        self.assertIn('Consult the local experts first', research)
+        self.assertIn('no background-agent tool', research)
+        self.assertIn('research', retire.retired_names(ROOT / 'retired-skills.txt'))
+        self.assertIn('Experts lane runs automatically', review)
+        self.assertIn('(../pair/references/research/SKILL.md)', review)
+        self.assertIn('any lane classified `blocker`', review)
+        self.assertIn('low confidence', lane)
+        self.assertNotIn('off by default', lane)
+        self.assertNotIn('ask for `--experts`', review)
 
     def test_visual_only_mode_and_local_creator_are_preserved(self):
         explanation = ROOT / 'explain-this-like-I-am-an-intern'
@@ -154,6 +172,8 @@ class WiringTests(unittest.TestCase):
                             shutil.copytree(ROOT / 'shared' / module,
                                             destination / 'references' / module)
             for relative in (
+                'pair/references/research/SKILL.md',
+                'pair/references/auto.md',
                 'pair/references/grill/SKILL.md',
                 'pair/references/experts/SKILL.md',
                 'pair/references/to-pr/SKILL.md',

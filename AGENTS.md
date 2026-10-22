@@ -53,14 +53,8 @@ authoritative state; shared modules own only policy that must remain identical a
 
 ## Conventions & Patterns
 
-- Generic workflow memory is advisory and non-blocking. Planning issues, repository records,
-  architecture contracts, and teaching mission and learning records remain authoritative.
-- Memory-aware nested skills inherit the outermost workflow memory session. They may capture their
-  own qualified events but must not repeat startup recall or final flush.
-- Skills may depend on versioned MCP memory tools through the shared memory reference. They must not
-  call SQLite, FastEmbed, the outbox, client configuration, or daemon internals.
-- Escalate if memory needs to override or duplicate an authority, requires mission-specific generic
-  scope, or requires a new service operation.
+- Planning issues, repository records, and architecture contracts remain authoritative.
+- Skills use repository evidence and user instructions; the experimental memory service is retired.
 
 
 ## Writing Style
@@ -95,7 +89,6 @@ Skills load automatically from `~/.agents/skills/` (shared across Claude Code, C
 - **`/explain-this-like-i-am-an-intern`** — Explain subjects or confusing messages from scratch for a bright intern: lead with the missing premise and why, define jargon, give concrete…
 - **`/meetily`** — Read, search, and summarise meeting transcripts recorded by the local Meetily app, which stores them in a SQLite database on this Mac.
 - **`/pair`** — Guide work from requirements through planning, bounded implementation, architecture checkpoints, review, taste, and polish, with human approval gates.
-- **`/research`** — Investigate a question against high-trust primary sources, web search, site scraping and crawling (Firecrawl), and Mobbin UI examples, then capture…
 - **`/retro`** — Run a retrospective on a coding session, a PR, or a batch of recent PRs — to improve the environment agents work in next time, not to fix the code…
 - **`/standup`** — Generate a standup update from recent activity.
 - **`/visualise`** — Turn one concept into an animated, beat-by-beat HTML explainer: a 1920×1080 composition that pauses after each beat, silent, with one caption per…

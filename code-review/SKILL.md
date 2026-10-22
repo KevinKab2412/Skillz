@@ -32,7 +32,7 @@ It has two modes:
   deep dive. Jump to [`references/explainer.md`](references/explainer.md) and follow it; skip the rest
   of this file.
 
-The two axes of the review — **Standards** and **Spec** — run as separate subagents so their contexts
+The three review lanes — **Standards**, **Spec**, and **Experts** — run as separate subagents so their contexts
 never bleed into each other. A change can pass one and fail the other, and keeping them apart is what
 lets that show. Everything else (resolving the target, writing the goal, distilling the findings) is
 done in the main thread.
@@ -139,9 +139,9 @@ Read whatever exists in full —
 [`references/coding-standards/coding-standards.md`](references/coding-standards/coding-standards.md)
 has the maturity rubric. Pass whatever you found, or its absence, into the Standards subagent verbatim.
 
-## Step 2 — Run Standards and Spec in parallel
+## Step 2 — Run Standards, Spec, and Experts in parallel
 
-**Choose the scope first.** A normal review keeps both lanes below. An explicit bug-only or
+**Choose the scope first.** A normal review keeps all three lanes. An explicit bug-only or
 security-only request uses the matching focused lane instead; do not force a menu or run unrelated
 lanes. For security, trace changed trust boundaries, authentication/authorization, tenant isolation,
 untrusted inputs, secret handling, and injection paths; report concrete exploitable consequences,
@@ -156,14 +156,19 @@ label it honestly rather than claiming Bugbot ran. Backend failures get at most 
 backend findings into this skill's verification and report; do not emit a second competing verdict.
 When no parallel-agent tool exists, run the lanes sequentially and disclose the lack of independence.
 
-Send **one message with two `Agent` calls** (`subagent_type: "claude"`). They share the diff, commit
+Send **one message with three `Agent` calls** (`subagent_type: "claude"`). They share the diff, commit
 list, and goal from Step 1; each gets its own clean context. Keep each subagent's brief **under 400
 words of output** — they feed a concise report, so a sprawling subagent return defeats the purpose.
 
-**Experts lane is off by default** — it's the main source of the old overload. Only add it when the
-user explicitly asks for a domain deep-dive ("hold this to the experts", "run the experts pass") or
-passes `--experts`; then follow [`references/experts-lane.md`](references/experts-lane.md) as a third
-subagent.
+**Experts lane runs automatically** in a normal review: follow
+[`references/experts-lane.md`](references/experts-lane.md) as the third subagent; no `--experts`
+request is needed. Explicit bug-only or security-only scope still limits every lane to that scope.
+Missing tools or low-confidence results are disclosed, never treated as a clean experts pass.
+
+When a concrete review claim depends on an unknown external fact (an API guarantee, library behavior,
+or current documentation), read pair's [research module](../pair/references/research/SKILL.md)
+directly. Research only that gap, cite the evidence, and return to the review; do not start pair,
+change the acceptance bar, or add a broad research pass to every review.
 
 ---
 
@@ -266,7 +271,7 @@ each finding in plain English — lead with the consequence, gloss any jargon. U
 
 ## Step 3 — Verify blockers before they reach the report
 
-Collect every finding either lane classified `blocker`. If there are none, skip this step entirely — it
+Collect every finding any lane classified `blocker`. If there are none, skip this step entirely — it
 costs nothing on the common case. For each one, send a single `Agent` call (`subagent_type: "claude"`)
 trying to refute it:
 
@@ -294,7 +299,7 @@ spawns more than a couple of calls.
 
 ## Step 4 — Distil to the concise report
 
-Both lanes have returned. Now write the report the user actually reads. **Do not paste the subagent
+All available lanes have returned. Now write the report the user actually reads. **Do not paste the subagent
 returns.** They are raw material; your job is to distil them into the structure below, dropping every
 nit and rewriting each surviving finding for a bright intern.
 
@@ -364,8 +369,9 @@ next engineer — 1 sentence.>
 ```
 
 ## What I left out
-<n> nit(s) and wording note(s), not shown — say the word if you want them. <If the experts lane
-wasn't run:> Domain-standards (experts) pass not run — ask for `--experts` if you want it.
+<n> nit(s) and wording note(s), not shown — say the word if you want them.
+Experts: <completed / unavailable / low confidence / excluded by explicit scope> — <one clause why,
+including any coverage gap; never imply a missing or low-confidence pass cleared the change>.
 
 ## Want the deep dive?
 If any of the above didn't land, say "explain it" and I'll build the full walkthrough — background →
@@ -399,7 +405,7 @@ worthless here.
   "Does the key survive a reworded label?" earns its stop; "is this correct?" does not. A stop you
   cannot write a question for is a stop to cut.
 - **Give the line count** so the reader can budget, and flag when docstrings inflate it.
-- **"Where I'm least sure" is the point of the section.** Name the places both lanes went quiet, the
+- **"Where I'm least sure" is the point of the section.** Name the places all available lanes went quiet, the
   judgement calls you took a side on, and anything you could not run. Sending the human at your own
   blind spots is worth more than sending them at your findings.
 
@@ -492,7 +498,7 @@ options:
 
 ## Pipeline notes (when called from /pair)
 
-`code-review` is the review stage of `/pair`, replacing the old two-axis stage. Two behaviours carry
+`code-review` is the review stage of `/pair`, replacing the old two-axis stage. These behaviours carry
 over from that role:
 
 - **Intent trace.** If a design sketch exists in `docs/sketches/` (from `sketch-change`, written

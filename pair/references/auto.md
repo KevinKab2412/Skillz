@@ -38,10 +38,6 @@ confirmation. Do not switch, stash, copy over, or discard someone else's dirty c
 existing worktrees and record starting HEAD/status so the final patch can be attributed correctly.
 A missing GitHub connection does not block a task that can be completed and checked locally.
 
-Apply pair's shared workflow-memory lifecycle after loading authoritative state: one outer session,
-inherited by any memory-aware nested stages, with missing tools failing open. Memory cannot choose
-the mode, widen scope, approve a gate, or turn agent assumptions into user-accepted decisions.
-
 ## 2. Build a small execution brief
 
 Record in the conversation (or private OS-temp run state outside the code repo):
@@ -67,7 +63,7 @@ labels, or convert an unapproved existing plan into an approved one.
 
 ## 3. Investigate only what the task needs
 
-Choose useful tools and skills without an offer/approval round. Read [research](../../research/SKILL.md)
+Choose useful tools and skills without an offer/approval round. Read [research](research/SKILL.md)
 for unfamiliar facts, [experts](experts/SKILL.md) for domain standards, and the internal
 [best-practices](best-practices/SKILL.md) guidance for the detected stack when relevant. Repository
 stack/configuration evidence is sufficient; missing issue labels are not a reason to ignore it.
@@ -87,7 +83,7 @@ When an approved plan is supplied, retain every real gate and dependency; auto m
 `needs-human` or required architecture checkpoints or writes approval on the user's behalf.
 
 Use a fresh-context worker when available. Give it the exact task, evidence, brief, existing
-contracts, permitted scope, stop conditions, and inherited memory session. If workers are absent,
+contracts, permitted scope, and stop conditions. If workers are absent,
 proceed sequentially in the current context and disclose the reduced independence without asking
 for routine permission. Never imply fresh-context isolation happened when it did not.
 
@@ -145,13 +141,11 @@ trackers remain read-only even when the task came from one.
 
 A missing optional reviewer, taste file, or research integration alone does not justify grilling.
 Do not fabricate successful checks, corpus citations, user acceptance, independent review, or durable
-planning state. Parent workflow-memory capture rules remain unchanged: an assumption is not an
-accepted decision, and a reusable lesson needs verified evidence.
+planning state. An assumption is not an accepted decision, and a reusable lesson needs verified evidence.
 
 ## Hand back and stop
 
 Return the outcome, worktree/branch, changed scope, important assumptions, checks actually run,
 review independence, remaining findings, and any blocked decisions. Distinguish complete from partial
-and unverified work. Close pair's outer memory session on completion or pause using the shared
-fail-open protocol. Do not continue into guided stages, ship the change, or start a new task without
+and unverified work. Do not continue into guided stages, ship the change, or start a new task without
 a further user instruction.

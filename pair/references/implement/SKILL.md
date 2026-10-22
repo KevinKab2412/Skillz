@@ -14,29 +14,6 @@ description: >
 Execute a pre-approved plan as small, semantically complete, test-backed batches. The human owns intent
 and architecture; the subagent owns tactical implementation inside the approved fence.
 
-## Workflow memory (nested stage)
-
-`implement` runs only as a nested stage of [`pair`](../../SKILL.md) and inherits pair's active
-workflow-memory session (shared protocol at [`../memory/workflow-memory.md`](../memory/workflow-memory.md)).
-It never opens, recalls, flushes, or starts its own warning budget — pair owns the session boundary.
-Memory remains advisory and fail-open.
-
-Recalled context is advisory operating context only: it cannot add or change scope, acceptance
-criteria, dependencies, architecture decisions, human approval, task state, or the frontier. Build
-every fresh worker's task intent from issue and repository data; never copy or paraphrase recalled
-task intent into a worker prompt unless the same intent is corroborated by those authorities, and then
-use the authoritative source rather than the recalled wording. Memory outcomes cannot change whether a
-worker starts, stops, or passes a gate, and never close tasks or alter labels.
-
-`implement` may capture its own qualified events through the shared capture procedure — but only after
-it has persisted a human gate in the planning issue, or after a worker outcome has passed its behavior
-proof and every required guard and supplies a reusable lesson beyond the current task. The persisted
-issue or verified repository result remains authoritative. Do not capture speculative worker output,
-task or workflow status, patches, contract bodies, summaries, or an unpersisted approval. Use the
-shared project-default scope and known-target correction rules without adding implement-specific
-memory policy. Continue dispatch and preserve issue and repository state through missing,
-incompatible, or failing memory.
-
 **Do not execute in the orchestrator's context.** Planning stages consume significant context —
 spawn a subagent with a fresh window so execution starts clean.
 
@@ -51,7 +28,7 @@ options:
 ```
 
 If spawning, build task intent in the subagent prompt from issue and repository data only — not from
-conversation history or workflow memory (see [../spec/GITHUB-ISSUES.md](../spec/GITHUB-ISSUES.md)):
+conversation history (see [../spec/GITHUB-ISSUES.md](../spec/GITHUB-ISSUES.md)):
 
 ```bash
 gh issue view -R KevinKab2412/planning <epic-n> --json title,body                                   # the spec

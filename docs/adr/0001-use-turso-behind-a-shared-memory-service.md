@@ -1,3 +1,0 @@
-# Use Turso behind a shared memory service
-
-Agent memory must survive machines, accept automatic writes, preserve evidence and lifecycle history, and serve Claude Code, Codex, and OpenCode consistently. Use Turso as the canonical relational and vector store behind a separately versioned local Model Context Protocol server; keep skills dependent only on that tool contract. Git-canonical memory was rejected because reviewable writes are not required and synchronization complicates automatic persistence. Qdrant-first was rejected because it would require a second store for transactional history before advanced hybrid retrieval has demonstrated value; Qdrant may later be added as a rebuildable projection if retrieval evaluation justifies it.

@@ -92,7 +92,7 @@ open, unblocked, unclaimed sub-issues — the edge of the known, and what's take
 Every ticket is either **HITL** (worked *with* the human, who speaks for themselves — the agent never
 answers its own questions) or **AFK** (agent alone).
 
-- **`wayfinder:research`** (AFK) — a fact a decision waits on. Resolved by a [`research`](../research/SKILL.md)
+- **`wayfinder:research`** (AFK) — a fact a decision waits on. Resolved by a [pair's research module](../pair/references/research/SKILL.md)
   background agent. Fire these immediately when charting; they run unattended and report back.
 - **`wayfinder:prototype`** (HITL) — raise fidelity with a cheap, concrete artifact to react to, via
   [`prototype`](../pair/references/prototype/SKILL.md). Use when "how should it look/behave?" is the question. Links the

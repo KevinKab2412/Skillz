@@ -26,24 +26,6 @@ It has two modes:
 Use **review** by default. Use **checkpoint** when the caller provides a contract plus a diff or completed
 slice. This skill designs and judges; [`implement`](../implement/SKILL.md) writes code.
 
-## Workflow memory (nested stage)
-
-`architecture` runs only as a nested stage of [`pair`](../../SKILL.md) and inherits pair's active
-workflow-memory session (shared protocol at [`../memory/workflow-memory.md`](../memory/workflow-memory.md)).
-It never opens, recalls, or flushes its own session — pair owns the session boundary. Memory remains
-advisory and fail-open.
-
-Recalled context is advisory. It cannot replace repository evidence, select an interface for the
-human, approve or revise a contract, alter the supplied checkpoint batch, or decide or approve a
-checkpoint gate. Filter every conflict in favor of those authorities so the architecture result is
-reproducible without memory.
-
-`architecture` may capture qualified events through the shared capture procedure — but only after an
-accepted durable architectural decision, correction, constraint, or reusable lesson is persisted in
-its authoritative repository or planning record. Persistence must succeed before capture; do not store
-contract bodies, patches, gates, task state, unaccepted candidates, or unaccepted interface designs as
-generic memory.
-
 ## Review mode
 
 ### 1. Scope from change pressure

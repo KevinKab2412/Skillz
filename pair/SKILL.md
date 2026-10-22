@@ -9,7 +9,9 @@ description: >-
   experts modules and stop; they do not start a build. Other skills may read the same modules
   directly without running the pipeline. Also owns draft PR preparation, splitting, and logical
   stacking ("open a PR", "split this into PRs", "manage this stack") through an internal shipping
-  module; shipping never implies running the build. Research and code-review remain standalone.
+  module; shipping never implies running the build. Also owns research-only requests ("research
+  this API", "gather primary sources", "find UI patterns") through an internal research module.
+  Code-review remains standalone.
   Use --auto for no-grill best-attempt execution with tests and review, within existing permissions.
 ---
 
@@ -17,8 +19,8 @@ description: >-
 
 `pair` doesn't do the work itself — it **sequences the stages** and holds the human gates and
 loop-backs between them. Most stages are reference modules under [`references/`](references/) that
-`pair` reads and follows in turn; `research` and `code-review` remain standalone skills it calls.
-Worktree setup, grill, experts guidance, and PR preparation are internal modules other skills may
+`pair` reads and follows in turn; `code-review` remains a standalone skill it calls.
+Worktree setup, research, grill, experts guidance, and PR preparation are internal modules other skills may
 read directly.
 The detail lives in each module's file, not here.
 
@@ -40,8 +42,7 @@ options, an empty task, or contradictory mode instructions require one concise c
 changing anything; never guess what an unsupported flag means. Repeating `--auto` is harmless.
 
 Without `--auto`, keep the existing guided behavior and focused entry modes below. With `--auto`,
-read [auto mode](references/auto.md), apply its scope/permission boundaries and shared memory
-lifecycle, and execute only that route. Do not fall through into the guided stages or their routine
+read [auto mode](references/auto.md), apply its scope/permission boundaries, and execute only that route. Do not fall through into the guided stages or their routine
 approval menus afterward. Host security controls always apply; this flag changes workflow behavior,
 not tool permissions. A missing subagent tool is a disclosed sequential fallback, not an interview.
 
@@ -54,7 +55,12 @@ not tool permissions. A missing subagent tool is a disclosed sequential fallback
   rule before changing project records; a conversation with no repo changes needs no worktree.
 - **Experts only** ("ask the experts", a named domain's standards, or an explicit corpus review) →
   read [experts](references/experts/SKILL.md), call the existing MCP tools, cite returned Standard
-  IDs, and stop. This read-only lookup does not create a worktree or start workflow memory.
+  IDs, and stop. This read-only lookup does not create a worktree.
+
+- **Research only** ("research this API", "gather sources", "investigate UI patterns") → read
+  [research](references/research/SKILL.md), gather cited facts, return the findings path, and stop.
+  Do not start a grill, spec, or build. Use a dedicated worktree before writing repository notes;
+  a read-only lookup needs none.
 
 - **PR / stack only** ("open a PR", "split into PRs", "stack these branches") → read
   [to-pr](references/to-pr/SKILL.md) and follow only its shipping/layout steps. Do not start a
@@ -64,24 +70,10 @@ not tool permissions. A missing subagent tool is a disclosed sequential fallback
 Any caller can read these modules directly; that is reuse, not entry into the pair pipeline.
 In particular, wayfinder reads grill, while review, research, and explanation can read experts.
 
-## Workflow memory lifecycle (automatic)
+## Workflow
 
-The shared protocol at [`references/memory/workflow-memory.md`](references/memory/workflow-memory.md)
-is active for every ordinary `pair` run. Memory remains advisory and fail-open under that protocol.
-
-Before entering the first selected stage, resolve the current user instruction, normalized project
-identity, repository guidance, any existing planning issue state, and any applicable architecture
-contract or decision record. Then open one outer workflow-memory session through the shared protocol.
-Do not let recalled context choose a stage, approve a gate, revise a plan, or alter those authorities.
-
-Pass the active session to every memory-aware stage invoked by `pair`. Those stages inherit it: they
-may capture their own qualified durable events but do not open or close memory again. After a durable
-event in the pair pipeline, apply the shared capture procedure immediately; user acceptance is
-required before a decision qualifies.
-
-Close the outer session through the shared protocol when `pair` completes, explicitly pauses or
-stops, or hands work out of the workflow. A transition between stages inside the same pair run is not
-a handoff. Memory outcomes never change pair's gates, state, or next transition.
+Resolve the current user instruction, repository guidance, existing planning issue state, and any
+applicable architecture contract or decision record before entering the first selected stage.
 
 ```
 worktree → [research] → [sketch] → grill → [prototype] → [architecture] → spec → plan-review
@@ -94,8 +86,8 @@ its skill and following it to completion, then apply the transition below before
 ## Pre-flight — Worktree (automatic)
 
 `pair` runs against a **dedicated worktree for the feature branch**, so the build never disturbs the
-checkout you launched from and parallel work stays isolated. Before the first selected stage — and
-before opening the workflow-memory session above — settle the worktree:
+checkout you launched from and parallel work stays isolated. Before the first selected stage,
+settle the worktree:
 
 1. **Determine the feature branch.** Use the branch the user named; if they named none, derive it
    from the work (e.g. the epic/ticket slug) and confirm it before creating anything.
@@ -134,7 +126,7 @@ options:
   - "No, I know enough — start grilling"
 ```
 
-If yes, run [`research`](../research/SKILL.md) (it works AFK in a background agent and writes cited
+If yes, read the internal [`research` module](references/research/SKILL.md) (it works AFK in a background agent and writes cited
 findings to a file); carry those findings into the grill. If the idea is well-understood already,
 skip straight to Stage 0.5 (or Stage 1).
 

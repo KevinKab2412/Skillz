@@ -18,28 +18,27 @@ The installer:
 - removes explicitly retired global skills using [`retired-skills.txt`](retired-skills.txt), including
   nested synced imports and matching Codex system skills, with backups in `~/.agents/skill-backups/`;
 - removes synced duplicates when a canonical global skill exists;
-- installs instruction modules into `~/.pi/agent/instructions/`;
-- optionally installs/registers the sibling `agent-memory` service when its checkout is present.
+- installs instruction modules into `~/.pi/agent/instructions/`.
 
-Pi and OpenCode read the shared global directory natively. `AGENTS_HOME`, `PI_HOME`, and
-`AGENT_MEMORY_SOURCE` override installation paths. Set the latter to a nonexistent path to sync skills
-without changing the memory-service installation. Reload or restart agents after syncing.
+Pi and OpenCode read the shared global directory natively. `AGENTS_HOME` and `PI_HOME`
+override installation paths. The experimental agent-memory integration has been removed;
+installation does not install a memory service or require model-generated evaluation evidence.
+Reload or restart agents after syncing.
 
 ## Global skills
 
-Nine skills ship globally from this repository:
+Eight skills ship globally from this repository:
 
 - **code-review** — requirements/standards review, focused bug/security review, and teaching mode.
 - **explain-this-like-i-am-an-intern** — plain-English teaching and compact visual-only explanations.
 - **meetily** — find and summarise locally recorded meetings.
-- **pair** — gated end-to-end work, or focused requirements, experts, and PR/stack modes.
-- **research** — primary-source investigation with citations.
+- **pair** — gated end-to-end work, or focused requirements, research, experts, and PR/stack modes.
 - **retro** — evidence-led improvements to the agent's working environment.
 - **standup** — recent activity and yesterday/today/blockers updates.
 - **visualise** — animated, beat-by-beat standalone HTML explanations.
 - **wayfinder** — multi-session decision maps for large, uncertain work.
 
-The separately installed, Laravel-authored **deploying-to-cloud** skill is retained, making ten
+The separately installed, Laravel-authored **deploying-to-cloud** skill is retained, making nine
 in the current global setup. Unknown third-party skills are preserved unless explicitly retired.
 Vendor/client updates may restore bundled skills; rerun the installer to reapply retirement policy.
 
@@ -65,18 +64,22 @@ flag alone. The task can explicitly authorize an operation, while mandatory conf
 
 See [`pair/references/auto.md`](pair/references/auto.md) for the route and stop conditions. The module
 adapts the existing implementation/review guidance rather than sending auto runs into guided menus
-or requiring a newly invented GitHub plan. It does not fabricate accepted decisions for memory.
+or requiring a newly invented GitHub plan.
 
 ## Internal modules — read directly, don't start the parent pipeline
 
 - `pair/references/worktree/` — isolation setup at the start of pair, also reused by code-review.
 - `pair/references/grill/` — requirements interviewing, also read directly by wayfinder and research.
+- `pair/references/research/` — primary-source investigation with citations; reads experts first
+  when relevant. Research-only requests stop at findings. Code-review reads it for factual gaps.
 - `pair/references/experts/` — guidance for the unchanged experts MCP gateway; reused by code-review,
   explanation, research, or any other caller. Standards require citations and honest confidence.
 - `pair/references/to-pr/` — draft PR preparation, visual proof, safe splitting, and logical stacking.
   Opening a PR requires an explicit shipping request; polishing a pair change does not open one.
 - `explain-this-like-I-am-an-intern/references/show-me.md` — compact visual-only mode, with no forced
   quiz or teaching ceremony. Other skills can read it directly.
+- `code-review/references/experts-lane.md` — automatic domain-standards pass alongside Standards
+  and Spec; missing tools and low confidence are disclosed. Explicit focused scope is preserved.
 - `code-review/references/review-backends/` — optional Bugbot and Security Review adapters.
 
 Pair still owns spec, plan review, implementation, architecture, prototype, sketch, taste, polish,
@@ -114,7 +117,6 @@ it does not delete their standalone repositories or Skillz's project-local creat
 ```bash
 python3 -m unittest discover -s tests -p 'test_*.py'
 bash tests/test-install-prune.sh
-bash tests/test-workflow-memory-install.sh
 ```
 
 Auto-mode interpretation cases live in `pair/evals/auto-mode.json`. The checked report records an
@@ -127,11 +129,6 @@ python3 scripts/evaluate_pair_auto.py --report pair/evals/auto-mode-report.json 
 
 The evaluator sends only synthetic cases and the shared instructions. Use a no-tools evaluation
 configuration; never put credentials in the command arguments or checked report.
-
-The automatic-memory release guard remains active. Changed pair instructions or evaluator code
-require fresh observed workflow evidence before installation. Unchanged retrieval evidence remains
-valid only while its protocol and fixture inputs remain unchanged. See
-[`workflow_memory_release/README.md`](workflow_memory_release/README.md).
 
 ## Instruction modules
 

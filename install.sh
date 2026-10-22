@@ -20,32 +20,6 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # install then copies shared/<module>/ into that skill's references/<module>/, so the
 # canonical copy lives in one place here but every installed skill stays self-contained.
 SHARED_DIR="$SCRIPT_DIR/shared"
-MEMORY_SOURCE="${AGENT_MEMORY_SOURCE:-$(dirname "$SCRIPT_DIR")/agent-memory}"
-
-# Refuse before mutating any installation unless the automatic-memory release has matching evidence.
-python3 - "$SCRIPT_DIR" <<'PY'
-import sys
-from pathlib import Path
-
-root = Path(sys.argv[1])
-release_path = root / "shared/memory/release.json"
-protocol_path = root / "shared/memory/workflow-memory.md"
-active_marker = "Workflow memory lifecycle (automatic)"
-memory_artifacts = release_path.exists() or protocol_path.exists() or any(
-    active_marker in (root / workflow / "SKILL.md").read_text()
-    for workflow in ("pair", "teach")
-    if (root / workflow / "SKILL.md").exists()
-)
-if memory_artifacts:
-    sys.path.insert(0, str(root))
-    from workflow_memory_release.evaluate import GateRefused, validate_install_evidence
-
-    try:
-        validate_install_evidence(root)
-    except (GateRefused, KeyError, TypeError, ValueError) as error:
-        raise SystemExit(f"ERROR: {error}") from error
-PY
-
 mkdir -p "$AGENTS_DIR" "$PI_INSTRUCTIONS_DIR" "$PI_EXTENSIONS_DIR"
 
 # Preserve private concept cards when renaming the visual skill. Never overwrite an existing overlay.
@@ -56,28 +30,6 @@ if [ -d "$AGENTS_HOME_DIR/to-visual" ]; then
   else
     echo "WARN: both visual overlay directories exist; retained both for a manual merge." >&2
   fi
-fi
-
-if [ -f "$MEMORY_SOURCE/pyproject.toml" ]; then
-  if ! command -v uv >/dev/null 2>&1; then
-    echo "ERROR: uv is required to install agent-memory" >&2
-    exit 1
-  fi
-  # Best-effort: memory install/registration is orthogonal to the skill sync
-  # below, which is install's primary job. A recoverable failure here — most
-  # often a conflicting agent-memory MCP registration in another client — must
-  # warn and continue, not abort the whole install under `set -e`.
-  if uv tool install --editable "$MEMORY_SOURCE" \
-    && agent-memory-init \
-    && agent-memory-service install \
-    && agent-memory-setup; then
-    echo "Agent memory: installed and registered"
-  else
-    echo "WARN: agent memory setup did not complete; skills still install." >&2
-    echo "      Re-run it alone once resolved: agent-memory-setup" >&2
-  fi
-else
-  echo "Agent memory: skipped (set AGENT_MEMORY_SOURCE to its checkout)"
 fi
 
 # Pull the `description:` out of a SKILL.md frontmatter block. Handles plain

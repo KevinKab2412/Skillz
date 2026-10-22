@@ -1,3 +1,0 @@
-# Use encrypted local memory until Turso cutover
-
-Turso setup is deferred, but real memory work may continue locally. Use a keychain-keyed encrypted `pyturso` database as the temporary canonical store while preserving the task-oriented service contract and storage ports. A human-gated cutover must migrate stable identifiers, evidence, mutation events, entities, vectors, lifecycle state, and deletion markers; verify counts, hashes, scope isolation, and recall; switch canonical authority to Turso; and erase the local canonical copy only after explicit approval. Final cross-machine release remains blocked until that cutover passes its architecture checkpoint.

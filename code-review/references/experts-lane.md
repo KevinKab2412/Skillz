@@ -1,16 +1,16 @@
-# Experts lane (opt-in)
+# Experts lane (automatic)
 
 The experts lane holds the change to a curated **domain corpus** — the `experts` MCP server's
 standards for software engineering, Python, Laravel, AI engineering, data engineering/analysis, GTM,
-zettelkasten, and more. It's **off by default**: it's slower and it was the biggest source of the old
-review's overload. Run it only when the user asks for a domain deep-dive ("hold this to the experts",
-"run the experts pass") or passes `--experts`.
+zettelkasten, and more. Run it automatically alongside Standards and Spec in every normal review.
+For an explicit bug-only or security-only review, restrict this lane to that requested scope too;
+an explicit exclusion by the user takes precedence. Keep only blockers and should-fixes.
 
 First read the shared [experts module](../../pair/references/experts/SKILL.md) directly and pass
 its path to the reviewer. This reuses MCP guidance without starting the pair pipeline or invoking
 a retired standalone skill. The module owns tool selection, citation, and low-confidence rules.
 
-When you do run it, add a **third subagent** alongside Standards and Spec, in the same parallel
+Add a **third subagent** alongside Standards and Spec, in the same parallel
 message, with this prompt:
 
 ```
@@ -45,5 +45,6 @@ bar, say the experts corpus surfaced no domain-standard issues on this change.
 Fold its findings into **The issues** section of the report exactly like the other two lanes: drop
 nits, rewrite each survivor for a bright intern, attach a paste comment. If two lanes caught the same
 thing, post **one** comment, and note the cross-lane agreement — the lanes don't share context, so when
-they land on the same line the finding is very likely real. When the lane wasn't run, the report's
-"What I left out" line already says so.
+they land on the same line, verify and deduplicate the shared claim. Include Experts blockers in
+the same refutation step as blockers from other lanes. Report whether the pass completed, was
+unavailable, returned low confidence, or was excluded by explicit scope in "What I left out".

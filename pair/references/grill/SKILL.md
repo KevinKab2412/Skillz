@@ -7,7 +7,7 @@ description: >-
 # Grill — internal requirements interview module
 
 Read directly from pair, wayfinder, or any caller that needs requirements pinned down. Reading this
-module does not run pair's build pipeline, open a separate memory session, or authorize implementation.
+module does not run pair's build pipeline or authorize implementation.
 
 > **Output discipline (hard rule).** Every output this skill produces obeys [`../brevity/output-discipline.md`](../brevity/output-discipline.md): **≤150 words of prose**, plain dumbed-down English, point first. Anything past 150 words becomes a **visual** — table, tree, diff, or code block (format menu: [`../show-me/visual-formats.md`](../show-me/visual-formats.md)). Words inside a visual don't count. Ask **few questions at a time** and keep each turn under the cap; a decision log or glossary belongs in a table, not a paragraph.
 

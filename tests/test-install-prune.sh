@@ -12,7 +12,6 @@ cp -f "$repo_root/retired-skills.txt" "$fixture/retired-skills.txt"
 mkdir -p "$fixture/scripts"
 cp -f "$repo_root/scripts/prune-retired-skills.py" "$fixture/scripts/prune-retired-skills.py"
 cp -rf "$repo_root/shared" "$fixture/shared"
-cp -rf "$repo_root/workflow_memory_release" "$fixture/workflow_memory_release"
 for skill in pair code-review explain-this-like-I-am-an-intern visualise; do
   cp -rf "$repo_root/$skill" "$fixture/$skill"
 done
@@ -22,7 +21,6 @@ run_install() {
   HOME="$fixture/home" \
   AGENTS_HOME="$fixture/agents" \
   PI_HOME="$fixture/pi" \
-  AGENT_MEMORY_SOURCE="$fixture/missing-agent-memory" \
   bash "$fixture/install.sh" >/dev/null
 }
 
@@ -30,8 +28,18 @@ run_install() {
 mkdir -p "$fixture/agents/to-visual/library/concepts"
 printf 'private-card\n' > "$fixture/agents/to-visual/library/concepts/test.md"
 
+# An upgrade removes the old injected policy and never invokes model/service tooling.
+mkdir -p "$fixture/agents/skills/pair/references/memory" "$fixture/bin"
+printf 'retired policy\n' > "$fixture/agents/skills/pair/references/memory/workflow-memory.md"
+for tool in claude uv agent-memory-init agent-memory-service agent-memory-setup; do
+  printf '#!/bin/sh\necho "unexpected memory/model tool invocation" >&2\nexit 99\n' > "$fixture/bin/$tool"
+  chmod +x "$fixture/bin/$tool"
+done
+export PATH="$fixture/bin:$PATH"
+
 # First run: installs the repo skills and records the manifest.
 run_install
+test ! -e "$fixture/agents/skills/pair/references/memory"
 test -f "$fixture/agents/visualise/library/concepts/test.md"
 test ! -e "$fixture/agents/to-visual"
 grep -qx private-card "$fixture/agents/visualise/library/concepts/test.md"
@@ -74,6 +82,8 @@ run_install
 test ! -d "$skills_dir/review"
 test ! -d "$skills_dir/synced/vendor/canvas"
 test -f "$skills_dir/pair/references/worktree/SKILL.md"
+test ! -e "$skills_dir/pair/references/memory"
+test -f "$skills_dir/pair/references/research/SKILL.md"
 test -f "$skills_dir/pair/references/grill/SKILL.md"
 test -f "$skills_dir/pair/references/experts/SKILL.md"
 test -f "$skills_dir/pair/references/to-pr/SKILL.md"

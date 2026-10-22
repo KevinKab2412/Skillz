@@ -26,6 +26,7 @@ origin
 pdf
 pptx
 rename-chat
+research
 review
 review-bugbot
 review-security
