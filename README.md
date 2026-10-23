@@ -36,6 +36,10 @@ live in [`pi/`](pi/README.md). After installing the pinned Pi runtime, run
 Six skills ship globally from this repository:
 
 - **code-review** — requirements/standards review, focused bug/security review, and teaching mode.
+  Reviews deliver the full report in chat: orientation, an all-file reading route, quoted findings,
+  evidence-led paste comments, and verification limits. Reviewers reproduce correctness claims when
+  safe and possible, label code-only traces, and ask authors for adjustments after reporting what
+  they checked and observed.
 - **explain** — plain-English teaching and compact visual-only explanations.
 - **pair** — gated end-to-end work, or focused requirements, research, experts, and PR/stack modes.
 - **utils** — standups, local Meetily meetings, meeting follow-up drafts, and coding retros.

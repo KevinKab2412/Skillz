@@ -37,6 +37,18 @@ never bleed into each other. A change can pass one and fail the other, and keepi
 lets that show. Everything else (resolving the target, writing the goal, distilling the findings) is
 done in the main thread.
 
+## Default delivery — the complete review in chat
+
+Deliver Step 4's full report directly in the final chat response on the first review request.
+The verdict, standards, orientation, all-file reading route, findings with snippets and evidence-led
+paste comments, verification, limits, and nit count are the default deliverable. A saved Markdown or
+HTML report may supplement it; a link or a short findings-only summary never replaces it unless the
+user explicitly requests that format. The user should not need to ask for the full format again.
+
+The 150-word prose cap controls presentation, not coverage: use an orientation table, a grouped
+reading-route tree or table, and a verification table to keep every required section inline. Large
+diffs still list every changed file. Do not move the payload into an artifact to meet the cap.
+
 ## What "concise" means here (read this first)
 
 The point of this skill is to fight two failure modes at once: **too slow** and **too much to read**.
@@ -269,11 +281,33 @@ router, auth, many importers) the same way the Standards lane does; leave leaf f
 each finding in plain English — lead with the consequence, gloss any jargon. Under 400 words.
 ```
 
-## Step 3 — Verify blockers before they reach the report
+## Step 3 — Investigate findings, then try to refute blockers
 
-Collect every finding any lane classified `blocker`. If there are none, skip this step entirely — it
-costs nothing on the common case. For each one, send a single `Agent` call (`subagent_type: "claude"`)
-trying to refute it:
+### Evidence gate — every surviving finding
+
+Resolve the uncertainty yourself before asking the author for a change. For each proposed runtime
+or correctness finding, run the smallest safe reproduction through the real entry point available
+in the worktree. Exercise the claimed condition, observe the actual result, and check for an upstream
+guard or existing test that contradicts the claim. For concurrency, control the ordering explicitly;
+for access control, exercise the relevant identities. Mock paid or destructive external effects,
+not the guard or behaviour being judged. Do not call paid services or mutate production to verify a
+review claim.
+
+Record the setup, command or test, expected result, actual result, and evidence location. A passing
+unrelated suite is not verification of the finding. Temporary regression tests stay isolated; do
+not silently patch application code or commit review probes. Design and standards findings need a
+concrete code comparison and the applicable rule rather than a fabricated runtime reproduction.
+
+If execution is unavailable, trace the actual caller and guards, label the finding **code-traced,
+not reproduced**, and state the limit. If the claim still depends on an unknown outcome, keep it in
+**Where I'm least sure**, not the confirmed issues or merge-blocking count. Never invent a test run
+or hand the unresolved experiment to the author as a finding.
+
+### Independent refutation — blockers
+
+Collect every finding any lane classified `blocker` that survived the evidence gate. If there are
+none, skip only this refutation pass. For each one, send a single `Agent` call
+(`subagent_type: "claude"`) trying to refute it:
 
 ```
 Try to refute this blocker claim. Default to CONFIRMED unless you find concrete contradicting
@@ -285,13 +319,18 @@ evidence — report REFUTED only when certain, not on mere doubt.
 ## The diff
 <paste: git diff <base>...HEAD>
 
+## Verification evidence
+<paste: reproduction setup, command/test, expected and actual result, or labelled code trace>
+
 Look for a guard, an upstream validation, an existing test, or a feature flag that the first pass
 missed and that makes this not actually ship broken behaviour. Answer in two lines: CONFIRMED or
 REFUTED, then one sentence why. Under 60 words.
 ```
 
-Run these in parallel, one `Agent` call per blocker. A `REFUTED` verdict downgrades that finding to
-should-fix in Step 4 — note why in one clause, don't silently move it. `CONFIRMED` carries no change.
+Run these in parallel, one `Agent` call per blocker. A `REFUTED` verdict removes the disproved
+correctness claim; retain a separate should-fix only if independent evidence supports it, and explain
+that distinction. `CONFIRMED` carries no change. If no agent tool exists, repeat the guard check in
+the main thread and disclose that independent refutation was unavailable.
 This is a narrow, cheap echo of the adversarial-verify pattern (Cursor's Bugbot and independent research
 both found a second independent pass cuts false positives): scoped to blockers only, because that's
 where a false positive costs the most trust, and because most reviews carry zero or one, so it rarely
@@ -311,38 +350,36 @@ sentences.
 Carry the Standards lane's maturity line (Step 2) straight into the verdict block — it answers "is
 there even a standard to check this diff against," a different question from the verdict itself.
 
-Use this exact shape:
+Use this exact section order, directly in chat. Orientation may use the table below or three short
+headed sections; the reading route may use a table or a grouped tree with per-file line counts.
+Preserve the evidence and paste comment for every issue even when the diff is large.
 
 ````
 # Review — <plain-words title of what the change does>
-<source → base · N files> · <Linear id / epic ref if any>
-
 **🟢 Ship it** — nothing here blocks merge.
    — or —
 **🟡 Fix first** — <n> should-fix(es) below, no hard blockers.
    — or —
 **🔴 Don't merge yet** — <n> blocker(s): <the one-line worst>.
 
+<source → base · N files> · <PR / Linear id / epic ref if any> · reviewed `<commit>`
+
 **Standards:** <🔴 none set / 🟡 partial / 🟢 solid> — <the Standards lane's one-clause why>. <if 🔴 or
 🟡:> consider running `/utils retro` to start one.
 
-## The goal
-<1–2 sentences, plain English: what problem this change set out to solve. From Linear + the PR.>
-
-## What it touches
-<1–3 sentences: the parts of the system this change reaches and how they connect — the files/modules
-and the seam between them. Enough that the findings below have somewhere to land.>
-
-## The attempt
-<1–3 sentences: how the author went about it — the approach and the one or two load-bearing changes.
-This is the "here's what they did" beat, in words, not a diff dump.>
+| | |
+|---|---|
+| **The goal** | <the problem this change set out to solve, from Linear + the PR> |
+| **What it touches** | <modules and the seam between them; a tiny flow/tree may follow> |
+| **The attempt** | <the approach and the one or two load-bearing changes> |
 
 ## Review it yourself
 <1 sentence naming the spine of the order and why it's that order.>
 
-1. **`path/file.py`** (N lines) — <the one thing this file settles> · **ask:** <the question to hold
-   while reading it>
-<…one stop per file or per group-read-together, every changed file present…>
+| # | File | ± lines | Ask |
+|---|---|---:|---|
+| 1 | `path/file.py` | <added + deleted> | <the question this file settles> |
+<…one row per file, grouped into reading stops; every changed file present…>
 
 **Where I'm least sure:** <1–2 sentences: the spots the lanes could not settle, where a human pass
 pays best.>
@@ -364,9 +401,21 @@ on first when they can't get to all of them.
 ```
 Why it matters: <the concrete consequence, in real terms — what actually goes wrong for a user or the
 next engineer — 1 sentence.>
+
+| Evidence | Result |
+|---|---|
+| <reproduction command/test + setup, or labelled code trace / standards comparison> | <expected vs observed; limits if not executed> |
+
 ```
-<the ready-to-paste PR comment, in the user's voice — see below>
+<what I checked + actual outcome; then a concrete adjustment question — see below>
 ```
+
+## Verification
+| Check | Result |
+|---|---|
+| <commands/suites actually run> | <pass/fail counts; distinguish deliberate regression failures> |
+| <unrun paths / environment blockers / spec and tool availability> | <limits; never imply a missing pass cleared the change> |
+| Repository / PR | <edits, probes, and whether anything was posted> |
 
 ## What I left out
 <n> nit(s) and wording note(s), not shown — say the word if you want them.
@@ -386,8 +435,8 @@ worthless here.
 - **The default spine**, adapted to the change: (1) the vocabulary — the type, model or key everything
   else refers to; (2) the write path, in the order data is created; (3) the read path, in the order it
   is consumed; (4) the orchestration — when it runs and how often; (5) config and admin — how it gets
-  switched on; (6) at most one or two test files, and only where the test states the intent better
-  than the module does.
+  switched on; (6) tests alongside their owning modules, or last when they consolidate the contract.
+  Include every changed test file.
 - **Lead with the most opinionated short file**, not the longest one. The file holding the contested
   design decision teaches the change; a 250-line mechanical module teaches the codebase.
 - **Cover every changed file. There is no skip list.** The user's aim is to digest the whole diff and
@@ -404,7 +453,9 @@ worthless here.
 - **Every stop carries one question**, and the question must be answerable only by reading that file.
   "Does the key survive a reworded label?" earns its stop; "is this correct?" does not. A stop you
   cannot write a question for is a stop to cut.
-- **Give the line count** so the reader can budget, and flag when docstrings inflate it.
+- **Give changed-line counts** (`git diff --numstat <base>...HEAD`, added + deleted, labelled `± lines`)
+  so the reader can budget; flag when fixtures or docstrings inflate them. A deleted file still gets
+  its changed-line count and a place in the route.
 - **"Where I'm least sure" is the point of the section.** Name the places all available lanes went quiet, the
   judgement calls you took a side on, and anything you could not run. Sending the human at your own
   blind spots is worth more than sending them at your findings.
@@ -434,29 +485,26 @@ file (not just the diff hunk) so the numbers and the surrounding lines are right
   should have been and say so in the sentence — an empty block is not a finding.
 - The same rule serves the "What I left out" nits if the user asks to see them.
 
-**The paste comment — write it in the user's voice, not the report's.** The finding's prose above is
-teaching (for the reader's understanding); the fenced comment is what they drop onto the PR for the
-author. The house default, drawn from how this user actually comments:
+**The paste comment — evidence first, then ask for the adjustment.** The fenced comment is what the
+user drops onto the PR. Keep the user's conversational voice while doing the investigation yourself:
 
-- **Open with the wondering, not the diagnosis.** Never lead with a clause restating what the code
-  does. The author wrote it, and the comment is already anchored to the line, so a "`X` rebuilds
-  unconditionally — should …" opener spends the reader's first breath on what they already know. Cut
-  everything before the question and start there.
-- One line, one question. No headers, no bold, no severity label, no before/after snippet, no
-  restatement of the diff, no praise padding.
-- Lowercase start, symbols in backticks, a space before the closing ` ?`.
-- Reach for one of the three openings this user actually uses:
-  - **curious / wondering** — "curious to know does this mean an empty `list_stores` gets tagged `ok`
-    rather than `not_found` ?"
-  - **should / is it possible to / can you double check** — "is it possible to reuse `_GO_TO_LOGIN` ?",
-    "can you double check the per-tenant isolation in the event of an error ?"
-  - **what do you think of / about** — "what do you think about pulling the recipients / body /
-    confirm dialog out into their own helpers ?"
-- A hypothetical carries a risk finding better than an assertion does: state the condition, ask what
-  happens, let the author answer — "if a user leaves the field empty and saves does this error fire ?",
-  "do you think this can pose an issue on daylight savings time ?".
-- Never "this is wrong", "change this", "you should have". The author usually knows something you
-  don't; every one of these openings leaves them room to say so.
+- State **what I checked and what actually happened**, then ask for a concrete adjustment. Name the
+  triggering condition and observed outcome; include a short test name or command when useful.
+- Use one compact paragraph, one adjustment question, no headers, bold, severity label or praise
+  padding. Lowercase start, symbols in backticks, a space before the closing ` ?`.
+- A reproduced example: "i reopened and extended the plan during evaluation in
+  `test_reopen_during_evaluation`; the old postmortem still saved and blocked a fresh one. can we
+  discard the result when the locked plan's end date differs from the evaluated date ?"
+- A code-traced example: "i traced `answer_check_in` through `_fill_unanswered`; unlike the dashboard
+  path it never checks the end date (not reproduced locally). can we apply that guard to ordinary
+  email replies while exempting postmortems ?"
+- A design example: "i compared both upload paths; the storage and rollback steps are duplicated.
+  what do you think about sharing those steps in `file_attachment_service` ?"
+- Replace "can you check/test/double check whether X happens?" and speculative "what happens if…?"
+  with Step 3's actual evidence. Ask the author to adjust the code, not to establish the finding.
+  If the outcome is unknown, leave it out of confirmed issues rather than implying it was tested.
+- Keep the request collaborative: "can we…?", "is it possible to…?", or "what do you think about…?".
+  Never claim an unrun test passed or failed, and never present a code trace as an executed repro.
 
 If you're reviewing in a repo whose owner comments differently, read their last few and match them:
 `gh api repos/<owner>/<repo>/pulls/<n>/comments --jq '.[] | select(.user.login=="<them>")'`.
@@ -514,13 +562,18 @@ over from that role:
 
 ## Done when
 
-The verdict is the first line and it's unambiguous (ship / fix first / don't merge). Right after it,
+The complete Step 4 report is in the final chat response without a follow-up request; an artifact
+link is supplemental. The verdict is the first line after the title and it's unambiguous
+(ship / fix first / don't merge). Right after its metadata,
 the Standards-maturity line says whether there was even a standard to hold this diff to — a silent
 maturity line is as much a bug as a silent lane. The four beats orient a newcomer to the change before
 any finding. Every surfaced finding is a blocker or should-fix, written so a bright intern gets it
 without asking, quotes the offending lines so the reader never has to open the file, carries a one-line
-paste comment in the user's voice, and is tagged `(trunk)` when it lives in a hub file. Every blocker
-survived an independent refute attempt (Step 3) before reaching the reader — a downgraded one says why.
+paste comment stating what was checked, the observed outcome and a concrete adjustment question,
+and is tagged `(trunk)` when it lives in a hub file. Every issue passed Step 3's evidence gate; a code
+trace is labelled and unresolved hypotheses stay out of the merge-blocking count. Every blocker
+survived a refute attempt, with any lack of independent tooling disclosed. Verification lists real
+commands, outcomes and limits; disproved claims are removed.
 The review plan gives the user their own route through the change, accounts for every changed file with
 none skipped, and says where your own pass is weakest. The nits are counted, not shown. A lane that had
 nothing to say says so — a silent lane must never read as a clean bill of health. The report ends with
