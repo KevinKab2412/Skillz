@@ -37,9 +37,13 @@ Six skills ship globally from this repository:
 
 - **code-review** — requirements/standards review, focused bug/security review, and teaching mode.
   Reviews deliver the full report in chat: orientation, an all-file reading route, quoted findings,
-  evidence-led paste comments, and verification limits. Reviewers reproduce correctness claims when
-  safe and possible, label code-only traces, and ask authors for adjustments after reporting what
-  they checked and observed.
+  evidence-led paste comments, and verification limits. The constructive-review contract combines
+  evidence, rationale, scoped requests, and observable completion conditions; it calibrates impact
+  separately from confidence, reconciles existing feedback, and preserves useful questions and
+  decisions without a findings quota. Draft-only authorization saves pending, unsubmitted reviews.
+  Reviewers reproduce correctness claims when safe and possible and label code-only traces.
+  Optional synthetic comment evaluations live in `code-review/evals/`; structural tests do not
+  substitute for checking generated outputs.
 - **explain** — plain-English teaching and compact visual-only explanations.
 - **pair** — gated end-to-end work, or focused requirements, research, experts, and PR/stack modes.
 - **utils** — standups, local Meetily meetings, meeting follow-up drafts, and coding retros.

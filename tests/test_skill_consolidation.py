@@ -198,6 +198,8 @@ class WiringTests(unittest.TestCase):
                 'pair/references/to-pr/references/visual-proof.md',
                 'explain/references/show-me.md',
                 'code-review/references/experts-lane.md',
+                'code-review/references/constructive-review.md',
+                'code-review/references/draft-reviews.md',
             ):
                 file = installed / relative
                 text = re.sub(r'```.*?```', '', file.read_text(), flags=re.S)

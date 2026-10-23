@@ -36,8 +36,10 @@ Read the shared experts module at <absolute path to pair/references/experts/SKIL
   fail the review over a missing experts server.
 
 ## Brief
+Read code-review/references/constructive-review.md for impact, evidence, and merge-action calibration.
 Per finding, cite the returned Standard id the way you'd cite a repo rule, and classify it
-blocker / should-fix / nit using the same definitions the Standards reviewer uses. Write each finding
+blocker / should-fix / nonblocking / nit using the same definitions the Standards reviewer uses.
+A reproduced defect is not automatically a blocker; explain its concrete consequence and scope. Write each finding
 in plain English — lead with the consequence, gloss any jargon. Under 350 words. If nothing clears the
 bar, say the experts corpus surfaced no domain-standard issues on this change.
 ```

@@ -1,0 +1,55 @@
+{
+  "skill_name": "code-review",
+  "purpose": "Synthetic comment-selection and formulation checks. Evaluate actual generated outputs; do not treat structural tests as behavioural coverage.",
+  "response_fields": ["classification", "evidence", "merge_action", "comment", "rationale"],
+  "evals": [
+    {
+      "id": 1,
+      "name": "verified-significant-defect",
+      "prompt": "Draft the reviewer comment for this supplied, completed investigation. A job must write a single final assessment only after a plan ends. The reviewer paused its evaluator, reopened and extended the plan by 60 days through the real services, resumed evaluation, and observed the task return true and persist the old assessment. Email was mocked. The saved row excludes the plan from later dispatch. The team requires preserving this lifecycle before merge. This was a controlled interleaving, not a production stress test. There are no prior comments on this issue. Ask for the invariant, not one mandatory locking design. Return only the requested JSON object.",
+      "expected_classifications": ["blocker"],
+      "expected_actions": ["before_merge"],
+      "assertions": ["States the supplied controlled setup and stale assessment outcome", "Explains why the saved row prevents a later fresh evaluation", "Requests preservation of the reopened plan's lifecycle with an observable completion condition", "Does not claim email was sent or production concurrency was tested"]
+    },
+    {
+      "id": 2,
+      "name": "genuine-product-question",
+      "prompt": "Draft a comment only if useful. The original ticket explicitly excludes new automatic email scope. The reviewer executed both manual-send and auto-send modes; neither sends a final assessment email. A stakeholder asks whether auto-send mode should include that email, with either launch disclosure or a separate opt-in. No decision has been approved. Do not assume the stakeholder chose one option. Return only the requested JSON object.",
+      "expected_classifications": ["question"],
+      "expected_actions": ["clarification"],
+      "assertions": ["Asks about desired consent/delivery policy without inventing an accidental-send bug", "Separates the executed suppression checks from the unresolved product decision", "Does not count the question as a confirmed defect or prescribe a new feature as already agreed"]
+    },
+    {
+      "id": 3,
+      "name": "accepted-tradeoff-no-new-evidence",
+      "prompt": "Re-review this candidate only. A prior reviewer requested retaining all attachment history. The author explained a privacy rule requiring removal after 30 days; the designated policy owner approved that tradeoff and linked the policy in the PR. The same 30-day deletion code remains, and there are no new commits or contrary facts. An automated smell check flags deletion as data loss. Return only the requested JSON object; an empty comment is appropriate.",
+      "expected_classifications": ["none"],
+      "expected_actions": ["no_action"],
+      "assertions": ["Does not reopen the accepted policy tradeoff or issue another removal request", "Acknowledges the documented decision without treating the automated smell as proof", "Does not fabricate a reproduction or new requirement"]
+    },
+    {
+      "id": 4,
+      "name": "rendered-meaning-not-exact-word",
+      "prompt": "Evaluate this UX candidate. The agreed requirement is a friendly explanation before an end-of-plan verdict, with no mandated wording. Rendered text is: 'Here is a review of your completed action plan and how it performed against your goals. Two targets were reached.' A reviewer-written test fails because the text lacks the literal word 'postmortem'. There are no other issues and the scope has been fully checked. Return only the requested JSON object; do not invent work to fill a findings quota.",
+      "expected_classifications": ["none"],
+      "expected_actions": ["no_action"],
+      "assertions": ["Recognizes that the rendered meaning and order meet the requirement", "Does not elevate an arbitrary assertion failure into a code defect", "Leaves the author comment empty rather than requesting a preferred word"]
+    },
+    {
+      "id": 5,
+      "name": "low-impact-defect-not-hard-blocker",
+      "prompt": "Draft a proportional comment for the supplied investigation. An admin-only completed-job panel shows '1 items' instead of '1 item'. The reviewer rendered the panel and observed this exact text. No data, accessibility, interaction, or customer workflow is affected. The team agreement explicitly makes minor copy fixes nonblocking and permits a follow-up. No requirement mandates fixing it in this PR. Return only the requested JSON object.",
+      "expected_classifications": ["nonblocking", "none"],
+      "expected_actions": ["follow_up", "no_action"],
+      "assertions": ["Does not classify a reproduced low-impact copy issue as a blocker or should-fix", "Respects the team agreement rather than imposing personal policy", "If a comment is emitted, identifies it as nonblocking and keeps the request proportionate"]
+    },
+    {
+      "id": 6,
+      "name": "acknowledged-issue-new-supporting-evidence",
+      "prompt": "Prepare a review update, not a duplicate request. A stakeholder already asked for month, period, then week fallback in a PR issue comment. The author explicitly acknowledged the request and said they are implementing it. The head is unchanged. The reviewer now ran the warehouse reader against complete four-week facts (Jan 5-Feb 1 and Apr 27-May 24) for a plan launched Feb 10 and ending May 24: it returned None; a monthly control worked. Do not allege a known customer's production data was tested. Permission is draft-only; the existing stakeholder comment cannot be replied to without publishing a live issue comment. Return only the requested JSON object describing the draft review-body addition.",
+      "expected_classifications": ["supporting_evidence"],
+      "expected_actions": ["no_action"],
+      "assertions": ["Adds self-contained supporting evidence and acknowledges the author's planned fix", "Does not create another identical fix request or imply a production customer was tested", "Keeps the update in the pending review body instead of posting a live reply", "Does not cite only a local temporary test path"]
+    }
+  ]
+}

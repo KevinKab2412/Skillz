@@ -3,6 +3,7 @@
 These are structural checks, not a claim that an LLM followed the instructions.
 """
 
+import json
 from pathlib import Path
 import unittest
 
@@ -13,6 +14,8 @@ class CodeReviewContractTests(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.skill = (ROOT / "code-review/SKILL.md").read_text()
+        cls.contract = (ROOT / "code-review/references/constructive-review.md").read_text()
+        cls.drafts = (ROOT / "code-review/references/draft-reviews.md").read_text()
 
     def test_complete_report_is_inline_even_under_prose_cap(self):
         for phrase in (
@@ -62,22 +65,23 @@ class CodeReviewContractTests(unittest.TestCase):
             with self.subTest(phrase=phrase):
                 self.assertIn(phrase, self.skill)
 
-    def test_paste_comment_reports_evidence_then_requests_change(self):
+    def test_paste_comment_reports_evidence_rationale_request_and_result(self):
         comments = self.skill.split("**The paste comment", 1)[1].split(
             "If you're reviewing in a repo", 1
         )[0]
+        self.assertIn("(references/constructive-review.md)", comments)
         for phrase in (
             "what I checked and what actually happened",
-            "then ask for a concrete adjustment",
-            "i reopened and extended the plan during evaluation",
-            "not reproduced locally", "A design example",
-            "Ask the author to adjust the code, not to establish the finding",
-            "never present a code trace as an executed repro",
+            "violated contract or concrete consequence",
+            "scoped adjustment", "observable condition",
+            "two to four short sentences", "not reproduced locally",
+            "Never claim an unrun test passed or failed",
+            "not to establish an executable fact",
         ):
             with self.subTest(phrase=phrase):
-                self.assertIn(phrase, comments)
+                self.assertIn(phrase, self.contract)
         self.assertNotIn("Open with the wondering", comments)
-        self.assertNotIn("A hypothetical carries a risk finding", comments)
+        self.assertNotIn("Use one compact paragraph", comments)
 
     def test_done_gate_requires_both_requested_behaviours(self):
         done = self.skill.split("## Done when", 1)[1]
@@ -85,6 +89,59 @@ class CodeReviewContractTests(unittest.TestCase):
         self.assertIn("observed outcome and a concrete adjustment question", done)
         self.assertIn("Every issue passed Step 3's evidence gate", done)
         self.assertIn("Verification lists real", done)
+
+    def test_selection_separates_evidence_impact_and_merge_action(self):
+        for phrase in (
+            "Separate type, evidence, and merge action",
+            "A hypothetical or a reproduced low-impact defect is not automatically a blocker",
+            "No finding count, praise quota",
+            "Personal skill defaults guide the agent",
+            "not an acceptance criterion",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, self.contract + self.skill)
+        self.assertNotIn("blocker  = a correctness defect", self.skill)
+        self.assertIn("nonblocking", self.skill)
+
+    def test_rereview_and_human_authority_are_preserved(self):
+        for phrase in (
+            "fixed, still open, refuted, or accepted/deferred",
+            "thread resolved", "without new evidence",
+            "not interchangeable with\nindependent human approval",
+            "Urgency never\nsilently removes a gate",
+            "speed as contextual signals rather than targets",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, self.contract)
+        self.assertIn("pin old and new commits", self.contract)
+        self.assertIn("author replies", self.skill)
+        self.assertIn("UNRESOLVED", self.skill)
+
+    def test_draft_only_permission_never_submits_or_posts_live_reply(self):
+        for phrase in (
+            "Omit `event` entirely", "`PENDING`", "commit matches the reviewed head",
+            "Do not use `gh pr review` for drafts", "outside draft-only permission",
+            "Never\ndelete the user's existing draft", "read its body and comments first",
+        ):
+            with self.subTest(phrase=phrase):
+                self.assertIn(phrase, self.drafts)
+        self.assertIn("(references/draft-reviews.md)", self.skill)
+
+    def test_references_and_behavioural_cases_are_shipped_and_reachable(self):
+        self.assertIn("../evals/evals.json", self.contract)
+        cases = json.loads((ROOT / "code-review/evals/evals.json").read_text())["evals"]
+        self.assertEqual(len({case["id"] for case in cases}), len(cases))
+        covered = {classification for case in cases
+                   for classification in case["expected_classifications"]}
+        self.assertTrue({"none", "blocker", "question", "nonblocking",
+                         "supporting_evidence"} <= covered)
+        for case in cases:
+            with self.subTest(case=case["name"]):
+                self.assertTrue(case["prompt"])
+                self.assertTrue(case["assertions"])
+                self.assertTrue(case["expected_actions"])
+        self.assertIn("cannot prove the model follows it", self.contract)
+        self.assertIn("sync every changed skill asset", self.contract)
 
 
 if __name__ == "__main__":

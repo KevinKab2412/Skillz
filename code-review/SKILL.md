@@ -37,6 +37,14 @@ never bleed into each other. A change can pass one and fail the other, and keepi
 lets that show. Everything else (resolving the target, writing the goal, distilling the findings) is
 done in the main thread.
 
+## Constructive-review contract — read before every review
+
+Read [constructive review](references/constructive-review.md) before Step 1 and before composing
+comments. It governs comment selection, team-policy boundaries, impact/evidence/action calibration,
+Request–Rationale–Result, useful questions, re-review reconciliation, and closure. Reviews also
+transfer knowledge and preserve decisions; no finding or praise quota is required. Existing team
+agreements and approved requirements take precedence over personal preferences and book examples.
+
 ## Default delivery — the complete review in chat
 
 Deliver Step 4's full report directly in the final chat response on the first review request.
@@ -56,11 +64,12 @@ So the discipline is:
 
 - **Verdict first.** The very first line after the title is the merge call. Everything else is there
   to justify it, and the user can stop reading once they trust it.
-- **Only should-fixes and blockers.** A finding earns a place only if you'd genuinely ask for the
-  change before merge. **Drop every nit** — style tooling already catches, wording of a comment or
-  UI string, "the pattern to notice next time", speculative "you could also". Nits are not made
-  concise by shortening them; they're removed. Say *how many* you dropped so the omission reads as a
-  choice, not an oversight.
+- **Only should-fixes and blockers in confirmed issues.** A finding earns a place only if evidence,
+  consequence, and scope justify asking for a change before merge. Use the constructive-review
+  contract to calibrate impact, evidence, and merge action separately. Useful intent questions,
+  follow-ups, and specific positive observations may appear in a short separate section; they do
+  not inflate the findings count. **Drop every nit** and tooling-enforced style complaint. Count
+  only notes actually considered; never invent a nit count or hunt for findings to fill a quota.
 - **Explain to a bright intern.** This is the core fix for the "I read the finding and still don't
   know what it means" problem. Every finding is written for someone sharp but new: no unglossed
   jargon (if you must say "race condition" or "N+1 query", say what it means in the same breath),
@@ -101,7 +110,13 @@ Work out what to review, in this order. Ask only if genuinely ambiguous.
   ```bash
   gh pr view <n> --json title,body,author,baseRefName,headRefName,url,files,closingIssuesReferences
   gh pr diff <n>
+  gh api --paginate repos/<owner>/<repo>/issues/<n>/comments
+  gh api --paginate repos/<owner>/<repo>/pulls/<n>/reviews
+  gh api --paginate repos/<owner>/<repo>/pulls/<n>/comments
   ```
+  Read all discussion pages, including author replies and accepted tradeoffs; inspect review-thread
+  resolution state through GraphQL when needed. Summarize settled, still-open, and newly clarified
+  requirements before treating an existing topic as a new finding.
 - **A branch** ("this branch", a branch name) → `git diff <base>...HEAD`; infer the base from
   `git symbolic-ref refs/remotes/origin/HEAD` or the merge-base.
 - **The working diff** ("my changes", "what I just did") → `git diff HEAD` and `git status`.
@@ -109,7 +124,10 @@ Work out what to review, in this order. Ask only if genuinely ambiguous.
 Pin the base with a **three-dot merge-base** (`origin/dev...HEAD` or `origin/main...HEAD`) so
 feature-branch noise is excluded, and grab the commit list (`git log <base>..HEAD --oneline`).
 **Confirm the diff is non-empty in the main thread** — an empty or bad ref should fail here, not
-inside a subagent.
+inside a subagent. Pin the head commit as well. On re-review, compare the prior reviewed commit to
+the new head and reconcile existing findings before adding comments; inspect affected boundaries
+in the full diff too. An all-file route is an inventory, not proof every file was inspected: state
+any coverage gaps. Treat a draft/design consultation as such rather than granting full clearance.
 
 Then gather **the goal** — what this change set out to do. This is both the Spec axis's yardstick and
 the first orientation beat, so collect it once:
@@ -238,9 +256,15 @@ Start your reply with one line: `Maturity: <🔴/🟡/🟢> — <one clause why>
 lens applies — cite the rule; (c) any smell — name it and quote the hunk. Documented standards override
 the baseline; smells are judgement calls. Skip anything tooling enforces. For EACH finding, classify
 severity honestly:
-- blocker  = a correctness defect that ships broken behaviour to a user.
-- should-fix = a real design/maintainability problem a careful reviewer would ask to change first.
-- nit = style, wording, or "pattern to notice" — anything you would not block a merge on.
+Use references/constructive-review.md's calibration and the repo's merge policy:
+- blocker = a supported significant correctness/security failure or core contract breach that
+  cannot safely wait; explain realistic exposure and why merge should stop.
+- should-fix = a supported, scoped defect, maintainability issue, or agreed requirement gap worth
+  addressing before merge, without overstating it as a hard blocker.
+- nonblocking = useful clarification, observation, or follow-up; exclude from confirmed issue counts.
+- nit = inconsequential preference or tooling-enforced style; omit.
+For each surviving issue, record its type, evidence strength, concrete impact, and merge action.
+Reproduction alone does not determine severity or blocking policy.
 Also tag a finding `(trunk)` when its file is a hub — an entry point, shared state/store, router, auth,
 config schema, or a file with many importers; leave leaf files untagged. Give each finding as:
 [severity] (trunk, if applicable) File:Line — one plain sentence on what's wrong · one plain sentence
@@ -275,8 +299,9 @@ unless the repository owns an explicit threshold.
 Report: (a) acceptance criteria (or stated intent) that are missing or only partially implemented —
 quote the criterion; (b) behaviour in the diff that nothing asked for (scope creep); (c) criteria
 that look implemented but where the implementation looks wrong. Classify each as blocker /
-should-fix / nit using the same definitions the Standards reviewer uses (blocker = broken behaviour
-shipped to a user). Tag a finding `(trunk)` when its file is a hub (entry point, shared state/store,
+should-fix / nonblocking / nit using the constructive-review contract and the same calibrated
+definitions the Standards reviewer uses. Separate type, evidence, impact, and merge action; a
+reproduction alone is not a reason to block. Tag a finding `(trunk)` when its file is a hub (entry point, shared state/store,
 router, auth, many importers) the same way the Standards lane does; leave leaf files untagged. Write
 each finding in plain English — lead with the consequence, gloss any jargon. Under 400 words.
 ```
@@ -301,7 +326,10 @@ concrete code comparison and the applicable rule rather than a fabricated runtim
 If execution is unavailable, trace the actual caller and guards, label the finding **code-traced,
 not reproduced**, and state the limit. If the claim still depends on an unknown outcome, keep it in
 **Where I'm least sure**, not the confirmed issues or merge-blocking count. Never invent a test run
-or hand the unresolved experiment to the author as a finding.
+or hand the unresolved experiment to the author as a finding. Genuine questions about intent,
+rollout, or conflicting requirements belong in a separate clarification section, not the defect
+count. A failed reviewer-written assertion is not an acceptance criterion: justify the expected
+behaviour independently. For UX, test the requested meaning and ordering, not a preferred word.
 
 ### Independent refutation — blockers
 
@@ -310,8 +338,9 @@ none, skip only this refutation pass. For each one, send a single `Agent` call
 (`subagent_type: "claude"`) trying to refute it:
 
 ```
-Try to refute this blocker claim. Default to CONFIRMED unless you find concrete contradicting
-evidence — report REFUTED only when certain, not on mere doubt.
+Try to refute this blocker claim against the actual contract, callers, guards, and reproduction.
+Report CONFIRMED only when evidence supports the claimed consequence, REFUTED when concrete
+contradicting evidence defeats it, or UNRESOLVED when context/evidence is insufficient.
 
 ## The claim
 <the finding, verbatim: file:line, what's wrong, the consequence>
@@ -324,12 +353,13 @@ evidence — report REFUTED only when certain, not on mere doubt.
 
 Look for a guard, an upstream validation, an existing test, or a feature flag that the first pass
 missed and that makes this not actually ship broken behaviour. Answer in two lines: CONFIRMED or
-REFUTED, then one sentence why. Under 60 words.
+REFUTED or UNRESOLVED, then one sentence why. Under 60 words.
 ```
 
 Run these in parallel, one `Agent` call per blocker. A `REFUTED` verdict removes the disproved
 correctness claim; retain a separate should-fix only if independent evidence supports it, and explain
-that distinction. `CONFIRMED` carries no change. If no agent tool exists, repeat the guard check in
+that distinction. `CONFIRMED` retains the finding with its impact-based priority; `UNRESOLVED`
+moves it to the uncertainty/clarification section, outside confirmed issue counts. If no agent tool exists, repeat the guard check in
 the main thread and disclose that independent refutation was unavailable.
 This is a narrow, cheap echo of the adversarial-verify pattern (Cursor's Bugbot and independent research
 both found a second independent pass cuts false positives): scoped to blockers only, because that's
@@ -407,8 +437,13 @@ next engineer — 1 sentence.>
 | <reproduction command/test + setup, or labelled code trace / standards comparison> | <expected vs observed; limits if not executed> |
 
 ```
-<what I checked + actual outcome; then a concrete adjustment question — see below>
+<what I checked + actual outcome + consequence; a scoped adjustment request and observable
+completion condition — see the constructive-review contract>
 ```
+
+## Questions and useful observations
+<Omit this section when empty. Briefly separate genuine intent questions, accepted/deferred decisions,
+and specific earned positive observations from confirmed issues. No nit or praise padding.>
 
 ## Verification
 | Check | Result |
@@ -485,26 +520,15 @@ file (not just the diff hunk) so the numbers and the surrounding lines are right
   should have been and say so in the sentence — an empty block is not a finding.
 - The same rule serves the "What I left out" nits if the user asks to see them.
 
-**The paste comment — evidence first, then ask for the adjustment.** The fenced comment is what the
-user drops onto the PR. Keep the user's conversational voice while doing the investigation yourself:
-
-- State **what I checked and what actually happened**, then ask for a concrete adjustment. Name the
-  triggering condition and observed outcome; include a short test name or command when useful.
-- Use one compact paragraph, one adjustment question, no headers, bold, severity label or praise
-  padding. Lowercase start, symbols in backticks, a space before the closing ` ?`.
-- A reproduced example: "i reopened and extended the plan during evaluation in
-  `test_reopen_during_evaluation`; the old postmortem still saved and blocked a fresh one. can we
-  discard the result when the locked plan's end date differs from the evaluated date ?"
-- A code-traced example: "i traced `answer_check_in` through `_fill_unanswered`; unlike the dashboard
-  path it never checks the end date (not reproduced locally). can we apply that guard to ordinary
-  email replies while exempting postmortems ?"
-- A design example: "i compared both upload paths; the storage and rollback steps are duplicated.
-  what do you think about sharing those steps in `file_attachment_service` ?"
-- Replace "can you check/test/double check whether X happens?" and speculative "what happens if…?"
-  with Step 3's actual evidence. Ask the author to adjust the code, not to establish the finding.
-  If the outcome is unknown, leave it out of confirmed issues rather than implying it was tested.
-- Keep the request collaborative: "can we…?", "is it possible to…?", or "what do you think about…?".
-  Never claim an unrun test passed or failed, and never present a code trace as an executed repro.
+**The paste comment — evidence, rationale, request, result.** Read section 4 of
+[constructive review](references/constructive-review.md) before writing each draft. State what was
+checked and observed, why it matters, the scoped collaborative request, and the observable outcome
+that would resolve it. Usually two to four short sentences suffice; small reproduction blocks are
+welcome when useful. Keep the user's conversational voice and use team comment signals when present.
+Do not impose a label taxonomy, a one-line paragraph, or a particular implementation when only the
+outcome matters. Include enough evidence for the author to inspect it without local-only files.
+Separate genuine intent questions from confirmed defects. Avoid duplicating acknowledged comments;
+add new evidence or record the agreed decision instead.
 
 If you're reviewing in a repo whose owner comments differently, read their last few and match them:
 `gh api repos/<owner>/<repo>/pulls/<n>/comments --jq '.[] | select(.user.login=="<them>")'`.
@@ -519,7 +543,8 @@ options:
   - "Present findings — I'll decide what to act on (Recommended)"
   - "Fix the should-fixes now — patch them and show me the diff"
   - "Explain it — build the full walkthrough + quiz"
-  - "Post the comments as a PR review"
+  - "Save the comments as a pending draft review"
+  - "Submit the comments as a PR review"
   - "Accept as-is"
 ```
 
@@ -537,12 +562,17 @@ options:
   Skill tool on the same change so the walkthrough leads with the why, glosses the jargon, and probes
   that it landed; then follow [`references/explainer.md`](references/explainer.md) to package it into
   the HTML explainer + quiz and hand back the path.
+- **Save draft review** → follow [draft reviews](references/draft-reviews.md). Draft-only permission
+  means a pending, unsubmitted review; it never authorizes live issue comments, live replies,
+  approvals, request-changes submissions, or merging. Verify the remote review is `PENDING`.
 - **Post to the PR** is outward-facing and stays the user's call — only run
   `gh pr review <n> --comment` (or `--request-changes`) if they pick it. The paste blocks exist so the
   user can post in their own hands; that's the default path.
 - **Accept as-is**, when this ran against a planning epic and all findings are resolved or accepted,
-  closes the epic: `gh issue close -R KevinKab2412/planning <epic-n>`. Then show a one-line summary — epic
-  closed, what shipped, any deferred follow-ups.
+  records the accepted/deferred findings and rationale in the review record. Do not equate risk
+  acceptance with a clean pass or merge. Close the planning epic only when its acceptance criteria
+  are fulfilled and closure is authorized: `gh issue close -R K2412/planning <epic-n>`.
+  Urgency never grants the agent bypass authority; retain unresolved checks and follow-up.
 
 ## Pipeline notes (when called from /pair)
 
@@ -568,13 +598,16 @@ link is supplemental. The verdict is the first line after the title and it's una
 the Standards-maturity line says whether there was even a standard to hold this diff to — a silent
 maturity line is as much a bug as a silent lane. The four beats orient a newcomer to the change before
 any finding. Every surfaced finding is a blocker or should-fix, written so a bright intern gets it
-without asking, quotes the offending lines so the reader never has to open the file, carries a one-line
+without asking, quotes the offending lines so the reader never has to open the file, carries a concise
 paste comment stating what was checked, the observed outcome and a concrete adjustment question,
+plus its rationale and completion condition,
 and is tagged `(trunk)` when it lives in a hub file. Every issue passed Step 3's evidence gate; a code
 trace is labelled and unresolved hypotheses stay out of the merge-blocking count. Every blocker
 survived a refute attempt, with any lack of independent tooling disclosed. Verification lists real
 commands, outcomes and limits; disproved claims are removed.
 The review plan gives the user their own route through the change, accounts for every changed file with
-none skipped, and says where your own pass is weakest. The nits are counted, not shown. A lane that had
+none skipped, and says where your own pass is weakest; inventory never substitutes for inspection.
+Existing feedback is reconciled; accepted tradeoffs, genuine questions, and useful observations stay
+separate from confirmed issues. There is no findings quota. The nits are counted, not shown. A lane that had
 nothing to say says so — a silent lane must never read as a clean bill of health. The report ends with
 the offer to go deeper, so understanding is always one word away.

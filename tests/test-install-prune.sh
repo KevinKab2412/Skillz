@@ -50,6 +50,10 @@ grep -qx pair "$manifest"
 grep -qx visualise "$manifest"
 test -f "$skills_dir/visualise/SKILL.md"
 test ! -e "$skills_dir/to-visual"
+# Review policy, draft safety, and behavioural cases must ship together with SKILL.md.
+for asset in SKILL.md references/constructive-review.md references/draft-reviews.md evals/evals.json; do
+  cmp "$fixture/code-review/$asset" "$skills_dir/code-review/$asset"
+done
 
 # A skill installed by another tool: on disk but not in our manifest.
 mkdir -p "$skills_dir/codex-tool"
