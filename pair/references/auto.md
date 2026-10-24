@@ -44,6 +44,10 @@ Record in the conversation (or private OS-temp run state outside the code repo):
 
 - the requested observable result and its acceptance evidence;
 - the smallest likely approach and the existing module/interface that owns it;
+- relevant domain standards, version-specific primary sources, and the invariants or failure modes
+  they establish;
+- a verifier for each material outcome: observable signal, representative cases, threshold source
+  where applicable, and known limits;
 - assumptions, exclusions, tests/guards, and conditions that require stopping.
 
 This execution brief is working context, not a new formal spec, epic, or human-approved architecture
@@ -61,12 +65,27 @@ Formal planning records, when explicitly requested, still belong in the personal
 never a code repo or shared team tracker. Auto mode alone does not create/update/close issues, change
 labels, or convert an unapproved existing plan into an approved one.
 
-## 3. Investigate only what the task needs
+## 3. Ground domain decisions before setting the verifier
 
-Choose useful tools and skills without an offer/approval round. Read [research](research/SKILL.md)
-for unfamiliar facts, [experts](experts/SKILL.md) for domain standards, and the internal
-[best-practices](best-practices/SKILL.md) guidance for the detected stack when relevant. Repository
-stack/configuration evidence is sufficient; missing issue labels are not a reason to ignore it.
+For a task that creates or changes material domain behavior, search the relevant expert corpus on
+the task topic before settling the approach or verifier. Search for the domain's invariants,
+tradeoffs, failure modes, and operational or security constraints, as well as verification guidance.
+Use `find` for an obvious domain; use `route` when ownership is unclear or the task crosses domains.
+The search should cover the subject itself — such as queue delivery, pipeline replay, or tenant
+isolation — rather than only how to test it. Read [experts](experts/SKILL.md) for tool selection,
+citations, and low-confidence handling.
+
+Inspect manifests and lockfiles, then consult official documentation for the repository's actual
+framework and library versions where their behavior affects the task. Use installed source or types
+when version-matched docs are unavailable. Read [research](research/SKILL.md) for broader source
+gathering or unfamiliar facts, and apply [best-practices](best-practices/SKILL.md) for the detected
+stack when relevant.
+
+Carry a compact domain brief into the execution brief and worker prompt: applicable Standard IDs,
+primary-source links and versions, domain invariants, failure modes, and unresolved questions. Use
+these sources to shape the design and verification cases. The user request and approved contracts
+still define product behavior; expert guidance and docs do not silently create new acceptance
+criteria.
 
 Bound the investigation to decisions affecting this task. Cite important outside facts. Missing
 optional integrations are disclosed and replaced with available primary sources where appropriate;
@@ -90,11 +109,15 @@ for routine permission. Never imply fresh-context isolation happened when it did
 For each slice:
 
 1. Identify an observable result and an independently sourced expected outcome.
-2. Implement the smallest cohesive behavior and its tests, preferably test-first when practical.
-3. Show a discriminating failure, a targeted temporary break, or an existing configured mutation
-   check where feasible; restore the correct code. Explain proof gaps rather than inventing evidence.
-4. Keep touched structure clean and within the agreed boundary; do not accumulate unrelated cleanup.
-5. Run focused tests and repository hard guards before extending the slice.
+2. Choose a suitable verifier for that outcome: public-interface test, browser or visual comparison,
+   benchmark, data-quality check, or another repeatable signal. Name representative cases and the
+   source for any pass threshold; explain limits and exclusions.
+3. Implement the smallest cohesive behavior and its verifier, preferably test-first when practical.
+4. Show the verifier distinguishes a known-bad result from the expected result — through a failing
+   pre-fix case, a targeted temporary break, a known-bad fixture, or an existing configured mutation
+   check where suitable. Restore the correct code. Explain proof gaps rather than inventing evidence.
+5. Keep touched structure clean and within the agreed boundary; do not accumulate unrelated cleanup.
+6. Run the verifier, focused tests, and repository hard guards before extending the slice.
 
 Keep the patch separate from pre-existing or concurrent changes. Reassess assumptions against the
 actual results. When a fix repeatedly fails or the footprint keeps expanding, stop and report the

@@ -169,6 +169,24 @@ Read whatever exists in full —
 [`references/coding-standards/coding-standards.md`](references/coding-standards/coding-standards.md)
 has the maturity rubric. Pass whatever you found, or its absence, into the Standards subagent verbatim.
 
+### Ground material domain behavior
+
+When the change creates or materially changes a domain concept, invariant, operational behavior, or
+framework integration, ground the review in the task subject before dispatching the lanes. Read the
+epic's **Domain Grounding** section when present. If it is absent or incomplete, use the shared
+[`experts`](../pair/references/experts/SKILL.md) module to search the topic broadly with `find`; use
+`route` first when the owning domain is unclear or the change spans domains. Look for the domain's
+invariants, tradeoffs, failure modes, and operational or security constraints, not only testing
+advice. Inspect manifests and lockfiles, then consult official documentation matching the relevant
+framework/library versions for behavior the review depends on.
+
+Pass a compact **Domain Grounding** packet to all review lanes: relevant Standard IDs, primary-source
+links and versions, applicable invariants and failure modes, and unresolved uncertainties. Treat it
+as evidence for evaluating the design and its verification; the approved spec or stated intent
+remains the acceptance bar. For mechanical changes with established behavior, skip the broad lookup.
+If an optional expert or docs source is unavailable, disclose the gap and continue with available
+evidence.
+
 ## Step 2 — Run Standards, Spec, and Experts in parallel
 
 **Choose the scope first.** A normal review keeps all three lanes. An explicit bug-only or
@@ -187,18 +205,19 @@ backend findings into this skill's verification and report; do not emit a second
 When no parallel-agent tool exists, run the lanes sequentially and disclose the lack of independence.
 
 Send **one message with three `Agent` calls** (`subagent_type: "claude"`). They share the diff, commit
-list, and goal from Step 1; each gets its own clean context. Keep each subagent's brief **under 400
-words of output** — they feed a concise report, so a sprawling subagent return defeats the purpose.
+list, goal, and Domain Grounding packet from Step 1; each gets its own clean context. Keep each
+subagent's brief **under 400 words of output** — they feed a concise report, so a sprawling subagent
+return defeats the purpose.
 
 **Experts lane runs automatically** in a normal review: follow
 [`references/experts-lane.md`](references/experts-lane.md) as the third subagent; no `--experts`
 request is needed. Explicit bug-only or security-only scope still limits every lane to that scope.
 Missing tools or low-confidence results are disclosed, never treated as a clean experts pass.
 
-When a concrete review claim depends on an unknown external fact (an API guarantee, library behavior,
-or current documentation), read pair's [research module](../pair/references/research/SKILL.md)
-directly. Research only that gap, cite the evidence, and return to the review; do not start pair,
-change the acceptance bar, or add a broad research pass to every review.
+When a concrete claim depends on an unknown external fact, read pair's
+[`research`](../pair/references/research/SKILL.md) module directly and cite the evidence. For a
+material domain change, this focused grounding belongs before lane dispatch as described above;
+mechanical reviews need only a narrow check of the specific fact in question.
 
 ---
 
@@ -219,6 +238,10 @@ This is the authoritative judgment-call standard when present — hold the diff 
 maturity read (references/coding-standards/coding-standards.md): 🔴 none set (nothing above and no
 configured linter rules below) / 🟡 partial (thin, stale, or only one of the two) / 🟢 solid (a real
 doc, configured linter thresholds, or both).
+
+## Domain grounding
+<paste the relevant expert Standards, domain invariants/failure modes, and version-matched official
+docs with links, or state that no material domain lookup was needed>
 
 ## Repo standards
 Check pyproject.toml / ruff.toml (or the repo's linter config) for intentionally configured thresholds.
@@ -289,6 +312,10 @@ Review the diff below against the goal it was meant to satisfy.
 <paste: PR description + linked Linear ticket(s) + planning-epic acceptance criteria — whichever exist.
 If none exist, say so and review against the PR's stated intent only.>
 
+## Domain grounding
+<paste relevant expert standards, domain invariants and failure modes, and official docs with versions;
+or write "No material domain grounding needed for this change.">
+
 ## Architecture contract (when present in the approved spec)
 Check that the diff preserves knowledge ownership, protected policy, interface guarantees, dependency
 direction, boundary-data rules, scope, and hard guards. Report unexplained drift; do not treat an
@@ -350,6 +377,9 @@ contradicting evidence defeats it, or UNRESOLVED when context/evidence is insuff
 
 ## Verification evidence
 <paste: reproduction setup, command/test, expected and actual result, or labelled code trace>
+
+## Domain grounding
+<paste relevant expert Standards and version-matched docs needed to evaluate this blocker>
 
 Look for a guard, an upstream validation, an existing test, or a feature flag that the first pass
 missed and that makes this not actually ship broken behaviour. Answer in two lines: CONFIRMED or
@@ -594,7 +624,9 @@ over from that role:
 
 The complete Step 4 report is in the final chat response without a follow-up request; an artifact
 link is supplemental. The verdict is the first line after the title and it's unambiguous
-(ship / fix first / don't merge). Right after its metadata,
+(ship / fix first / don't merge). For a material domain change, the review checks whether the
+verification evidence covers relevant domain invariants and failure modes; it flags a gap only when
+the diff leaves a concrete behavior or risk unverified. Right after its metadata,
 the Standards-maturity line says whether there was even a standard to hold this diff to — a silent
 maturity line is as much a bug as a silent lane. The four beats orient a newcomer to the change before
 any finding. Every surfaced finding is a blocker or should-fix, written so a bright intern gets it

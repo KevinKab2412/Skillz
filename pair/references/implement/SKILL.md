@@ -101,6 +101,15 @@ section entirely when neither label is present>
 ## Architecture Contract
 <paste the epic contract and the relevant task subset verbatim>
 
+## Domain Grounding
+<paste the relevant epic domain brief: expert Standard IDs, version-matched primary sources,
+invariants, failure modes, and open questions>
+
+Before setting the verifier, use this brief to identify domain risks the task must cover. If a
+material topic is missing, consult the relevant expert corpus and official documentation for the
+repository's actual library version. These sources inform design and test cases; the approved task
+acceptance criteria define the expected product behavior.
+
 ## Batch isolation
 Before your first edit, record starting `HEAD`, worktree status, and the
 pre-existing diff. In an OS-temp batch directory, snapshot every file before
@@ -112,10 +121,26 @@ task commits, return the immutable base/head range instead.
 
 ## Behavior proof
 
-Before changing code, identify the public seam where this batch's behavior is
-observable without reaching into its implementation. Name the human-approved
-acceptance example or existing product contract that supplies the expected
-result; tests generated from the same ambiguous guess are not independent proof.
+Before changing code, identify the public seam or user-visible signal where this
+batch's behavior is observable without reaching into its implementation. Name the
+human-approved acceptance example or existing product contract that supplies the
+expected result; tests generated from the same ambiguous guess are not
+independent proof.
+
+For each material acceptance outcome, record a verifier brief before implementation:
+- the behavior and its observable signal;
+- the verifier to use (for example, a public-interface test, visual comparison,
+  benchmark, or data-quality check);
+- representative cases or fixture data, including domain failure modes from the
+  grounding brief;
+- the source for expected results and any pass threshold;
+- environment assumptions and known limits.
+
+Choose signals and thresholds from the task's approved goal, domain evidence, and
+version-matched contracts. Do not invent product behavior or a quality threshold
+from an expert standard or documentation example. If a material criterion has no
+defensible verifier or its expected result remains unsettled, stop and return the
+smallest open decision before implementing that criterion.
 
 If the seam in the task and the code disagree, stop. That is architecture
 evidence, not permission to silently choose a different seam.
@@ -125,15 +150,17 @@ interface vocabulary to the project's domain language.
 
 ### Small-bundle loop
 1. Select one cohesive behavior from the task acceptance criteria.
-2. Implement and test it as one small bundle. Prefer test-first when the expected
-   behavior and seam are already clear; implementation and test may be developed
-   together when discovery is local to the bundle.
-3. Prove the test discriminates correct from incorrect behavior: observe the
-   pre-fix failure, use a targeted temporary break, or run the configured mutation
-   check. Restore the correct implementation.
+2. Implement the behavior and its verifier as one small bundle. Prefer test-first
+   when the expected behavior and seam are already clear; implementation and
+   verifier may be developed together when discovery is local to the bundle.
+3. Prove the verifier distinguishes an expected result from a known-bad one:
+   observe a pre-fix failure, compare a known-bad fixture, use a targeted
+   temporary break, or run the configured mutation check where suitable. Restore
+   the correct implementation.
 4. Clean the touched structure now: remove duplication and pass-throughs, keep
    knowledge in its owning module, and preserve the contract's dependency direction.
-5. Run the focused tests and hard guards before selecting the next behavior.
+5. Run the focused verifier, tests, and hard guards before selecting the next
+behavior.
 
 Do not leave several green but structurally unfinished behaviors for a later
 reviewer to untangle. Do not anticipate behavior outside this batch.
@@ -152,25 +179,30 @@ reviewer to untangle. Do not anticipate behavior outside this batch.
 - **Architectural escape**: adding a new import, adapter, public method, or framework
   type across the seam because the approved interface is inconvenient. Escalate it.
 
-### What a good test looks like
-Tests verify behaviour through public interfaces, not implementation details.
-A good test reads like a specification: "user can checkout with valid cart"
-tells you exactly what capability exists and survives refactors.
+### What a good verifier looks like
+Verifiers establish behavior through public interfaces or other user-visible
+signals, not implementation details. A good verifier reads like a specification:
+"user can checkout with valid cart" tells you exactly what capability exists and
+survives refactors. Visual or performance verifiers name their comparison cases,
+environment, and threshold source.
 
 ## Tasks
 <only the tasks in this bounded batch, with titles, bodies, acceptance examples,
 seam, architecture-contract subset, guards, escalation conditions, and dep order>
 
 ## Verification
-Run every hard guard named in the contract. Report diagnostic signals such as
-coverage, mutation score, CRAP, complexity, coupling, or size without treating
-them as failures unless the repository already configures an explicit threshold.
+Run the task's verifiers and every hard guard named in the contract. Report
+diagnostic signals such as coverage, mutation score, CRAP, complexity, coupling,
+or size without treating them as failures unless the repository already
+configures an explicit threshold. For each verifier, report its cases, threshold
+and source where applicable, result, and any known limit.
 
 ## Acceptance
 Each task is done when:
 1. Behavior is observable through the approved seam and matches independently
    sourced acceptance examples.
-2. Tests were shown to discriminate broken from correct behavior and now pass.
+2. Each material verifier was shown to distinguish a known-bad result from the
+   expected result, and now passes.
 3. The touched structure is clean enough to continue without stacking known debt.
 4. Every architecture-contract hard guard passes.
 5. No unexplained files, dependencies, or boundary types sit outside the contract.

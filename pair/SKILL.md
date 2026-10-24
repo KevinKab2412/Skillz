@@ -76,7 +76,7 @@ Resolve the current user instruction, repository guidance, existing planning iss
 applicable architecture contract or decision record before entering the first selected stage.
 
 ```
-worktree → [research] → [sketch] → grill → [prototype] → [architecture] → spec → plan-review
+worktree → [domain grounding] → [sketch] → grill → [prototype] → [architecture] → spec → plan-review
     → { implement → [architecture checkpoint] } → code-review → taste-review → polish
 ```
 
@@ -114,21 +114,31 @@ parallelise — the front of this pipeline (grill) is replaced by [`wayfinder`](
 which maps decision tickets over many sessions and hands `spec` a resolved map. Then `pair` picks up
 from spec onward. `wayfinder` is the plan-phase orchestrator; `pair` is the build-phase one.
 
-## Stage 0 — Research (optional)
+## Stage 0 — Domain grounding (conditional)
 
-If the idea hinges on facts you don't have — an unfamiliar API, a library choice, domain knowledge,
-real-world UI patterns — grounding the grill in facts beats grilling on guesses. Offer it:
+Before settling the approach or its verifier, ground any material domain behavior in the relevant
+expert corpus and primary sources. Do this when the task creates or changes domain concepts,
+invariants, operational behavior, or framework-specific behavior — for example queue delivery,
+pipeline replay, tenant isolation, or a framework integration. Skip it for mechanical changes whose
+behavior and constraints are already established in the repository.
 
-```
-question: "This depends on <the unknown>. Research it first so we grill on facts, not guesses?"
-options:
-  - "Yes, research first (Recommended)"
-  - "No, I know enough — start grilling"
-```
+1. Read the shared [`experts`](references/experts/SKILL.md) module. Use `find` to search the task
+   topic across the obvious expert domain. If ownership is unclear or spans domains, use `route`
+   first, then search the relevant domains. Search for the subject's core invariants, tradeoffs,
+   failure modes, and operational or security constraints, as well as guidance on how to verify
+   them. Cite the returned Standard IDs.
+2. Inspect manifests and lockfiles to identify the actual framework and library versions. Read the
+   matching official docs for behavior that depends on those versions; use installed source or types
+   when official docs for that version are unavailable. The expert corpus supplies reusable domain
+   standards; primary docs establish version-specific behavior.
+3. Return a compact domain brief: applicable standards, invariants and risks, source links and
+   versions, and unresolved questions. Treat it as design evidence, not as user-approved product
+   behavior. Carry it into the grill, architecture decisions, spec, and verifier design.
 
-If yes, read the internal [`research` module](references/research/SKILL.md) (it works AFK in a background agent and writes cited
-findings to a file); carry those findings into the grill. If the idea is well-understood already,
-skip straight to Stage 0.5 (or Stage 1).
+For unfamiliar facts or broader source gathering, read the internal
+[`research`](references/research/SKILL.md) module. If the experts MCP is unavailable or has low
+confidence, disclose that and continue from available primary sources; never imply the corpus
+confirmed a claim it did not cover.
 
 ## Stage 0.5 — Design Sketch (optional)
 
@@ -157,8 +167,10 @@ Keep it coarse — a strawman to steer, not a spec. Exact fields and signatures 
 
 ## Stage 1 — Grill
 
-Read the internal [`grill` module](references/grill/SKILL.md) to reach shared understanding and maintain the domain model. It
-finishes with a decision log plus any CONTEXT.md / ADR updates. Those feed the spec.
+Read the internal [`grill` module](references/grill/SKILL.md) to reach shared understanding and maintain the domain model. Bring
+the Stage 0 domain brief into the discussion so domain invariants and failure modes can challenge
+the proposed behavior. The grill finishes with a decision log plus any CONTEXT.md / ADR updates.
+Those feed the spec.
 
 ## Stage 1.5 — Prototype (optional)
 
@@ -201,8 +213,8 @@ what decisions remain human, and says when to inspect the result.
 
 ## Stage 2 — Spec
 
-Run [`spec`](references/spec/SKILL.md) to synthesise the grill decision log, any prototype verdict, and any
-architecture contract into a spec and GitHub epic with atomic child task sub-issues in
+Run [`spec`](references/spec/SKILL.md) to synthesise the grill decision log, domain brief, any prototype
+verdict, and any architecture contract into a spec and GitHub epic with atomic child task sub-issues in
 `KevinKab2412/planning`. It hands back the
 epic number. `spec` is also where the epic gets its `stack:*` labels (e.g. `stack:react`,
 `stack:dagster`) — those labels are what later route `best-practices` guidance into `implement` and
@@ -219,8 +231,11 @@ Run [`plan-review`](references/plan-review/SKILL.md) on the epic. Transition on 
 ## Stage 4 — Implement
 
 Run [`implement`](references/implement/SKILL.md) — it spawns a fresh subagent from issue data and grants it
-autonomy only inside the approved architecture contract. One batch is normally one complete behavioral
-slice; several related tasks may share a batch only when they stay behind the same settled interface.
+autonomy only inside the approved architecture contract. Before implementation, use the epic's
+domain brief and each task's acceptance evidence to define a verifier for the behavior: its
+observable signal, representative cases, threshold source where applicable, and known limits. One
+batch is normally one complete behavioral slice; several related tasks may share a batch only when
+they stay behind the same settled interface.
 Wait for it to return. If it hits `needs-human` or a contract escalation condition, surface the reason
 and wait for approval. When the epic is stack-labelled (`stack:react` / `stack:dagster`),
 `implement` reads those labels and applies the matching `best-practices` guidance as it builds — this
@@ -242,7 +257,9 @@ watching each edit, while executable guards and architecture checkpoints keep au
 ## Stage 5 — Code Review
 
 Run [`code-review`](../code-review/SKILL.md) — Standards + Spec review of the diff against the epic,
-including the architecture contract and any approved checkpoint revisions. When the epic is
+including its domain brief, verification criteria, architecture contract, and any approved checkpoint
+revisions. Review whether the evidence covers material domain invariants and the promised behavior.
+When the epic is
 stack-labelled (`stack:react` / `stack:dagster`), `code-review`
 reads those labels and folds the matching `best-practices` guidance into the Standards axis — again not
 a separate stage, the wiring lives inside `code-review`. On acceptance it closes the epic and shows

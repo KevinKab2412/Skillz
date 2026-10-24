@@ -11,8 +11,8 @@ description: >
 
 # Spec — synthesise understanding into a spec + GitHub plan
 
-Turn shared understanding (a grill decision log, a discussion, or a rough idea the user hands you)
-into a written spec and an atomic plan of **GitHub issues in `KevinKab2412/planning`** (private). **Don't
+Turn shared understanding (a grill decision log, domain brief, discussion, or a rough idea the user
+hands you) into a written spec and an atomic plan of **GitHub issues in `KevinKab2412/planning`** (private). **Don't
 interview here** — that's [internal grill module](../grill/SKILL.md). Synthesise from what's already decided plus
 what you find in the code.
 
@@ -50,12 +50,17 @@ The map may hold far more decisions than a single grill; expect a dense spec.
 ## Step 1 — Explore the repo
 
 Before writing anything, read the codebase to understand current state. Use the project's domain vocabulary throughout the spec. Respect any ADRs in the area being touched.
+Carry forward the domain grounding produced during pair's research stage. For material domain behavior,
+include relevant expert Standards and version-matched primary docs; do not turn general guidance into
+product requirements the user has not approved.
 
-## Step 2 — Identify test seams
+## Step 2 — Identify verification seams
 
-Identify the seams at which the feature will be tested:
+Identify how each material outcome will be observed and verified:
 - Prefer existing seams over new ones.
-- Use the highest seam possible — the fewer seams the better; the ideal is one.
+- Use the highest public seam possible — the fewer seams the better; the ideal is one.
+- Choose evidence that fits the behavior: automated tests, rendered output comparison, performance
+  benchmarks, data-quality checks, or another repeatable signal.
 - Propose new seams only when unavoidable, at the highest point you can.
 
 If this reveals unclear ownership, a new public interface, a changed dependency direction, or policy
@@ -89,6 +94,14 @@ A numbered list covering all aspects of the feature. Format:
 (No file paths or code snippets unless a prototype snippet encodes a decision
 more precisely than prose — if so, inline only the decision-rich parts.)
 
+## Domain Grounding
+- The task's relevant domain invariants, tradeoffs, and failure modes
+- Applicable expert Standard IDs and the constraint each contributes
+- Official documentation links and the framework/library versions they describe
+- Unresolved domain questions or assumptions that still need a human decision
+(This is evidence for design and verification. The user's approved behavior remains the acceptance
+bar.)
+
 ## Architecture Contract
 Include the approved contract from /architecture verbatim when one exists:
 - behavioral slice and module
@@ -101,10 +114,14 @@ Include the approved contract from /architecture verbatim when one exists:
 If the work stays behind an established seam, name that seam and its existing guards instead of
 manufacturing a new contract.
 
-## Testing Decisions
-- What makes a good test for this feature (external behaviour, not internals)
-- Which modules will be tested
-- Prior art in the codebase (similar existing tests)
+## Verification Strategy
+- Each material outcome and the public seam or observable signal that proves it
+- The verifier or oracle: tests, visual comparison, benchmark, data-quality check, or another
+  repeatable check
+- Representative cases or fixture corpus, informed by the domain brief
+- Expected results from an independent source and any pass threshold with its rationale/source
+- Environment assumptions, known limits, and exclusions
+- Prior art in the codebase (similar existing tests, benchmarks, or fixtures)
 
 ## Out of Scope
 What this spec explicitly does not cover.

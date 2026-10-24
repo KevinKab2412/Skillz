@@ -1,8 +1,9 @@
 # Experts lane (automatic)
 
-The experts lane holds the change to a curated **domain corpus** — the `experts` MCP server's
-standards for software engineering, Python, Laravel, AI engineering, data engineering/analysis, GTM,
-zettelkasten, and more. Run it automatically alongside Standards and Spec in every normal review.
+The experts lane grounds a material change in the task's subject, then holds the diff to a curated
+**domain corpus** — the `experts` MCP server's standards for software engineering, Python, Laravel,
+AI engineering, data engineering/analysis, GTM, zettelkasten, and more. Run it automatically
+alongside Standards and Spec in every normal review.
 For an explicit bug-only or security-only review, restrict this lane to that requested scope too;
 an explicit exclusion by the user takes precedence. Keep only blockers and should-fixes.
 
@@ -16,18 +17,30 @@ message, with this prompt:
 ```
 Hold the change below to the relevant expert's domain standards from the `experts` MCP.
 
+## Domain Grounding packet
+<paste the packet from the main review, including the task subject, relevant Standard IDs, domain
+invariants/failure modes, and version-matched official docs; or state that none is needed>
+
 ## Diff
 <paste the diff>
 
 ## What to do
 Read the shared experts module at <absolute path to pair/references/experts/SKILL.md> first.
-1. Summarise the diff in 1–2 sentences — which domain does it touch (software engineering, Python,
-   Laravel, AI engineering, data engineering/analysis, GTM, zettelkasten)?
-2. If the owning domain is obvious, call review(artifact=<that summary>, expert=<domain>) directly.
-   If it's ambiguous or spans domains, call route(artifact=<that summary>) first to get the owning
-   expert plus cross-domain challengers, then review(expert=<the winner>); weigh the challengers too.
-3. The corpus holds no LLM — the tools return Standards, supporting passages, a rubric, and a Finding
-   schema for YOU to reason over. Do the judging yourself.
+1. Summarise the task's subject and the diff in 1–2 sentences. Use the packet's domain findings to
+   identify the key invariants, tradeoffs, and failure modes that should inform the review.
+2. If the packet lacks topic-level expert grounding, search the task subject with `find(query, expert)`
+   before reviewing the diff. If the owning domain is obvious, name it directly. If the domain is
+   unclear or spans domains, call `route(artifact_or_question)` first, then search the winner and
+   material challengers. Search the subject itself — for example queue delivery semantics, pipeline
+   replay, or tenant isolation — rather than only testing principles.
+3. Call `review(artifact=<the task-and-diff summary>, expert=<the primary domain>)` against the
+   relevant Standards. When routing identified material challengers, search and weigh their topic
+   standards too. For framework or library behavior, use the version-matched official docs in the
+   packet; if a material contract is missing, consult the primary docs for the version found in the
+   repo's manifests/lockfiles. Cite relevant Standard IDs and doc links.
+4. The corpus holds no LLM — the tools return Standards, supporting passages, a rubric, and a Finding
+   schema for YOU to reason over. Do the judging yourself. Surface only concrete issues in this diff;
+   domain guidance alone does not create a finding or change the acceptance bar.
 
 ## Honesty rules
 - Honour low_confidence: if the tools return it, the corpus has little to say here — report that
