@@ -56,6 +56,10 @@ product requirements the user has not approved.
 
 ## Step 2 — Identify verification seams
 
+Read the [verification-method bank](../evidence/verification-methods.md) and matching entries before
+selecting methods. Reuse repository tooling and version-matched docs; explain how the selected
+methods cover approved claims and which claims remain unverified.
+
 Identify how each material outcome will be observed and verified:
 - Prefer existing seams over new ones.
 - Use the highest public seam possible — the fewer seams the better; the ideal is one.

@@ -6,6 +6,11 @@ repository tests and guards. Approved requirements supply expected behavior.
 
 ## Choose and capture
 
+Before choosing or assessing a verifier, read the [verification-method bank](verification-methods.md)
+and its matching entries. Map approved claims to methods, reuse the repository's tools, and consult
+version-matched framework docs. Carry the selection rationale and uncovered claims into the caller's
+existing verifier brief and evidence handoff.
+
 | Changed behavior | Default evidence |
 |---|---|
 | Any UI or visual change, including static layout, styling, text, and rendering | A recording of the actual rendered result and relevant interactions; matching before/after captures where a baseline exists |

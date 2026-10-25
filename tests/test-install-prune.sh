@@ -57,8 +57,7 @@ done
 
 # Shared evidence policy is injected identically for implementers and reviewers.
 for skill in pair code-review; do
-  cmp "$fixture/shared/evidence/behavior-evidence.md" \
-    "$skills_dir/$skill/references/evidence/behavior-evidence.md"
+  diff -r "$fixture/shared/evidence" "$skills_dir/$skill/references/evidence"
 done
 
 # A skill installed by another tool: on disk but not in our manifest.
