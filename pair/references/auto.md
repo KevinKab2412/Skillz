@@ -106,6 +106,11 @@ contracts, permitted scope, and stop conditions. If workers are absent,
 proceed sequentially in the current context and disclose the reduced independence without asking
 for routine permission. Never imply fresh-context isolation happened when it did not.
 
+Read [shared behavior evidence](evidence/behavior-evidence.md) before selecting verifiers and pass
+it to workers. Apply its recording default for all UI/visual changes, explicit fallback handling,
+tested-code identity, and evidence handoff. Carry the bundle into review and refresh affected
+evidence after repairs or polish.
+
 For each slice:
 
 1. Identify an observable result and an independently sourced expected outcome.

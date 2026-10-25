@@ -55,6 +55,12 @@ for asset in SKILL.md references/constructive-review.md references/draft-reviews
   cmp "$fixture/code-review/$asset" "$skills_dir/code-review/$asset"
 done
 
+# Shared evidence policy is injected identically for implementers and reviewers.
+for skill in pair code-review; do
+  cmp "$fixture/shared/evidence/behavior-evidence.md" \
+    "$skills_dir/$skill/references/evidence/behavior-evidence.md"
+done
+
 # A skill installed by another tool: on disk but not in our manifest.
 mkdir -p "$skills_dir/codex-tool"
 printf -- '---\nname: codex-tool\ndescription: external tool.\n---\n' \

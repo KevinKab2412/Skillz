@@ -230,6 +230,10 @@ Run [`plan-review`](references/plan-review/SKILL.md) on the epic. Transition on 
 
 ## Stage 4 — Implement
 
+Read [shared behavior evidence](references/evidence/behavior-evidence.md) before selecting verifiers.
+Use its recording default for all UI/visual changes and carry each batch's evidence bundle into
+review, including tested-code identity, case outcomes, artifacts, rerun commands, and limits.
+
 Run [`implement`](references/implement/SKILL.md) — it spawns a fresh subagent from issue data and grants it
 autonomy only inside the approved architecture contract. Before implementation, use the epic's
 domain brief and each task's acceptance evidence to define a verifier for the behavior: its
@@ -255,6 +259,10 @@ This is supervised strategically, not tactically: the implementation agent runs 
 watching each edit, while executable guards and architecture checkpoints keep autonomy bounded.
 
 ## Stage 5 — Code Review
+
+Hand over the implementation evidence bundles. The reviewer checks their revision and coverage,
+inspects the artifacts, and distinguishes supplied evidence from its own reproductions under the
+shared evidence policy.
 
 Run [`code-review`](../code-review/SKILL.md) — Standards + Spec review of the diff against the epic,
 including its domain brief, verification criteria, architecture contract, and any approved checkpoint

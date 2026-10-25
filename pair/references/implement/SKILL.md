@@ -121,6 +121,11 @@ task commits, return the immutable base/head range instead.
 
 ## Behavior proof
 
+Read [shared behavior evidence](../evidence/behavior-evidence.md) before choosing verification.
+Follow its capture, revision identity, safe-delivery, and evidence-bundle requirements. Recordings
+are the default for all UI/visual changes; disclose any fallback. Return the evidence bundle with
+the batch so review can inspect and reproduce it.
+
 Before changing code, identify the public seam or user-visible signal where this
 batch's behavior is observable without reaching into its implementation. Name the
 human-approved acceptance example or existing product contract that supplies the
@@ -191,6 +196,8 @@ environment, and threshold source.
 seam, architecture-contract subset, guards, escalation conditions, and dep order>
 
 ## Verification
+Return the shared policy's evidence bundle, including artifacts, case outcomes, rerun commands,
+tested-code identity, and limits. Refresh affected evidence after subsequent edits.
 Run the task's verifiers and every hard guard named in the contract. Report
 diagnostic signals such as coverage, mutation score, CRAP, complexity, coupling,
 or size without treating them as failures unless the repository already

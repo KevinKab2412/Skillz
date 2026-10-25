@@ -29,8 +29,12 @@ class PairAutoTests(unittest.TestCase):
                        'Do not fabricate', 'No commit, push, PR, merge, deployment',
                        'bounded repair', 'Missing design-pattern files', 'assumptions'):
             self.assertIn(marker, policy)
+        modules = (AUTO.parent / '.shared').read_text().splitlines()
         for relative in re.findall(r'\]\(([^)]+\.md)\)', policy):
-            self.assertTrue((AUTO.parent / relative).is_file(), relative)
+            target = AUTO.parent / relative
+            if not target.is_file() and relative.split('/')[0] in modules:
+                target = ROOT / 'shared' / relative
+            self.assertTrue(target.is_file(), relative)
 
     def test_policy_requires_no_harness_specific_runtime(self):
         policy = AUTO.read_text()

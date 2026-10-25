@@ -337,6 +337,14 @@ each finding in plain English — lead with the consequence, gloss any jargon. U
 
 ### Evidence gate — every surviving finding
 
+Read [shared behavior evidence](references/evidence/behavior-evidence.md). Inspect supplied evidence
+bundles before running probes: check tested-code identity, case coverage, artifacts, and limits.
+Apply the recording default for all UI/visual changes when capturing reviewer evidence, with the
+policy's explicit fallback when capture is unavailable or unsafe. Preserve read-only review scope:
+local verification does not authorize application edits, uploads, or PR/tracker writes. Supplied
+recordings do not replace reproducing material claims; distinguish supplied, reviewer-reproduced,
+stale, and untested evidence in Verification. Assess concrete risks, not an artifact quota.
+
 Resolve the uncertainty yourself before asking the author for a change. For each proposed runtime
 or correctness finding, run the smallest safe reproduction through the real entry point available
 in the worktree. Exercise the claimed condition, observe the actual result, and check for an upstream
@@ -480,6 +488,7 @@ and specific earned positive observations from confirmed issues. No nit or prais
 |---|---|
 | <commands/suites actually run> | <pass/fail counts; distinguish deliberate regression failures> |
 | <unrun paths / environment blockers / spec and tool availability> | <limits; never imply a missing pass cleared the change> |
+| Behavior evidence | <tested-code identity; supplied vs reviewer-reproduced cases; recording/artifact paths; stale or untested paths and capture limitations> |
 | Repository / PR | <edits, probes, and whether anything was posted> |
 
 ## What I left out
