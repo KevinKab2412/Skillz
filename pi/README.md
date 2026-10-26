@@ -1,7 +1,9 @@
 # Portable Pi setup
 
-Configuration snapshot from 2026-10-22, updated for Pi **1.4.0**, for macOS/Linux. This directory is an explicit
-allowlist of portable configuration, not a copy of the agent directory.
+Portable configuration synced from the live global setup on 2026-10-26, Pi **1.4.0**,
+for macOS/Linux. Restore the same preferences, extensions, prompts, model limits,
+skills, instructions, and MCP server definitions on a new machine. Credentials,
+project trust, conversation history, and external services are handled separately.
 
 ## Restore on another system
 
@@ -19,8 +21,8 @@ pi
 Run `/login` for the providers you use. The startup model is the model used when this
 snapshot was taken: `openai-codex/gpt-6.1-sol`, medium thinking. If your account does
 not offer it, choose an available model with `/model` and save with Ctrl+S.
-The original settings had no saved startup model; this snapshot makes the session's
-selection explicit. Other preferences retain Pi 1.3.0 defaults.
+All saved portable settings match the live setup. Unspecified preferences use the
+pinned Pi runtime's defaults.
 
 Optional local worker: install [Ollama](https://ollama.com), run its service, then:
 
@@ -28,7 +30,7 @@ Optional local worker: install [Ollama](https://ollama.com), run its service, th
 ollama pull qwen3.8:27b
 ```
 
-The configured endpoint is `http://127.0.0.1:11434/v1`, with a 32,768-token context
+The configured endpoint is `http://127.0.0.1:11434/v1`, with a 16,384-token context
 and 8,192-token output limit. The `ollama` key is a dummy local-server key.
 Model availability and suitable hardware are required; model weights are not in Git.
 
@@ -38,14 +40,59 @@ Model availability and suitable hardware are required; model weights are not in 
 - `/local-batch <task-brief-path>` prompt and `templates/local-batch-brief.md`.
 - All current Skillz skills, shared policies, and instruction modules through `install.sh`.
 - Inline short-name skill completion and explicit loading via `extensions/inline-skills.ts`.
+- Automatic local session naming via `extensions/auto-session-name.ts`.
+- Slack, Linear, Sentry, PostHog, and local Experts MCP definitions in `mcp.json`.
 - Runtime version pin. npm resolves runtime dependencies; this is not a binary or
   transitive-dependency archive, and hosted model catalogs can change.
 
-There were no custom extensions, themes, keybindings, or global MCP servers at the original capture.
-The inline-skills extension was added afterward; unrelated local extensions remain unmanaged.
+There are no custom themes or keybindings in the captured setup. Unrelated files
+already present on a destination remain unmanaged.
 The redundant Pi-only standup symlink is unnecessary: Pi discovers `~/.agents/skills`.
 The stale skill-creator exclusion referenced a machine-specific synced path and is omitted;
 Skillz already retires that global skill.
+
+## MCP prerequisites and sign-in
+
+The setup restores server definitions, but does not copy login tokens or contact the
+servers during installation. For the remote servers, sign in on the new machine:
+
+```bash
+pi mcp login linear
+pi mcp login sentry
+pi mcp login posthog
+pi mcp login slack
+pi mcp list
+```
+
+Slack uses the same registered OAuth application's public client ID, callback URL,
+and scopes as the live setup. Supply its client secret through `SLACK_CLIENT_SECRET`
+in the environment whenever you run Pi (for example through your password manager).
+Obtain that secret securely from your Slack app configuration or existing machine;
+it is intentionally absent from Git. Set it before the Slack login command. When
+rerunning setup on an existing machine, its locally stored Slack secret is retained
+if the server URL and OAuth client ID still match. Other remote servers use their
+normal browser OAuth flow.
+
+The Experts server needs [uv](https://docs.astral.sh/uv/) and a separate repository:
+
+```bash
+mkdir -p ~/Documents
+git clone https://github.com/KevinKab2412/Experts.git ~/Documents/Experts
+uv sync --directory ~/Documents/Experts
+```
+
+Follow that repository's setup instructions for any data or service dependencies.
+By default, setup uses `~/Documents/Experts` and the `uv` executable on `PATH`
+(falling back to `~/.local/bin/uv`). To use other locations:
+
+```bash
+EXPERTS_DIR=/path/to/Experts UV_BIN=/path/to/uv bash pi/setup.sh
+```
+
+Setup resolves those paths for the destination machine. It prints a reminder if the
+Experts checkout or Slack secret is missing. Model access, Slack workspace approval,
+external server availability, Experts data, and Ollama model weights must be available
+to reproduce the same working capabilities; configuration restore alone cannot supply them.
 
 ## Inline skill names
 
@@ -90,7 +137,7 @@ extensions; whichever installs its editor last wins.
 Tests (Node.js 22.19+ and Python 3):
 
 ```bash
-node --experimental-strip-types --test tests/test_pi_inline_skills.mjs
+node --experimental-strip-types --test tests/test_pi_inline_skills.mjs tests/test_pi_session_name.mjs
 python3 -m unittest discover -s tests -p test_pi_setup.py
 ```
 
@@ -101,13 +148,15 @@ Without it, the installed-runtime integration case is skipped.
 ## Restore behavior and privacy
 
 `bash pi/setup.sh` runs the skill installer and **replaces** the captured Pi settings,
-models, prompt, template, and bundled extension. Existing copies are backed up under
+models, prompt, template, both bundled extensions, and the five managed MCP definitions. Existing copies are backed up under
 `~/.pi/agent/backups/skillz-<timestamp>/`. It preserves an existing device ID and
-changelog marker. Unrelated prompts, templates, and extensions remain untouched. Normal
+changelog marker. Unrelated prompts, templates, extensions, and MCP servers remain untouched.
+MCP tokens in `mcp-auth.json` are never copied or modified. Normal
 `bash install.sh` does not replace Pi settings. `PI_HOME` and `AGENTS_HOME` overrides
 work as with the skill installer.
 
-Never commit `auth.json`, device identifiers, trust decisions, sessions, caches,
+Never commit `auth.json`, `mcp-auth.json`, OAuth client secrets, device identifiers,
+trust decisions, sessions, caches,
 provider model catalogs, backups, or downloaded binaries. Sign in and approve project
 trust separately on each machine. Private visual concept overlays are also excluded;
 transfer any you need separately and securely. The repository's generated global

@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "slack": {
+      "url": "https://mcp.slack.com/mcp",
+      "enabled": true,
+      "exposure": "deferred",
+      "description": "Read-only Slack public-channel search and conversation context",
+      "oauth": {
+        "clientId": "9175632525108.12387349572786",
+        "clientSecret": "${SLACK_CLIENT_SECRET}",
+        "callbackPort": 8765,
+        "callbackUrl": "http://localhost:8765/callback",
+        "scope": "search:read.public channels:history channels:read users:read"
+      }
+    },
+    "linear": {
+      "url": "https://mcp.linear.app/mcp",
+      "exposure": "deferred",
+      "description": "Linear issues, projects, and team context; writes require explicit user permission"
+    },
+    "sentry": {
+      "url": "https://mcp.sentry.dev/mcp",
+      "exposure": "deferred",
+      "description": "Sentry error monitoring, issues, and debugging context"
+    },
+    "posthog": {
+      "url": "https://mcp.posthog.com/mcp",
+      "exposure": "deferred",
+      "description": "PostHog product analytics, feature flags, and error tracking"
+    },
+    "experts": {
+      "command": "uv",
+      "args": ["--directory", "${EXPERTS_DIR}", "run", "python", "-m", "mcp_servers.gateway"],
+      "env": {"PYTHONPATH": "${EXPERTS_DIR}/src"},
+      "exposure": "deferred",
+      "description": "Local domain expert standards: find guidance, route cross-domain questions, and review artifacts across software engineering, Python, Laravel, data, and AI."
+    }
+  }
+}
