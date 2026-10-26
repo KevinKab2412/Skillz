@@ -16,8 +16,8 @@ import sys
 source, dest = map(Path, sys.argv[1:])
 backup = dest / 'backups' / ('skillz-' + datetime.now(timezone.utc).strftime('%Y%m%dT%H%M%S%fZ'))
 files = [Path('settings.json'), Path('models.json')]
-for directory in ('prompts', 'templates'):
-    files.extend(p.relative_to(source) for p in (source / directory).glob('*.md'))
+for directory, pattern in (('prompts', '*.md'), ('templates', '*.md'), ('extensions', '*.ts')):
+    files.extend(p.relative_to(source) for p in (source / directory).glob(pattern))
 
 # Validate before replacing any preferences. Keep machine identity and credentials local.
 settings_path = dest / 'settings.json'

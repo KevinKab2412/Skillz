@@ -29,7 +29,8 @@ Reload or restart agents after syncing.
 
 The version-pinned Pi setup, local model configuration, prompts, and restore instructions
 live in [`pi/`](pi/README.md). After installing the pinned Pi runtime, run
-`bash pi/setup.sh` to restore it. Credentials and session history are excluded.
+`bash pi/setup.sh` to restore it, including short-name skill completion such as
+`hey /pair` anywhere in a prompt. Credentials and session history are excluded.
 
 ## Global skills
 

@@ -15,6 +15,7 @@ class PiSetupTests(unittest.TestCase):
         expected = {
             'README.md', 'version', 'setup.sh', 'settings.json', 'models.json',
             'prompts/local-batch.md', 'templates/local-batch-brief.md',
+            'extensions/inline-skills.ts',
         }
         files = {str(p.relative_to(ROOT / 'pi')) for p in (ROOT / 'pi').rglob('*') if p.is_file()}
         self.assertEqual(files, expected)
@@ -43,6 +44,9 @@ class PiSetupTests(unittest.TestCase):
             (dest / 'trust.json').write_text('private trust sentinel')
             (dest / 'prompts').mkdir()
             (dest / 'prompts/unrelated.md').write_text('keep me')
+            (dest / 'extensions').mkdir()
+            (dest / 'extensions/unrelated.ts').write_text('// keep me')
+            (dest / 'extensions/inline-skills.ts').write_text('// previous extension')
             environment = dict(os.environ, HOME=str(home), PI_HOME=str(dest),
                                AGENTS_HOME=str(base / 'agents'))
             for _ in range(2):
@@ -57,6 +61,12 @@ class PiSetupTests(unittest.TestCase):
             self.assertEqual((dest / 'prompts/unrelated.md').read_text(), 'keep me')
             self.assertTrue((dest / 'prompts/local-batch.md').is_file())
             self.assertTrue((dest / 'templates/local-batch-brief.md').is_file())
+            self.assertEqual((dest / 'extensions/unrelated.ts').read_text(), '// keep me')
+            self.assertEqual((dest / 'extensions/inline-skills.ts').read_text(),
+                             (ROOT / 'pi/extensions/inline-skills.ts').read_text())
+            extension_backups = list((dest / 'backups').glob('skillz-*/extensions/inline-skills.ts'))
+            self.assertEqual(len(extension_backups), 2)
+            self.assertIn('// previous extension', [p.read_text() for p in extension_backups])
             self.assertTrue((base / 'agents/skills/explain/SKILL.md').is_file())
             self.assertFalse((home / '.config/opencode').exists())
             backups = list((dest / 'backups').glob('skillz-*/settings.json'))
