@@ -85,7 +85,6 @@ globally; `install.sh` exports only the top-level global skills.
 Skills load automatically from `~/.agents/skills/` (shared across Pi, Claude Code, Codex, and Cursor). Invoke with `/skill-name` or just describe what you need:
 
 - **`/code-review`** — Review a PR, branch, or working diff and give one clear merge call in a short plain-English report.
-- **`/deploying-to-cloud`** — Deploys and manages Laravel applications on Laravel Cloud using the `cloud` CLI.
 - **`/explain`** — Explain subjects or confusing messages from scratch for a bright intern: lead with the missing premise and why, define jargon, give concrete…
 - **`/pair`** — Guide work from requirements through planning, bounded implementation, architecture checkpoints, review, taste, and polish, with human approval gates.
 - **`/utils`** — Prepare standup updates, read and search local Meetily meeting transcripts, draft meeting follow-up tickets, and run evidence-led coding…
