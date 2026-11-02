@@ -116,9 +116,9 @@ report the error and hand the user the draft and the PNG paths to post by hand. 
 ### A6. Stop the app
 
 Tear down the local app process started in A1 — **unless A1 used a worktree-scoped stack**
-(`.worktree-stack.local.env` was present), in which case leave it running. That stack is reused by later
-PR preparation, `/pair`, or `/code-review` in the same worktree and is torn down with the worktree itself
-(see the [internal worktree module](../../worktree/SKILL.md) skill's cleanup note), not after one visual-check run.
+(`.worktree-stack.local.env` was present), in which case leave it running for the rest of the run. The
+calling `/pair` or `/code-review` run tears it down before handing back (see the
+[internal worktree module](../../worktree/SKILL.md#containers-started-during-a-run)'s containers rule).
 
 ## Section B — Diagram proof (no UI, or launch failed)
 

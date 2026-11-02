@@ -629,6 +629,15 @@ over from that role:
   security, in which case classify by that concrete consequence. If `/architecture` already returned
   Continue on the same diff, use its evidence but still verify that subsequent changes did not drift.
 
+## Teardown — containers this review started
+
+Before the final response, and again after a Fix-it-now or Explain-it pass that ran the app, tear down
+every container this review started (a dev stack for an evidence check, a test database, a
+subagent's compose run), following the worktree module's
+[containers rule](../pair/references/worktree/SKILL.md#containers-started-during-a-run). Leave
+pre-existing containers and the review worktree alone. When called from `/pair`, the stack can stay up
+for the next stage; `/pair`'s own teardown removes it.
+
 ## Done when
 
 The complete Step 4 report is in the final chat response without a follow-up request; an artifact

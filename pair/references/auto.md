@@ -173,7 +173,10 @@ planning state. An assumption is not an accepted decision, and a reusable lesson
 
 ## Hand back and stop
 
+First tear down every container this run started, including on a blocked or partial stop, following
+the worktree module's [containers rule](worktree/SKILL.md#containers-started-during-a-run).
+
 Return the outcome, worktree/branch, changed scope, important assumptions, checks actually run,
-review independence, remaining findings, and any blocked decisions. Distinguish complete from partial
+review independence, remaining findings, containers torn down, and any blocked decisions. Distinguish complete from partial
 and unverified work. Do not continue into guided stages, ship the change, or start a new task without
 a further user instruction.

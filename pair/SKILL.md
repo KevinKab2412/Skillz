@@ -303,8 +303,14 @@ would have written it in the first place. This is the last stage: after it the c
 human to request PR preparation via the internal [to-pr module](references/to-pr/SKILL.md).
 That request is a separate gate after polish; it does not run automatically.
 
+## Teardown — containers this run started
+
+Before handing back, after polish or on any early stop, tear down every container this run started,
+following the worktree module's [containers rule](references/worktree/SKILL.md#containers-started-during-a-run).
+Leave pre-existing containers and the worktree itself alone.
+
 ## Escape hatches
 
-- **"stop pair"** / **"exit pair"**: save current state (which stage, which issues exist) and hand back control.
+- **"stop pair"** / **"exit pair"**: save current state (which stage, which issues exist), tear down the containers this run started, and hand back control.
 - **"skip to execution"**: jump to Stage 4 using whatever task issues currently exist. Warn that the plan hasn't been reviewed.
 - **"pair resume"**: find the most recent open epic via `gh issue list -R KevinKab2412/planning --label spec:epic --state open --json number,title,url` and pick up from the last completed stage.
