@@ -98,8 +98,29 @@ subprocess and cannot change your shell's directory, so that last step is yours.
 - **No `origin` remote?** The script skips the fetch and treats the branch as local-or-new.
 - **Cleaning up later.** Before `git worktree remove <path>`, check the worktree root for a
   `.worktree-stack.local.env` file — the sign the repo gives each worktree its own throwaway dev stack
-  (database, dev server, etc.) rather than sharing one. If it's there, tear that stack down first
+  (database, dev server, etc.) rather than sharing one. If it's there and still up, tear that stack down first
   (e.g. in signal-lift-dev: `./worktree-down.local.sh --volumes` from
   `deploy/dockers/local-dev/` in that worktree) so its containers and volumes don't get orphaned once
   the directory that named them is gone. Then `git worktree remove <path>` (add `--force` if it's
   dirty). No `.worktree-stack.local.env` → plain `git worktree remove` is all there is to do.
+
+## Containers started during a run
+
+`pair` (guided and `--auto`) and `code-review` own every container they start, and tear it down before
+they hand back. This covers a compose stack, a `docker run`, a worktree-scoped dev stack
+(`.worktree-stack.local.env`, e.g. `./worktree-up.local.sh`), a test database, or one started by a
+subagent or an internal module such as to-pr's visual proof.
+
+1. **Record before starting.** Note `docker ps --format '{{.Names}}'` once, before the run's first
+   container start, then record each compose project, container name, or up-script you start.
+2. **Tear down before handing back,** on a clean finish and on any early stop ("stop pair", a blocked
+   decision, a failed check). Use the repo's own down script when it has one (signal-lift-dev:
+   `./worktree-down.local.sh --volumes` from `deploy/dockers/local-dev/`), else
+   `docker compose -p <project> down --volumes` or `docker rm -f <name>`. Kill any background app or
+   dev-server process the run launched as well.
+3. **Verify and report.** Check `docker ps -a` shows none of the recorded containers, and name what was
+   torn down in the hand-back. If a teardown fails, report the leftover container and the command that
+   failed; never claim a clean teardown you didn't see.
+
+Leave alone containers that were already running before the run started: the user owns those. The
+teardown removes containers only; the worktree itself stays until the user removes it.
