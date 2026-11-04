@@ -7,8 +7,8 @@ where those files live and how skills read and write them. Callers own when they
 
 ## Location and layout
 
-The clone lives at `~/Documents/planning` (override with `PLANNING_DIR`). No other file names that
-path; read it from here.
+The clone lives at `~/Documents/planning` (override with `PLANNING_DIR`). No skill names that path;
+skills read it from here.
 
 ```
 planning/

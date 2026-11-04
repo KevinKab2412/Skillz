@@ -17,18 +17,23 @@ ref=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --repo) repo="$2"; shift 2 ;;
-    --ref) ref="$2"; shift 2 ;;
+    --repo|--ref)
+      [ $# -ge 2 ] || { echo "$1 needs a value" >&2; exit 64; }
+      if [ "$1" = --repo ]; then repo="$2"; else ref="$2"; fi
+      shift 2 ;;
     *) echo "unknown argument: $1" >&2; exit 64 ;;
   esac
 done
 
 top="$(git -C "$repo" rev-parse --show-toplevel 2>/dev/null)" || { echo "not a git repo: $repo" >&2; exit 64; }
+if [ -n "$ref" ] && ! git -C "$top" rev-parse -q --verify "$ref^{commit}" >/dev/null; then
+  echo "unknown ref: $ref" >&2; exit 64
+fi
 
 # Repo key: <owner>-<repo> from origin, lowercased; local-<dirname> when there is no origin.
 origin="$(git -C "$top" remote get-url origin 2>/dev/null || true)"
 if [ -n "$origin" ]; then
-  slug="$(printf '%s' "$origin" | sed -E 's#\.git$##; s#^.*[:/]([^/]+)/([^/]+)$#\1-\2#')"
+  slug="$(printf '%s' "$origin" | sed -E 's#/+$##; s#\.git$##; s#^.*[:/]([^/]+)/([^/]+)$#\1-\2#')"
 else
   # A worktree's toplevel is its own folder, so name it after the main checkout instead.
   common="$(git -C "$top" rev-parse --path-format=absolute --git-common-dir)"
@@ -47,7 +52,7 @@ list_dir() {
 }
 
 status=0
-if [ -d "$PLANNING_DIR/.git" ]; then
+if git -C "$PLANNING_DIR" rev-parse --git-dir >/dev/null 2>&1; then
   if git -C "$PLANNING_DIR" remote get-url origin >/dev/null 2>&1 &&
      ! git -C "$PLANNING_DIR" pull --ff-only -q 2>/dev/null; then
     echo "WARN: could not pull $PLANNING_DIR; reading the local copy"
@@ -75,9 +80,9 @@ else
   for c in "${candidates[@]}"; do
     [ -f "$top/$c" ] && { echo "$top/$c"; any=1; }
   done
-  for p in "$top"/docs/standards*; do
-    [ -e "$p" ] && { echo "$p"; any=1; }
-  done
+  while IFS= read -r p; do
+    [ -n "$p" ] && { echo "$p"; any=1; }
+  done < <(find "$top"/docs/standards* -type f 2>/dev/null | sort)
 fi
 [ -z "$any" ] && echo "none found"
 

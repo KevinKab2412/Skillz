@@ -320,4 +320,4 @@ Leave pre-existing containers and the worktree itself alone.
 
 - **"stop pair"** / **"exit pair"**: save current state (which stage, which issues exist) to the cycle `summary.md`, tear down the containers this run started, and hand back control.
 - **"skip to execution"**: jump to Stage 4 using whatever task issues currently exist. Warn that the plan hasn't been reviewed.
-- **"pair resume"**: read the newest folder in `<repo-key>/cycles/` in the planning clone (pull first) and its `summary.md`; its Now section names the stage to pick up. With no cycle folder, find the most recent open epic via `gh issue list -R KevinKab2412/planning --label spec:epic --state open --json number,title,url` and pick up from the last completed stage.
+- **"pair resume"**: read the newest folder in `<repo-key>/cycles/` (or `_global/cycles/` outside a code repo) in the planning clone (pull first) and its `summary.md`; its Now section names the stage to pick up. With no cycle folder, find the most recent open epic via `gh issue list -R KevinKab2412/planning --label spec:epic --state open --json number,title,url` and pick up from the last completed stage.

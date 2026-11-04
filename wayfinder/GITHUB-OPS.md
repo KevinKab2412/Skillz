@@ -1,6 +1,6 @@
 # Wayfinder — GitHub operations cookbook
 
-Every map and ticket is a GitHub issue in **`KevinKab2412/planning`** (private, issues-only). All commands here use
+Every map and ticket is a GitHub issue in **`KevinKab2412/planning`** (private). All commands here use
 `gh`. The map's cycle folder is the one git write; it follows the shared planning-repo module. `R=KevinKab2412/planning`
 throughout.
 

@@ -148,11 +148,12 @@ Follow [GITHUB-ISSUES.md](GITHUB-ISSUES.md) for the exact `gh` commands. In orde
 
 1. **Ensure the labels exist** (`spec:epic`, `spec:task`, `blocked`, `needs-human`,
    `architecture:checkpoint`) — idempotent.
-   Then **settle the cycle folder** under the shared
+   Then **create the epic** (step 2) and **settle its cycle folder** under the shared
    [planning-repo](../planning-repo/planning-repo.md) rules. From a wayfinder map, reuse the map's
-   cycle. Otherwise create `<repo-key>/cycles/YYYY-MM-DD-<slug>/summary.md` (cross-repo work goes
-   under the primary repo, with link stubs in the others), commit and push it, and add its `Cycle:`
-   line to the epic body. Prototype verdicts and sketches from earlier stages move in as artifacts.
+   cycle. Otherwise create `<repo-key>/cycles/YYYY-MM-DD-<slug>/summary.md` with the epic URL
+   (cross-repo work goes under the primary repo, with link stubs in the others), commit and push it,
+   then add its `Cycle:` line to the epic body with `gh issue edit -R $R $EPIC_N --body-file`.
+   Prototype verdicts and sketches from earlier stages move in as artifacts.
 2. **Create one epic issue** (`spec:epic`), title = original task (≤180 chars), body = the full spec
    from Step 3. If a prototype settled a design question upstream, attach its branch pointer + verdict
    as a comment on the epic so it travels with the plan.
