@@ -1,10 +1,11 @@
 # GitHub-issues plan — planning-repo cookbook
 
 The implementation pipeline (`spec` → `plan-review` → `implement` → `code-review`) tracks work as
-**GitHub issues in `KevinKab2412/planning`** (private, issues-only) — the same home
+**GitHub issues in `KevinKab2412/planning`** (private) — the same home
 [`wayfinder`](../../../wayfinder/SKILL.md) uses for its maps, so a map and the spec built from it sit
-together, branch-independent and out of any shared code repo. All commands use `gh`; none touch
-`git commit`/`git push`, so the global push guard never fires. `R=KevinKab2412/planning` throughout.
+together, branch-independent and out of any shared code repo. All commands here use `gh`; the epic's
+cycle folder is the one git write, under the shared planning-repo module. `R=KevinKab2412/planning`
+throughout.
 
 **Always pass `-R $R`.** `gh` defaults to the repo of the current directory, so an omitted `-R` files
 the plan into whatever code repo you happen to be standing in — the one mistake this cookbook exists
@@ -36,7 +37,8 @@ EPIC_N=${EPIC_URL##*/}
 
 `EPIC_N` is the epic's issue number — the handle every downstream stage uses. Refer to it by **title**
 in narration, not a bare `#N`. Since the plan lives outside the code repo, the epic body must also name
-the **code repo and branch** the work targets, or a later reader can't tell what it applies to.
+the **code repo and branch** the work targets, or a later reader can't tell what it applies to. It
+also carries a `Cycle:` line linking its cycle folder in the planning repo.
 
 ## Create a task (sub-issue of the epic)
 

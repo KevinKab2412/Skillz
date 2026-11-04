@@ -57,7 +57,7 @@
     {
       "id": "missing-optional-integrations",
       "invocation": "/pair --auto Correct the misspelled button label",
-      "context": "The repository and correct label are known. Nearby UI defines the existing style. There is no design-patterns/patterns.md, experts MCP connection, or GitHub authentication. Local worktrees and tests are available, and no network lookup is required.",
+      "context": "The repository and correct label are known. Nearby UI defines the existing style. The standards resolver finds no standards for this repo, and there is no experts MCP connection, or GitHub authentication. Local worktrees and tests are available, and no network lookup is required.",
       "expected": {"mode": "auto", "decision": "execute", "would_grill": false, "would_change_issue_state": false},
       "max_questions": 0
     },

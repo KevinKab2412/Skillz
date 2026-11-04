@@ -61,7 +61,7 @@ Use `/utils write today's standup`, `/utils summarise my last meeting`,
 `/utils draft tickets from yesterday's meeting`, or `/utils retro on this week's PRs`.
 Natural-language requests work too; bare `/utils` offers a short menu. Meeting-backed standups
 combine the meeting and standup modules automatically. Linear and Jira remain read-only;
-meeting tickets are paste-ready drafts unless planning issues in `K2412/planning` are requested.
+meeting tickets are paste-ready drafts unless planning issues in `KevinKab2412/planning` are requested.
 
 The former standalone Meetily, Standup, and Retro skills now live under `utils/references/`.
 Installation removes their old global entry points, preserving standup history and Meetily data.

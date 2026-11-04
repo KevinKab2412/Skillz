@@ -27,7 +27,7 @@ class PairAutoTests(unittest.TestCase):
         for marker in ('No grill', 'worktree', 'execution brief', 'independent', 'sequential',
                        'needs-human', 'credentials', 'destructive', 'user-approved',
                        'Do not fabricate', 'No commit, push, PR, merge, deployment',
-                       'bounded repair', 'Missing design-pattern files', 'assumptions'):
+                       'bounded repair', 'When it finds none, that is not a blocker', 'assumptions'):
             self.assertIn(marker, policy)
         modules = (AUTO.parent / '.shared').read_text().splitlines()
         for relative in re.findall(r'\]\(([^)]+\.md)\)', policy):

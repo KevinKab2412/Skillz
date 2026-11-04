@@ -226,10 +226,15 @@ AGENTS_MD="$AGENTS_HOME_DIR/AGENTS.md"
 - **Always do repository work in a dedicated git worktree.** Follow the internal module at
   `~/.agents/skills/pair/references/worktree/SKILL.md`; `pair` runs it at the start, and
   `code-review` reuses it for isolated branch reviews.
-- **Planning always lives in [`K2412/planning`](https://github.com/K2412/planning)** (private).
+- **Planning always lives in [`KevinKab2412/planning`](https://github.com/KevinKab2412/planning)** (private).
   Every spec epic, task sub-issue and wayfinder map goes there — never in a code repo, and never in
-  the tracker the work came from. Pass `-R K2412/planning` on every `gh issue` / `gh label` /
+  the tracker the work came from. Pass `-R KevinKab2412/planning` on every `gh issue` / `gh label` /
   `gh api repos/...` call; `gh` otherwise targets the repo you're standing in.
+- **Planning files live in that repo's clone at `~/Documents/planning`**: Kevin's standards under
+  `_global/standards/` and `<owner>-<repo>/standards/`, and one cycle folder per effort under
+  `<owner>-<repo>/cycles/YYYY-MM-DD-<slug>/` with a `summary.md` handoff log. Read a cycle's
+  `summary.md` before resuming its work. The shared `planning-repo` module has the rules and the
+  standards resolver.
 - **Never write to a shared team tracker** (Linear, Jira) — read tickets, but don't comment, edit or
   change status. What appears there is the user's to write.
 - **Prototypes are throwaway**: never branch and never commit one. The artifact goes to a gitignored

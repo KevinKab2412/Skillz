@@ -33,6 +33,11 @@ The map records which **code repo** the effort is *for* as a `Code repo:` line i
 tickets cross-link back by URL. All concrete `gh` commands live in [GITHUB-OPS.md](GITHUB-OPS.md) —
 read it when charting or resolving.
 
+Each map also gets a **cycle folder** in the planning clone, under the shared
+[planning-repo](references/planning-repo/planning-repo.md) rules: `<repo-key>/cycles/YYYY-MM-DD-<slug>/`
+(or `_global/cycles/` when the code repo is n/a) with a `summary.md` handoff log, linked from the map
+by a `Cycle:` line. Research findings, prototype verdicts and other artifacts go there.
+
 ## Plan, don't do
 
 Wayfinder is **planning**. Each ticket resolves a *decision*; the map is done when the way is clear —
@@ -52,6 +57,9 @@ One or two lines; every session orients to it before choosing a ticket.>
 
 ## Code repo
 <owner/repo this effort is for, or "n/a — non-code">
+
+## Cycle
+<planning-repo URL of this map's cycle folder>
 
 ## Notes
 <domain; skills every session should consult; standing preferences for this effort>
@@ -141,13 +149,15 @@ ticket keeps each inside the smart zone of the context window.
    empty, the fog sketched into Not yet specified.
 4. **Create the tickets you can specify now** as sub-issues, then wire blocking in a second pass (issues
    need numbers before they can reference each other). Everything you can't yet specify stays in the fog.
-5. **Fire the research subagents** for every `wayfinder:research` ticket, in parallel — capture findings
-   on a throwaway branch/file with a pointer from the ticket.
-6. **Stop** — charting is one session's work; it hand-resolves nothing.
+5. **Create the cycle folder** and its `summary.md` (Now: the frontier; Log: map charted), commit and
+   push it, and put its URL in the map's Cycle section.
+6. **Fire the research subagents** for every `wayfinder:research` ticket, in parallel — each writes its
+   findings into the cycle folder with a pointer from the ticket.
+7. **Stop** — charting is one session's work; it hand-resolves nothing.
 
 ### Work through the map (user invokes with a map, optionally a ticket)
 
-1. **Load the map** — the low-res index, not every ticket body.
+1. **Load the map** — the low-res index, not every ticket body — and its cycle `summary.md`.
 2. **Choose the ticket** — the one named, else the first frontier ticket. **Claim it** (assign yourself)
    before any work.
 3. **Resolve it** by dispatching the ticket's type-skill (research / prototype / grill / task). Zoom as
@@ -158,6 +168,7 @@ ticket keeps each inside the smart zone of the context window.
    fog the answer made specifiable into fresh tickets (clearing it from Not yet specified); if the answer
    reveals a ticket sits past the destination, rule it out of scope; if it invalidates other tickets,
    update or delete them.
+6. **Hand off** — update the cycle `summary.md` (Now, one Log line, any Gotchas) and push it.
 
 ## When the map is complete — hand off
 

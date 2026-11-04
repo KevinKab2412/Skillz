@@ -49,8 +49,8 @@ recordings rather than inventing content.
    establish them. Avoid unnecessary private transcript quotations.
 4. Deliver drafts in chat by default. Keep Linear and Jira read-only: never create tickets,
    comment, edit, or change status there, even when requested. Offer paste-ready drafts instead.
-   If explicitly asked to create planning issues, use only `K2412/planning`, with
-   `-R K2412/planning` on every `gh issue` or `gh label` call; scope API calls to that repo too.
+   If explicitly asked to create planning issues, use only `KevinKab2412/planning`, with
+   `-R KevinKab2412/planning` on every `gh issue` or `gh label` call; scope API calls to that repo too.
    A request to create Linear tickets does not authorize writing to a different destination.
 
 Stop when the requested artifact is delivered and any selected module's completion steps are done.
