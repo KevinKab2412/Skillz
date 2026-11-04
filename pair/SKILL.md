@@ -83,6 +83,12 @@ worktree → [domain grounding] → [sketch] → grill → [prototype] → [arch
 Bracketed stages are optional and fire only when they earn their place. Run each stage by invoking
 its skill and following it to completion, then apply the transition below before the next.
 
+**Handoff log.** Once `spec` has created the epic's cycle folder, every stage transition, stop, or
+pause updates its `summary.md` under the shared [planning-repo](references/planning-repo/planning-repo.md)
+rules: rewrite Now, append one Log line, add any Gotchas, and push. Stage artifacts (review reports,
+screenshots, recordings) go into the cycle folder rather than the code repo. A fresh session should be
+able to resume from `summary.md` and the epic alone.
+
 ## Pre-flight — Worktree (automatic)
 
 `pair` runs against a **dedicated worktree for the feature branch**, so the build never disturbs the
@@ -285,9 +291,10 @@ grill decision or a spec choice. The **spec/epic stays the acceptance bar**, not
 
 Run [`taste-review`](references/taste-review/SKILL.md) — a dedicated taste pass over the ambiguous
 decisions `code-review` doesn't adjudicate: UI, prose, and naming choices where more than one
-option is defensible and the question is which one *reads* right. It's grounded in the target repo's
-`design-patterns/patterns.md`, which is the codebase's own record of settled taste — if that file is
-missing, warn the user and pause rather than inventing taste from nowhere, since without it the pass
+option is defensible and the question is which one *reads* right. It's grounded in Kevin's standards
+for the target repo, resolved through the shared [planning-repo](references/planning-repo/planning-repo.md)
+resolver (normally `<repo-key>/standards/patterns.md` in the planning clone). If the resolver finds
+nothing, warn the user and pause rather than inventing taste from nowhere, since without it the pass
 has nothing to anchor against. Surface its calls and let the human accept or push back before moving
 on.
 
@@ -311,6 +318,6 @@ Leave pre-existing containers and the worktree itself alone.
 
 ## Escape hatches
 
-- **"stop pair"** / **"exit pair"**: save current state (which stage, which issues exist), tear down the containers this run started, and hand back control.
+- **"stop pair"** / **"exit pair"**: save current state (which stage, which issues exist) to the cycle `summary.md`, tear down the containers this run started, and hand back control.
 - **"skip to execution"**: jump to Stage 4 using whatever task issues currently exist. Warn that the plan hasn't been reviewed.
-- **"pair resume"**: find the most recent open epic via `gh issue list -R KevinKab2412/planning --label spec:epic --state open --json number,title,url` and pick up from the last completed stage.
+- **"pair resume"**: read the newest folder in `<repo-key>/cycles/` (or `_global/cycles/` outside a code repo) in the planning clone (pull first) and its `summary.md`; its Now section names the stage to pick up. With no cycle folder, find the most recent open epic via `gh issue list -R KevinKab2412/planning --label spec:epic --state open --json number,title,url` and pick up from the last completed stage.

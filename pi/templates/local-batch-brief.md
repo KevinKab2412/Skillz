@@ -1,7 +1,7 @@
 # One approved implementation batch
 
-Planning task: K2412/planning#<task-number>
-Planning epic: K2412/planning#<epic-number>
+Planning task: KevinKab2412/planning#<task-number>
+Planning epic: KevinKab2412/planning#<epic-number>
 Feature branch: <branch>
 
 ## Objective

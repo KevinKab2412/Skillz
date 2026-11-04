@@ -1,7 +1,7 @@
 # Wayfinder — GitHub operations cookbook
 
-Every map and ticket is a GitHub issue in **`KevinKab2412/planning`** (private, issues-only). All commands use
-`gh`; none touch `git commit`/`git push` (so the global push guard never fires). `R=KevinKab2412/planning`
+Every map and ticket is a GitHub issue in **`KevinKab2412/planning`** (private). All commands here use
+`gh`. The map's cycle folder is the one git write; it follows the shared planning-repo module. `R=KevinKab2412/planning`
 throughout.
 
 ## Labels (already created in the repo)
@@ -21,6 +21,9 @@ gh issue create -R $R --label "wayfinder:map" \
 
 ## Code repo
 <owner/repo this effort is for, or "n/a">
+
+## Cycle
+<planning-repo URL of the cycle folder>
 
 ## Notes
 <domain; skills to consult; standing preferences>

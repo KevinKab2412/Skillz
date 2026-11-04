@@ -140,10 +140,11 @@ most two review-driven repair rounds; rerun relevant checks after each. Blockers
 human decision stay blocked. If substantive findings remain after the limit, report them and stop;
 never label a failing or unverified change ready merely to finish the loop.
 
-For UI, wording, or naming choices, prefer the repository's documented patterns and nearby settled
-conventions. Missing design-pattern files are not an automatic blocker: skip the formal taste-review
-ceremony, keep the existing style, and disclose that no grounded independent taste pass ran. Do not
-create new house policy merely to satisfy a stage.
+For UI, wording, or naming choices, run the shared [planning-repo](planning-repo/planning-repo.md)
+standards resolver. When it lists any standards, run [taste-review](taste-review/SKILL.md) grounded in
+them, without its pause menu. When it finds none, that is not a blocker: skip the formal taste-review,
+keep the existing style and nearby settled conventions, and disclose the resolver output and that no
+grounded independent taste pass ran. Do not create new house policy merely to satisfy a stage.
 
 Read [polish](polish/SKILL.md) and clean only the task's changed lines. If a prescribed helper is
 unavailable, use the actual diff to preserve that fence and state the limitation. Rerun relevant

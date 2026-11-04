@@ -3,8 +3,8 @@ name: taste-review
 description: >
   Make a taste call — an independent judgment call on something ambiguous where you'd otherwise
   guess: UI polish, prose phrasing, naming, formatting, tone, layout. Shells out to a fresh
-  `claude -p` for a second opinion untainted by this session's context, grounded in the target
-  repo's own `design-patterns/patterns.md` so the verdict respects house style. Use whenever you
+  `claude -p` for a second opinion untainted by this session's context, grounded in Kevin's
+  standards for the target repo (resolved from the planning clone) so the verdict respects house style. Use whenever you
   hit a fuzzy "which reads better / which name is right / does this feel polished" decision and
   want a grounded outside call instead of picking blind — "make a taste call on this", "get a
   judgment call on the wording", "which of these is more on-brand", "is this UI polished enough".
@@ -18,26 +18,35 @@ design patterns so the answer respects house style rather than generic taste.
 Do this in order — the grounding step comes **before** the taste call, because an ungrounded verdict
 is the thing this skill exists to avoid.
 
-## 1. Read the design patterns from the target repo
+## 1. Resolve the standards for the target repo
 
-Read `design-patterns/patterns.md` at the **root of the repo this skill is being run against** — the
-codebase under `pwd`, not the Skillz repo the skill ships from. That file is the house style the
-judgment must respect.
+Run the shared [planning-repo](../planning-repo/planning-repo.md) resolver against the repo this
+skill is being run against (the codebase under `pwd`, not the Skillz repo the skill ships from):
 
-## 2. If `design-patterns/patterns.md` is absent — warn and pause
+```bash
+bash ~/.agents/skills/pair/references/planning-repo/resolve-standards.sh --repo <target-repo>
+```
 
-If the file does not exist, **stop and ask the user before shelling out**. Do not silently skip the
-grounding, and do not hard-fail. Tell them the file is absent and offer the two paths:
+Read every file it lists. Kevin's design standards normally sit in the planning clone at
+`<repo-key>/standards/patterns.md`; `_global/standards/` and the repo's own docs count too. That
+set is the house style the judgment must respect.
 
-> `design-patterns/patterns.md` isn't in this repo, so I have no house style to ground the taste
-> call in. Do you want me to **(a)** make the call ungrounded — generic taste, no house style — or
-> **(b)** create `design-patterns/patterns.md` first so this and future calls stay on-brand?
+## 2. If the resolver finds nothing — warn and pause
 
+If every section says `none found` or `MISSING`, **stop and ask the user before shelling out**. Do
+not silently skip the grounding, and do not hard-fail. Show the resolver output and offer:
+
+> I found no standards for this repo (resolver output above), so I have no house style to ground
+> the taste call in. Do you want me to **(a)** make the call ungrounded, on general taste, or
+> **(b)** write `<repo-key>/standards/patterns.md` in the planning repo first so this and future
+> calls stay on-brand?
+
+If the clone is `MISSING`, offer to clone it first, since that usually means the standards exist.
 Wait for their answer.
 - **(a)** → proceed to step 3 with an empty pattern context, and say in the prompt that no house
   style was available so the call is on general taste.
-- **(b)** → create `design-patterns/patterns.md` with them first, then proceed with it as the
-  context.
+- **(b)** → write the file with them under the planning repo's rules (commit and push), then
+  proceed with it as the context.
 
 ## 3. Shell out for the independent call
 
@@ -51,8 +60,8 @@ Run outside the sandbox when required, requesting reusable approval for the `cla
 macOS, use the optional long-lived subscription OAuth token from Keychain when present. Otherwise,
 fall back to that machine's normal Claude authentication.
 
-Substitute your question, the file paths, and the contents of `design-patterns/patterns.md` (or a
-line noting its absence) into the placeholders below.
+Substitute your question, the file paths, and the contents of every resolved standards file (or a
+line noting none were found) into the placeholders below.
 
 ```bash
 prompt="$(cat <<'EOF'
@@ -60,9 +69,9 @@ prompt="$(cat <<'EOF'
 
 Files to consider: <paths, if any>
 
-Design patterns this repo follows (from design-patterns/patterns.md — respect these over generic taste):
-<paste the full contents of design-patterns/patterns.md here,
- or write "None found — design-patterns/patterns.md is absent; judge on general taste." if the user chose to proceed ungrounded>
+Design standards this repo follows (respect these over generic taste):
+<paste the full contents of every resolved standards file, each headed by its path,
+ or write "None found — no standards resolved for this repo; judge on general taste." if the user chose to proceed ungrounded>
 
 Weigh a few options against those patterns, give your recommendation, and share the others as
 alternatives considered. Call out any tension between a pattern and what looks best. Length is up to
@@ -86,7 +95,7 @@ fi
 
 ## 4. Apply the call
 
-Report the independent verdict, note it was grounded in `design-patterns/patterns.md` (or flag that
+Report the independent verdict, name the standards files it was grounded in (or flag that
 it wasn't, if the user chose to proceed ungrounded), then apply it.
 
 ---
@@ -94,4 +103,4 @@ it wasn't, if the user chose to proceed ungrounded), then apply it.
 *Adapted from the [`taste-review`](https://github.com/bholmesdev/hubble.md/blob/main/.agents/skills/taste-review/SKILL.md)
 skill in [hubble.md](https://github.com/bholmesdev/hubble.md) by Ben Holmes, used under the MIT
 License. The `claude -p` shell-out with Keychain OAuth handling is from that original; the
-`design-patterns/patterns.md` grounding is added here.*
+standards grounding is added here.*

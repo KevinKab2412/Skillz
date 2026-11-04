@@ -108,7 +108,7 @@ class WiringTests(unittest.TestCase):
             self.assertFalse((ROOT / name).exists())
             self.assertIn(name, retire.retired_names(ROOT / 'retired-skills.txt'))
         self.assertIn('Keep Linear and Jira read-only', router)
-        self.assertIn('-R K2412/planning', router)
+        self.assertIn('-R KevinKab2412/planning', router)
         self.assertIn('Distinguish commitments from completed', router)
         self.assertNotIn('(references/skill-creator/', router)
         script = ROOT / 'utils/references/meetily/scripts/meetily.py'

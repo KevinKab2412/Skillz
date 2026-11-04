@@ -149,12 +149,21 @@ If there are **no** acceptance criteria anywhere, the Spec axis runs in reduced 
 Read the epic's `stack:*` labels if a planning epic is in play — a `stack:react` / `stack:dagster`
 label routes the matching `best-practices` lens into the Standards axis (Step 2).
 
-Also check for `CODING_STANDARDS.md` (or `CONTRIBUTING.md` / `docs/standards*`) and a configured linter
-(`ruff.toml`, `pyproject.toml`'s `[tool.ruff]`, `.eslintrc*`) — reading the **right copy** depends on
-how Step 0 resolved the target:
+Resolve the standards with the shared [planning-repo](references/planning-repo/planning-repo.md)
+resolver; it lists Kevin's standards from the planning clone (`_global` and this repo's key) and
+the code repo's own docs (`CODING_STANDARDS.md`, `CONTRIBUTING.md`, `docs/standards*`, legacy
+`design-patterns/patterns.md`), and prints `none found` or `MISSING` rather than skipping:
 
-- **A branch or PR (in its own worktree)** → read off `<base>`, not the worktree's working copy:
-  `git show <base>:CODING_STANDARDS.md` (same for the other candidate names, and for the linter config).
+```bash
+bash ~/.agents/skills/code-review/references/planning-repo/resolve-standards.sh --repo <target-repo> [--ref <base>]
+```
+
+Also check for a configured linter (`ruff.toml`, `pyproject.toml`'s `[tool.ruff]`, `.eslintrc*`).
+For code-repo files, reading the **right copy** depends on how Step 0 resolved the target:
+
+- **A branch or PR (in its own worktree)** → pass `--ref <base>` and read the listed
+  `git:<base>:<path>` entries with `git show <base>:<path>` (same for the linter config), not the
+  worktree's working copy.
   A worktree can sit on a branch cut weeks ago; its checked-out file is whatever existed then, and the
   staleness is invisible unless you read from the ref instead. `git show` works identically from any
   worktree — the object lives in the one shared `.git`.
@@ -165,9 +174,11 @@ how Step 0 resolved the target:
 - **The working diff** (no worktree, Step 0 skipped) → read the physical file. This is the one case
   where an uncommitted edit to the standard itself should count.
 
-Read whatever exists in full —
+Planning-clone files are always read from the clone after the resolver's pull. Read every listed
+file in full —
 [`references/coding-standards/coding-standards.md`](references/coding-standards/coding-standards.md)
-has the maturity rubric. Pass whatever you found, or its absence, into the Standards subagent verbatim.
+has the maturity rubric. Pass the resolver output and the file contents, including any `none found`
+or `MISSING` line, into the Standards subagent verbatim.
 
 ### Ground material domain behavior
 
@@ -232,8 +243,12 @@ Review the diff below against (a) this repo's documented standards and (b) the F
 ## Commits
 <paste: git log <base>..HEAD --oneline>
 
-## Documented standards (CODING_STANDARDS.md)
-<paste: CODING_STANDARDS.md / CONTRIBUTING.md content if found in the main thread, else write "None found.">
+## Documented standards (resolver output)
+<paste: the resolver's output, then the full content of every file it listed, grouped as
+Kevin's standards (planning _global and repo key) and the code repo's own docs. Keep its
+"none found" / "MISSING" lines.>
+Kevin's standards include design and taste rules (e.g. patterns.md); hold UI, naming and prose in
+the diff to them, citing the rule.
 This is the authoritative judgment-call standard when present — hold the diff to it first. Report a
 maturity read (references/coding-standards/coding-standards.md): 🔴 none set (nothing above and no
 configured linter rules below) / 🟡 partial (thin, stale, or only one of the two) / 🟢 solid (a real
@@ -610,7 +625,7 @@ options:
 - **Accept as-is**, when this ran against a planning epic and all findings are resolved or accepted,
   records the accepted/deferred findings and rationale in the review record. Do not equate risk
   acceptance with a clean pass or merge. Close the planning epic only when its acceptance criteria
-  are fulfilled and closure is authorized: `gh issue close -R K2412/planning <epic-n>`.
+  are fulfilled and closure is authorized: `gh issue close -R KevinKab2412/planning <epic-n>`.
   Urgency never grants the agent bypass authority; retain unresolved checks and follow-up.
 
 ## Pipeline notes (when called from /pair)

@@ -27,6 +27,18 @@ conditions, and places checkpoints before uncertain seams. Reject plans that con
 metrics such as coverage, CRAP, mutation score, complexity, or size into universal hard gates without
 an existing repository policy.
 
+Resolve the code repo's standards with the shared [planning-repo](../planning-repo/planning-repo.md)
+resolver and read every file it lists:
+
+```bash
+bash ~/.agents/skills/pair/references/planning-repo/resolve-standards.sh --repo <code-repo>
+```
+
+Flag tasks whose approach contradicts a listed standard, and tasks that change UI, naming, or prose
+without naming the standard they follow. Quote the resolver's `none found` / `MISSING` lines in the
+review rather than dropping them. Also read the epic's `Cycle:` folder `summary.md`, if any, for
+gotchas the plan should already account for.
+
 For each finding use this structure:
 ```
 ### [blocker | should-fix | nit] — Principle
