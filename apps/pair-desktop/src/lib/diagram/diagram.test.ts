@@ -70,7 +70,8 @@ describe("DiagramView", () => {
   test("steps forward and back with captions, counts and hidden nodes", async () => {
     const { container } = render(DiagramView, { spec: fib });
     expect(screen.getByText("1/4")).toBeTruthy();
-    expect(screen.getByText("Start at fib(3).")).toBeTruthy();
+    expect(container.querySelector(".caption")!.textContent).toBe("Start at fib(3).");
+    expect(container.querySelectorAll(".steps li")).toHaveLength(4);
     expect(container.querySelector('[data-ref="f2"]')).toBeNull();
     expect(container.querySelector('[data-ref="f3"]')!.classList.contains("focus")).toBe(true);
 
@@ -81,7 +82,7 @@ describe("DiagramView", () => {
 
     await fireEvent.click(screen.getByLabelText("Next step"));
     await fireEvent.click(screen.getByLabelText("Next step"));
-    expect(screen.getByText("Answers flow up: fib(3) = 2.")).toBeTruthy();
+    expect(container.querySelector(".caption")!.textContent).toBe("Answers flow up: fib(3) = 2.");
     expect((screen.getByLabelText("Next step") as HTMLButtonElement).disabled).toBe(true);
     expect(container.querySelector('[data-ref="f3"] text')!.textContent).toBe("2");
 

@@ -119,6 +119,7 @@
       {/each}
     </svg>
     <p class="caption" aria-live="polite">{frame.caption}</p>
+    <ol class="print-only steps">{#each all as f}<li>{f.caption}</li>{/each}</ol>
     <div class="controls">
       <button aria-label="Previous step" disabled={step === 0} onclick={() => go(step - 1)}>‹</button>
       <span class="count">{step + 1}/{all.length}</span>

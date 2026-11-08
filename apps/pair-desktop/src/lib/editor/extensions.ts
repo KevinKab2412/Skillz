@@ -2,7 +2,7 @@
  * TipTap extensions for a pair note: suggestion marks for agent note edits, `pair-diagram` and
  * `pair-reply` fences as rich blocks, and thread anchors mapped through every edit.
  */
-import { Extension, Mark, Node, mergeAttributes } from "@tiptap/core";
+import { Extension, Mark, Node, mergeAttributes, type JSONContent } from "@tiptap/core";
 import Document from "@tiptap/extension-document";
 import CodeBlock from "@tiptap/extension-code-block";
 import { Plugin, PluginKey, EditorState } from "@tiptap/pm/state";
@@ -76,8 +76,8 @@ export const PairDiagram = Node.create({
   renderHTML({ HTMLAttributes }) {
     return ["pair-diagram", mergeAttributes(HTMLAttributes)];
   },
-  renderMarkdown(node: { attrs: { spec: string } }) {
-    return "```pair-diagram\n" + node.attrs.spec.trim() + "\n```";
+  renderMarkdown(node: JSONContent) {
+    return "```pair-diagram\n" + String(node.attrs?.spec ?? "").trim() + "\n```";
   },
   addNodeView() {
     return SvelteNodeViewRenderer(DiagramNode as never);
@@ -98,8 +98,8 @@ export const PairReply = Node.create({
   renderHTML({ HTMLAttributes }) {
     return ["pair-reply", mergeAttributes(HTMLAttributes)];
   },
-  renderMarkdown(node: { attrs: { text: string } }) {
-    return "```pair-reply\n" + node.attrs.text.trim() + "\n```";
+  renderMarkdown(node: JSONContent) {
+    return "```pair-reply\n" + String(node.attrs?.text ?? "").trim() + "\n```";
   },
   addNodeView() {
     return SvelteNodeViewRenderer(ReplyNode as never);
@@ -108,10 +108,10 @@ export const PairReply = Node.create({
 
 /** Fences tagged `pair-diagram` / `pair-reply` become rich blocks instead of code blocks. */
 export const PairCodeBlock = CodeBlock.extend({
-  parseMarkdown(token: { lang?: string; text: string }, helpers: unknown) {
-    const lang = (token.lang ?? "").trim();
-    if (lang === "pair-diagram") return { type: "pairDiagram", attrs: { spec: token.text } } as never;
-    if (lang === "pair-reply") return { type: "pairReply", attrs: { text: token.text } } as never;
+  parseMarkdown(token, helpers) {
+    const lang = String((token as { lang?: string }).lang ?? "").trim();
+    if (lang === "pair-diagram") return { type: "pairDiagram", attrs: { spec: token.text ?? "" } } as never;
+    if (lang === "pair-reply") return { type: "pairReply", attrs: { text: token.text ?? "" } } as never;
     return (this as unknown as { parent: (t: unknown, h: unknown) => unknown }).parent(token, helpers) as never;
   },
 });

@@ -41,3 +41,13 @@ input, textarea { font: inherit; color: inherit; }
 .btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 .btn.ok { background: var(--ok); color: #fff; border-color: var(--ok); }
 .muted { color: var(--ink-faint); }
+.print-only { display: none; }
+@media print {
+  html, body { background: #fff; color: #000; height: auto; }
+  nav, .bar, .tell, .banner, .chat, .margin, .menu, .overlay, .controls, button { display: none !important; }
+  .app, .note-view, .main, .scroller, .page { display: block !important; height: auto !important; overflow: visible !important; padding: 0 !important; }
+  .column { width: auto !important; }
+  .print-only { display: block; }
+  .print-just-mine .reply, .print-just-mine .print-threads { display: none !important; }
+  .diagram { break-inside: avoid; }
+}

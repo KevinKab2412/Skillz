@@ -101,6 +101,16 @@ fn delete_note(app: AppHandle, folder: String, name: String) -> Result<(), Strin
     ix.save(&path).map_err(err)
 }
 
+/// Writes an export the user chose a path for in the save dialog.
+#[tauri::command]
+fn export_text(path: String, contents: String) -> Result<(), String> {
+    let p = PathBuf::from(&path);
+    if !p.is_absolute() {
+        return Err("export path must be absolute".into());
+    }
+    std::fs::write(p, contents).map_err(err)
+}
+
 #[tauri::command]
 fn save_sidecar(folder: String, name: String, sidecar: Sidecar) -> Result<(), String> {
     notes::save_sidecar(&folder_path(&folder)?, &name, &sidecar).map_err(err)
@@ -163,6 +173,7 @@ pub fn run() {
             save_note,
             save_sidecar,
             delete_note,
+            export_text,
             watch_folder,
             agent_cmds::pi_status,
             agent_cmds::pi_models,

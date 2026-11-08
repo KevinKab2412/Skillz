@@ -8,6 +8,7 @@
     onAddFolder,
     onOpen,
     onNew,
+    onSettings,
   }: {
     folders: string[];
     notesByFolder: Record<string, NoteSummary[]>;
@@ -15,6 +16,7 @@
     onAddFolder: () => void;
     onOpen: (folder: string, name: string) => void;
     onNew: (folder: string) => void;
+    onSettings: () => void;
   } = $props();
 </script>
 
@@ -40,6 +42,7 @@
     </section>
   {/each}
   <button class="open" onclick={onAddFolder}>Open folder…</button>
+  <button class="open" onclick={onSettings}>Settings</button>
 </nav>
 
 <style>
@@ -54,6 +57,6 @@
   li button:hover { background: var(--rule); }
   li button.active { background: var(--surface); box-shadow: 0 0 0 1px var(--rule); }
   .empty { padding: 5px 8px; font-size: 13px; }
-  .open { margin-top: 4px; padding: 6px 8px; color: var(--ink-soft); }
+  .open { display: block; margin-top: 4px; padding: 6px 8px; color: var(--ink-soft); }
   .open:hover { color: var(--ink); }
 </style>
