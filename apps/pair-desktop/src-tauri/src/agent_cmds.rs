@@ -42,7 +42,7 @@ fn ext_dir(app: &AppHandle) -> PathBuf {
 }
 
 /// GUI apps on macOS start with a minimal PATH, so ask the login shell where `pi` is.
-fn resolve_pi(override_path: Option<String>) -> Option<String> {
+pub(crate) fn resolve_pi(override_path: Option<String>) -> Option<String> {
     if let Some(p) = override_path.filter(|p| !p.trim().is_empty()) {
         return Some(p);
     }

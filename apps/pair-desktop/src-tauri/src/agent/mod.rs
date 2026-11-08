@@ -253,3 +253,6 @@ pub fn take_interrupted(running_file: &std::path::Path) -> HashMap<NoteKey, Stri
 
 #[cfg(test)]
 mod tests;
+
+#[cfg(test)]
+mod real_pi;

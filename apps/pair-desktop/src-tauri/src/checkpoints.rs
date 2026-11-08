@@ -61,8 +61,10 @@ fn snapshot_tree(folder: &Path) -> Result<String, String> {
     if git(folder, None, &["rev-parse", "--verify", "-q", "HEAD"]).is_ok() {
         git(folder, Some(&idx.0), &["read-tree", "HEAD"])?;
     }
-    // Notes are never part of an undo point, even if the exclude line is missing.
-    git(folder, Some(&idx.0), &["add", "-A", "--", ".", ":(exclude).pair"])?;
+    git(folder, Some(&idx.0), &["add", "-A", "--", "."])?;
+    // Notes are never part of an undo point, even if the exclude line is missing. (An
+    // `:(exclude).pair` pathspec on `add` fails once `.pair` is ignored, so drop it afterwards.)
+    git(folder, Some(&idx.0), &["rm", "-r", "-q", "--cached", "--ignore-unmatch", "--", ".pair"])?;
     git(folder, Some(&idx.0), &["write-tree"])
 }
 
@@ -205,6 +207,23 @@ mod tests {
         assert!(!sub.join("made.txt").exists(), "file created in a subfolder is removed");
         assert_eq!(fs::read_to_string(sub.join(".pair/notes/n.md")).unwrap(), "new note");
         assert!(sub.join(".pair/notes/m.md").exists());
+    }
+
+    #[test]
+    fn works_once_pair_has_ignored_its_notes_folder() {
+        let d = repo();
+        let p = d.path();
+        crate::notes::create(p, "n").unwrap(); // adds `/.pair/` to .git/info/exclude
+        fs::write(p.join("a.txt"), "two\n").unwrap();
+        let cp = create(p, "n", "edit").unwrap();
+        fs::write(p.join("a.txt"), "three\n").unwrap();
+        fs::write(p.join("made.txt"), "x").unwrap();
+        restore(p, "n", cp.n).unwrap();
+        assert_eq!(fs::read_to_string(p.join("a.txt")).unwrap(), "two\n");
+        assert!(!p.join("made.txt").exists());
+        assert!(crate::notes::read(p, "n").is_ok());
+        let tree = git(p, None, &["ls-tree", "-r", "--name-only", &cp.commit]).unwrap();
+        assert!(!tree.contains(".pair"), "notes leaked into the undo point: {tree}");
     }
 
     #[test]
