@@ -1,5 +1,8 @@
+mod agent;
+mod agent_cmds;
 mod index;
 mod notes;
+mod settings;
 
 use index::{index_path, AppIndex};
 use notes::{Note, NoteSummary, Sidecar};
@@ -136,6 +139,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .manage(AppState::default())
+        .manage(agent_cmds::AgentState::new())
         .invoke_handler(tauri::generate_handler![
             load_index,
             add_folder,
@@ -146,6 +150,15 @@ pub fn run() {
             save_note,
             save_sidecar,
             watch_folder,
+            agent_cmds::pi_status,
+            agent_cmds::pi_models,
+            agent_cmds::agent_ask,
+            agent_cmds::agent_stop,
+            agent_cmds::agent_send,
+            agent_cmds::agent_close,
+            agent_cmds::agent_interrupted,
+            settings::get_settings,
+            settings::set_settings,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
