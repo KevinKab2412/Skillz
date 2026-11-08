@@ -89,6 +89,18 @@ fn save_note(folder: String, note: Note) -> Result<(), String> {
     notes::save(&folder_path(&folder)?, &note).map_err(err)
 }
 
+/// Deletes a note and its undo points. Project files are not touched.
+#[tauri::command]
+fn delete_note(app: AppHandle, folder: String, name: String) -> Result<(), String> {
+    let root = folder_path(&folder)?;
+    notes::delete(&root, &name).map_err(err)?;
+    let _ = checkpoints::prune(&root, &name);
+    let path = index_path(&app_data(&app)?);
+    let mut ix = AppIndex::load(&path);
+    ix.recent.retain(|r| !(r.folder == folder && r.name == name));
+    ix.save(&path).map_err(err)
+}
+
 #[tauri::command]
 fn save_sidecar(folder: String, name: String, sidecar: Sidecar) -> Result<(), String> {
     notes::save_sidecar(&folder_path(&folder)?, &name, &sidecar).map_err(err)
@@ -150,6 +162,7 @@ pub fn run() {
             open_note,
             save_note,
             save_sidecar,
+            delete_note,
             watch_folder,
             agent_cmds::pi_status,
             agent_cmds::pi_models,

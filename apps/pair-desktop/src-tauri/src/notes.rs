@@ -197,6 +197,18 @@ pub fn save(folder: &Path, note: &Note) -> io::Result<()> {
     write_atomic(&sidecar_path(folder, &note.name), &json)
 }
 
+/// Removes a note's markdown and sidecar.
+pub fn delete(folder: &Path, name: &str) -> io::Result<()> {
+    validate_name(name)?;
+    for p in [md_path(folder, name), sidecar_path(folder, name)] {
+        match fs::remove_file(p) {
+            Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
+            _ => {}
+        }
+    }
+    Ok(())
+}
+
 pub fn save_sidecar(folder: &Path, name: &str, sidecar: &Sidecar) -> io::Result<()> {
     validate_name(name)?;
     let json = serde_json::to_vec_pretty(sidecar).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
@@ -280,6 +292,16 @@ mod tests {
         note.sidecar.tell = "be terse".into();
         save(d.path(), &note).unwrap();
         assert_eq!(read(d.path(), "n").unwrap(), note);
+    }
+
+    #[test]
+    fn delete_removes_both_files() {
+        let d = tmp();
+        create(d.path(), "gone").unwrap();
+        delete(d.path(), "gone").unwrap();
+        assert!(list(d.path()).unwrap().is_empty());
+        assert!(!sidecar_path(d.path(), "gone").exists());
+        delete(d.path(), "gone").unwrap();
     }
 
     #[test]
