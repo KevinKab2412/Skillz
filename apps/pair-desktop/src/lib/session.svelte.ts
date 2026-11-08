@@ -201,7 +201,7 @@ export class NoteSession {
       case "verdict": {
         const text = `${p.ready ? "Ready" : "Not ready"}: ${p.summary}`;
         const id = proposeBlock(ed, "pairReply", { text }, this.endOfNote());
-        if (id === null) return answer({ decision: "accept" });
+        if (id === null) return answer({ decision: "decline", reason: "The end of the note has a suggestion Kevin has not answered; give the verdict again after he does." });
         this.waiting.set(id, { requestId });
         return;
       }

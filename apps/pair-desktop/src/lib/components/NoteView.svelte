@@ -106,6 +106,7 @@
   }
 
   let saving: Promise<void> = Promise.resolve();
+  let writing = "";
 
   /** Saves are serialised, and refused when the file changed on disk since we last wrote it. */
   function save(): Promise<void> {
@@ -117,8 +118,11 @@
       if (markdown === lastSaved) return;
       note.sidecar.threads = refreshQuotes(e, note.sidecar.threads);
       note.markdown = markdown;
+      const expected = lastSaved;
+      // Mark this text as ours before writing, so the watcher's echo is not taken for an outside edit.
+      writing = markdown;
       try {
-        await api.saveNote(folder, $state.snapshot(note) as Note, lastSaved);
+        await api.saveNote(folder, $state.snapshot(note) as Note, expected);
         lastSaved = markdown;
       } catch (err) {
         if (String(err).includes("changed on disk")) {
@@ -133,7 +137,7 @@
   /** Called by the page when the file changed on disk. */
   export function reloadFromDisk(fresh: Note, message = "The note changed on disk and was reloaded. Pending suggestions were dropped.") {
     const e = ed();
-    if (!e || fresh.markdown === lastSaved) return;
+    if (!e || fresh.markdown === lastSaved || fresh.markdown === writing) return;
     // Pending suggestions disappear with the reload: tell the agent, so it is not left waiting.
     void session.declineAllSuggestions("The note was reloaded from disk, so your suggestion was dropped. Re-read the note.");
     lastSaved = fresh.markdown;
@@ -352,7 +356,18 @@
 
   onDestroy(() => {
     clearTimeout(pauseTimer);
-    void save();
+    clearTimeout(saveTimer);
+    // Read the editor now, before it is destroyed; write after any save already in flight.
+    const e = ed();
+    if (e) {
+      const markdown = markdownOf(e);
+      if (markdown !== lastSaved) {
+        note.sidecar.threads = refreshQuotes(e, note.sidecar.threads);
+        const snapshot = { ...($state.snapshot(note) as Note), markdown };
+        const expected = lastSaved;
+        void saving.then(() => api.saveNote(folder, snapshot, expected)).catch(() => {});
+      }
+    }
     void agent.close(folder, note.name).catch(() => {});
     $editor?.destroy();
   });

@@ -73,7 +73,8 @@ export const SuggestChanges = Extension.create({
         appendTransaction(trs, _old, state) {
           const ranges: { from: number; to: number }[] = [];
           for (const tr of trs) {
-            if (!tr.docChanged || tr.getMeta(AGENT_META)) continue;
+            // Undo/redo restore earlier content as it was, suggestion marks included.
+            if (!tr.docChanged || tr.getMeta(AGENT_META) || tr.getMeta("history$")) continue;
             tr.steps.forEach((step, i) => {
               const json = step.toJSON() as { stepType?: string; slice?: unknown };
               if (json.stepType !== "replace" || !json.slice) return;

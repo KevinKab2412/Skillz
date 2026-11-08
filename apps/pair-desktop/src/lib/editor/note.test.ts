@@ -112,6 +112,19 @@ describe("review fixes", () => {
   });
 });
 
+test("undo after rejecting an agent edit never turns its text into note text", () => {
+  ed = headless(NOTE);
+  const { id } = proposeEdit(ed, "recursively", "in a loop") as { id: number };
+  reject(ed, id);
+  ed.commands.undo();
+  ed.commands.undo();
+  const md = markdownOf(ed);
+  expect(md).not.toContain("in a loop");
+  expect(md).toContain("summed recursively");
+  ed.commands.redo();
+  expect(markdownOf(ed)).not.toContain("in a loop");
+});
+
 describe("thread anchors", () => {
   const thread = (id: string, exact: string): Thread => ({ id, anchor: { quote: { exact, prefix: "", suffix: "" }, pos: 0 }, messages: [], resolved: false, detached: false });
 

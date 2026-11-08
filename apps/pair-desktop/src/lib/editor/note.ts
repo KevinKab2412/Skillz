@@ -66,7 +66,8 @@ function propose(editor: Editor, build: (tr: Transaction) => void): number | nul
   const tr = editor.state.tr;
   build(tr);
   if (!tr.docChanged) return null;
-  editor.view.dispatch(transformToSuggestionTransaction(tr, editor.state).setMeta(AGENT_META, true));
+  // Agent suggestions stay out of Kevin's undo history: Reject is how they leave the note.
+  editor.view.dispatch(transformToSuggestionTransaction(tr, editor.state).setMeta(AGENT_META, true).setMeta("addToHistory", false));
   const fresh = [...ids(editor)].filter((i) => !before.has(i));
   return fresh[0] ?? null;
 }
