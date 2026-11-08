@@ -50,6 +50,19 @@ test("chat ask streams into the chat and settles", async () => {
   ]);
 });
 
+test("text after a card still streams into the open agent message, which closes on settle", async () => {
+  const r = rig();
+  ed = r.ed;
+  await r.s.ask("doit", { selection: { text: "Use a loop.", quote: { exact: "Use a loop.", prefix: "", suffix: "" } } });
+  await r.s.onRecord({ type: "pair_started" });
+  await r.s.onRecord({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "Editing. " } });
+  await r.s.onRecord(ui("c1", "file_edit", { tool: "edit", input: { path: "a.ts" } }));
+  await r.s.onRecord({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "Done." } });
+  await r.s.onRecord({ type: "pair_settled" });
+  const agentItem = r.s.chat.find((c) => c.type === "agent") as { text: string; done: boolean };
+  expect(agentItem).toMatchObject({ text: "Editing. Done.", done: true });
+});
+
 test("a note edit waits for Kevin's decision and passes the reason back", async () => {
   const r = rig();
   ed = r.ed;

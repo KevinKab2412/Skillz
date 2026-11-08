@@ -137,9 +137,10 @@ export class NoteSession {
   }
 
   private appendText(delta: string) {
-    const last = this.chat[this.chat.length - 1];
-    if (this.current && this.showsInChat(this.current.kind) && last?.type === "agent" && !last.done) last.text += delta;
-    else if (this.current) this.currentText += delta;
+    if (!this.current) return;
+    const open = this.showsInChat(this.current.kind) ? this.chat.findLast((c) => c.type === "agent" && !c.done) : undefined;
+    if (open?.type === "agent") open.text += delta;
+    else this.currentText += delta;
   }
 
   private currentText = "";
@@ -150,8 +151,7 @@ export class NoteSession {
     this.currentText = "";
     this.running = false;
     this.current = null;
-    const last = this.chat[this.chat.length - 1];
-    if (last?.type === "agent") last.done = true;
+    for (const item of this.chat) if (item.type === "agent") item.done = true;
     if (!ctx || !text) return;
     if (ctx.kind === "ask" && ctx.threadId) {
       const id = ctx.threadId;

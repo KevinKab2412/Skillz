@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount } from "svelte";
+  import { onDestroy, onMount, untrack } from "svelte";
   import type { Readable } from "svelte/store";
   import { createEditor, EditorContent, type Editor } from "svelte-tiptap";
   import { listen } from "@tauri-apps/api/event";
@@ -161,6 +161,9 @@
     return { text: selectedText(e), quote: quoteAt(ix.text, s, t) };
   }
 
+  /** After an action the menu stays closed until Kevin clicks or types again (agent edits move the selection). */
+  let menuSuppressed = false;
+
   function onSelection() {
     const e = ed();
     if (!e) return;
@@ -169,16 +172,19 @@
       if (!menu?.asking) menu = null;
       return;
     }
+    if (menuSuppressed) return;
     const start = e.view.coordsAtPos(from);
     const end = e.view.coordsAtPos(to);
     const box = scroller.getBoundingClientRect();
-    menu = { x: (start.left + end.left) / 2 - box.left, y: start.top - box.top + scroller.scrollTop - 44, asking: false, question: "" };
+    const mid = (start.left + end.left) / 2 - box.left;
+    menu = { x: Math.max(170, Math.min(mid, box.width - 170)), y: start.top - box.top + scroller.scrollTop - 44, asking: false, question: "" };
   }
 
   async function action(kind: "riddle" | "ask" | "visualize" | "doit") {
     const e = ed();
     if (!e || !menu) return;
     const selection = selectionQuote(e);
+    menuSuppressed = kind !== "ask" || menu.asking;
     if (kind === "ask") {
       if (!menu.asking) {
         menu.asking = true;
@@ -314,8 +320,13 @@
       void decideSuggestion(d.id, d.decision, d.reason);
     };
     page.addEventListener("pair-proposal", onProposal);
+    const unsuppress = () => (menuSuppressed = false);
+    column.addEventListener("pointerdown", unsuppress);
+    column.addEventListener("keydown", unsuppress);
     return () => {
       page.removeEventListener("pair-proposal", onProposal);
+      column.removeEventListener("pointerdown", unsuppress);
+      column.removeEventListener("keydown", unsuppress);
       ro.disconnect();
       void un.then((f) => f());
     };
@@ -329,9 +340,14 @@
   });
 
   // Keep the active thread highlighted in the text.
+  // Keep the active thread highlighted. Only `active` is tracked: dispatching updates the editor
+  // store, so reading the editor here would re-run this effect forever.
   $effect(() => {
-    const e = ed();
-    if (e) setActiveThread(e, active);
+    const id = active;
+    untrack(() => {
+      const e = ed();
+      if (e) setActiveThread(e, id);
+    });
   });
 </script>
 
@@ -503,4 +519,6 @@
   :global(.note-body .sg-insertion), :global(.note-body ins) { color: var(--ok); text-decoration: none; background: var(--ok-soft); }
   :global(.note-body .sg-deletion), :global(.note-body del) { color: var(--bad); background: var(--bad-soft); }
   :global(.note-body .block-proposal) { outline: 1px dashed var(--accent); outline-offset: 4px; border-radius: 6px; }
+  /* A pending block sits inside the insertion mark; keep its own colours. */
+  :global(.note-body ins.sg-insertion:has(.block-proposal)) { display: block; color: inherit; background: none; }
 </style>

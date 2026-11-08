@@ -18,8 +18,8 @@
   <header>
     <span class="kind">{title}</span>
     {#if path}<code class="path">{path}</code>{/if}
-    {#if card.status === "accepted"}<span class="state ok">Accepted{card.checkpoint ? ` · undo point ${card.checkpoint}` : ""}</span>{/if}
-    {#if card.status === "rejected"}<span class="state bad">Rejected{card.reason ? `: ${card.reason}` : ""}</span>{/if}
+    {#if card.status === "accepted"}<span class="state good">Accepted{card.checkpoint ? ` · undo point ${card.checkpoint}` : ""}</span>{/if}
+    {#if card.status === "rejected"}<span class="state no">Rejected{card.reason ? `: ${card.reason}` : ""}</span>{/if}
   </header>
 
   {#if card.kind === "command"}
@@ -58,8 +58,8 @@
   .kind { font-weight: 600; }
   .path { font-family: var(--mono); font-size: 12px; color: var(--ink-soft); }
   .state { margin-left: auto; font-size: 12px; }
-  .ok { color: var(--ok); }
-  .bad { color: var(--bad); }
+  .good { color: var(--ok); }
+  .no { color: var(--bad); }
   .cmd { width: 100%; font-family: var(--mono); font-size: 12px; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 6px; background: var(--bg); margin: 0; white-space: pre-wrap; resize: vertical; }
   .cwd { font-size: 11px; margin: 4px 0 0; }
   .diff { font-family: var(--mono); font-size: 12px; max-height: 260px; overflow: auto; background: var(--bg); padding: 6px 8px; border-radius: 6px; margin: 0; white-space: pre; }
