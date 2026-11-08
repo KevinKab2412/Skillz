@@ -1,8 +1,11 @@
 /**
  * What pair lets the agent do without asking, what it must propose, and what it never does.
- * Pure function, so the rules are tested apart from Pi.
+ * Pure apart from resolving symlinks, so the rules are tested apart from Pi.
  */
-import { isAbsolute, relative, resolve, sep } from "node:path";
+import { realpathSync } from "node:fs";
+import { homedir } from "node:os";
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
+import { fileURLToPath } from "node:url";
 
 export type Stage = "think" | "plan" | "build" | "review";
 /** `thread`: may only read and leave margin threads (Thinks-with-you, Riddle, Ask). `act`: may propose. */
@@ -26,15 +29,56 @@ const STAGE_HINT: Record<Stage, string> = {
   review: "The note is in Review: read the changes and leave margin threads, then give a verdict with review_verdict.",
 };
 
-/** True when `target` (relative to cwd or absolute) resolves inside `cwd`. */
+/**
+ * The path Pi's tools will actually touch: the same normalisation Pi applies (leading `@`,
+ * `~/`, `file://`), resolved against cwd, then with symlinks followed through the nearest
+ * existing ancestor (the target itself may not exist yet).
+ */
+export function realTarget(cwd: string, target: string): string {
+  let p = target.trim();
+  if (p.startsWith("@")) p = p.slice(1);
+  if (p === "~") p = homedir();
+  else if (p.startsWith("~/")) p = join(homedir(), p.slice(2));
+  if (/^file:\/\//.test(p)) {
+    try {
+      p = fileURLToPath(p);
+    } catch {
+      /* keep as is */
+    }
+  }
+  return realish(resolve(cwd, p));
+}
+
+function realish(abs: string): string {
+  const tail: string[] = [];
+  let cur = abs;
+  for (;;) {
+    try {
+      return join(realpathSync(cur), ...tail.reverse());
+    } catch {
+      const parent = dirname(cur);
+      if (parent === cur) return abs;
+      tail.push(basename(cur));
+      cur = parent;
+    }
+  }
+}
+
+/** macOS disks are case-insensitive by default, so compare paths ignoring case. */
+const fold = (p: string) => (process.platform === "darwin" || process.platform === "win32" ? p.toLowerCase() : p);
+
+function relFromRoot(cwd: string, target: string): string {
+  return relative(fold(realish(resolve(cwd))), fold(realTarget(cwd, target)));
+}
+
+/** True when `target` (as Pi will resolve it) is inside `cwd`. */
 export function inside(cwd: string, target: string): boolean {
-  const abs = resolve(cwd, target);
-  const rel = relative(cwd, abs);
+  const rel = relFromRoot(cwd, target);
   return rel === "" || (!rel.startsWith("..") && !isAbsolute(rel));
 }
 
 export function inPairDir(cwd: string, target: string): boolean {
-  const rel = relative(cwd, resolve(cwd, target));
+  const rel = relFromRoot(cwd, target);
   return rel === ".pair" || rel.startsWith(`.pair${sep}`);
 }
 

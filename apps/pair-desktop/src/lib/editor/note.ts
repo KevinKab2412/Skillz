@@ -19,6 +19,7 @@ import {
   PairReply,
   SuggestChanges,
   ThreadAnchors,
+  AGENT_META,
   anchorKey,
   cleanDoc,
   suggestionGroups,
@@ -65,10 +66,17 @@ function propose(editor: Editor, build: (tr: Transaction) => void): number | nul
   const tr = editor.state.tr;
   build(tr);
   if (!tr.docChanged) return null;
-  editor.view.dispatch(transformToSuggestionTransaction(tr, editor.state));
+  editor.view.dispatch(transformToSuggestionTransaction(tr, editor.state).setMeta(AGENT_META, true));
   const fresh = [...ids(editor)].filter((i) => !before.has(i));
   return fresh[0] ?? null;
 }
+
+/** True when [from, to] touches a pending suggestion; a new edit there would silently merge into it. */
+function touchesSuggestion(editor: Editor, from: number, to: number): boolean {
+  return suggestionGroups(editor.state.doc).some((g) => g.from <= to + 1 && g.to >= from - 1);
+}
+
+const WAIT = "That passage is next to a suggestion Kevin has not answered yet. Wait for his decision, then propose again.";
 
 /**
  * Agent note edit: replace the exact passage `find` with `replace` as tracked suggestions.
@@ -82,6 +90,7 @@ export function proposeEdit(editor: Editor, find: string, replace: string): { id
   if (ix.text.indexOf(find, first + 1) !== -1) return { error: "That passage appears more than once; include more surrounding words so it is unique." };
   const from = ix.toPos(first);
   const to = ix.toPos(first + find.length);
+  if (touchesSuggestion(editor, from, to)) return { error: WAIT };
   const id = propose(editor, (tr) => {
     if (replace) tr.insertText(replace, from, to);
     else tr.delete(from, to);
@@ -105,6 +114,7 @@ export function afterBlockOf(editor: Editor, quote?: TextQuote): number {
 /** Agent block insert (diagram or reply) as a suggestion under a passage. */
 export function proposeBlock(editor: Editor, type: "pairDiagram" | "pairReply", attrs: Record<string, string>, quote?: TextQuote): number | null {
   const at = afterBlockOf(editor, quote);
+  if (touchesSuggestion(editor, at, at)) return null;
   const node = editor.schema.nodes[type].create(attrs);
   return propose(editor, (tr) => tr.insert(at, node));
 }

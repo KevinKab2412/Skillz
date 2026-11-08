@@ -224,26 +224,41 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
     fs::rename(&tmp, path)
 }
 
-/// Adds `.pair/` to `.git/info/exclude` once, so notes stay out of git without touching
-/// the project's tracked `.gitignore`. No-op outside a git repository.
+/// Adds `.pair/` to the repository's local exclude file once, so notes stay out of git without
+/// touching the project's tracked `.gitignore`. Asks git where that file is, so worktrees (where
+/// `.git` is a file) and subfolders of a repository work too. No-op outside a git repository.
 pub fn ensure_git_exclude(folder: &Path) -> io::Result<()> {
-    let git = folder.join(".git");
-    if !git.is_dir() {
+    let out = match std::process::Command::new("git")
+        .current_dir(folder)
+        .args(["rev-parse", "--path-format=absolute", "--git-path", "info/exclude"])
+        .output()
+    {
+        Ok(o) if o.status.success() => o,
+        _ => return Ok(()),
+    };
+    let exclude = PathBuf::from(String::from_utf8_lossy(&out.stdout).trim());
+    // The pattern is relative to the repository root, so name the folder's own .pair.
+    let top = std::process::Command::new("git")
+        .current_dir(folder)
+        .args(["rev-parse", "--show-prefix"])
+        .output()
+        .ok()
+        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
+        .unwrap_or_default();
+    let line = format!("/{top}.pair/");
+    let current = fs::read_to_string(&exclude).unwrap_or_default();
+    if current.lines().any(|l| l.trim() == line || l.trim() == EXCLUDE_LINE) {
         return Ok(());
     }
-    let info = git.join("info");
-    fs::create_dir_all(&info)?;
-    let exclude = info.join("exclude");
-    let current = fs::read_to_string(&exclude).unwrap_or_default();
-    if current.lines().any(|l| l.trim() == EXCLUDE_LINE || l.trim() == "/.pair/") {
-        return Ok(());
+    if let Some(dir) = exclude.parent() {
+        fs::create_dir_all(dir)?;
     }
     let mut next = current;
     if !next.is_empty() && !next.ends_with('\n') {
         next.push('\n');
     }
     next.push_str("# pair desktop notes (local only)\n");
-    next.push_str(EXCLUDE_LINE);
+    next.push_str(&line);
     next.push('\n');
     fs::write(exclude, next)
 }
@@ -324,6 +339,11 @@ mod tests {
         assert!(list(&d.path().join("nowhere")).unwrap().is_empty());
     }
 
+    fn git(dir: &Path, args: &[&str]) -> String {
+        let o = std::process::Command::new("git").current_dir(dir).args(args).output().unwrap();
+        String::from_utf8_lossy(&o.stdout).trim().to_string()
+    }
+
     #[test]
     fn git_exclude_added_once_and_only_in_git_repos() {
         let d = tmp();
@@ -331,12 +351,32 @@ mod tests {
         assert!(!d.path().join(".git").exists());
 
         let g = tmp();
-        fs::create_dir_all(g.path().join(".git/info")).unwrap();
+        git(g.path(), &["init", "-q"]);
         fs::write(g.path().join(".git/info/exclude"), "*.log").unwrap();
         create(g.path(), "a").unwrap();
         create(g.path(), "b").unwrap();
         let ex = fs::read_to_string(g.path().join(".git/info/exclude")).unwrap();
         assert!(ex.starts_with("*.log\n"));
         assert_eq!(ex.matches(".pair/").count(), 1);
+        assert_eq!(git(g.path(), &["status", "--porcelain", "--untracked-files=all"]), "");
+    }
+
+    #[test]
+    fn git_exclude_works_in_subfolders_and_worktrees() {
+        let g = tmp();
+        git(g.path(), &["init", "-q", "-b", "main"]);
+        fs::write(g.path().join("x"), "1").unwrap();
+        git(g.path(), &["add", "."]);
+        git(g.path(), &["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "i"]);
+        let sub = g.path().join("app");
+        fs::create_dir_all(&sub).unwrap();
+        create(&sub, "n").unwrap();
+        assert_eq!(git(g.path(), &["status", "--porcelain", "--untracked-files=all"]), "");
+
+        let wt = g.path().join("wt");
+        git(g.path(), &["worktree", "add", "-q", "-b", "w", wt.to_str().unwrap()]);
+        assert!(wt.join(".git").is_file());
+        create(&wt, "m").unwrap();
+        assert_eq!(git(&wt, &["status", "--porcelain", "--untracked-files=all"]), "");
     }
 }

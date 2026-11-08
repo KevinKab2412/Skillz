@@ -31,7 +31,7 @@ export const api = {
   listNotes: (folder: string) => invoke<NoteSummary[]>("list_notes", { folder }),
   createNote: (folder: string, name: string) => invoke<Note>("create_note", { folder, name }),
   openNote: (folder: string, name: string) => invoke<Note>("open_note", { folder, name }),
-  saveNote: (folder: string, note: Note) => invoke<void>("save_note", { folder, note }),
+  saveNote: (folder: string, note: Note, expected?: string) => invoke<void>("save_note", { folder, note, expected: expected ?? null }),
   saveSidecar: (folder: string, name: string, sidecar: Sidecar) =>
     invoke<void>("save_sidecar", { folder, name, sidecar }),
   watchFolder: (folder: string) => invoke<void>("watch_folder", { folder }),
@@ -64,7 +64,7 @@ export const agent = {
   interrupted: () => invoke<Record<string, string>>("agent_interrupted"),
   checkpoint: (folder: string, note: string, label: string) => invoke<Checkpoint>("checkpoint_create", { folder, note, label }),
   checkpoints: (folder: string, note: string) => invoke<Checkpoint[]>("checkpoint_list", { folder, note }),
-  restore: (folder: string, note: string, n: number) => invoke<void>("checkpoint_restore", { folder, note, n }),
+  restore: (folder: string, note: string, n: number) => invoke<Checkpoint>("checkpoint_restore", { folder, note, n }),
 };
 
 export const settingsApi = {

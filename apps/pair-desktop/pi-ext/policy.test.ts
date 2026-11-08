@@ -1,4 +1,7 @@
 import { describe, expect, test } from "bun:test";
+import { mkdirSync, mkdtempSync, symlinkSync, realpathSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { decide, inside, readHeader, type Mode, type Stage } from "./policy";
 
 const cwd = "/work/proj";
@@ -83,4 +86,36 @@ test("inside() handles prefixes and relative escapes", () => {
 test("readHeader strips the mode header", () => {
   expect(readHeader('<pair mode="thread"/>\nhello')).toEqual({ mode: "thread", text: "hello" });
   expect(readHeader("plain")).toEqual({ mode: null, text: "plain" });
+});
+
+describe("paths the way Pi resolves them", () => {
+  test("~, @ and file:// cannot sneak a read or write outside the folder", () => {
+    expect(d("read", { path: "~/.ssh/id_rsa" })).toEqual({ action: "propose", kind: "read_outside" });
+    expect(d("read", { path: "@/etc/passwd" })).toEqual({ action: "propose", kind: "read_outside" });
+    expect(d("read", { path: "file:///etc/passwd" })).toEqual({ action: "propose", kind: "read_outside" });
+    expect(d("write", { path: "~/.zshrc" }).action).toBe("block");
+    expect(d("write", { path: "@.pair/notes/n.md" }).action).toBe("block");
+    expect(d("read", { path: "@src/a.ts" })).toEqual({ action: "pass" });
+  });
+
+  test(".pair is matched case-insensitively on macOS", () => {
+    if (process.platform !== "darwin") return;
+    expect(d("write", { path: ".PAIR/notes/n.md" }).action).toBe("block");
+  });
+
+  test("symlinks are followed", () => {
+    const root = realpathSync(mkdtempSync(join(tmpdir(), "pair-policy-")));
+    const proj = join(root, "proj");
+    const outside = join(root, "secret");
+    mkdirSync(proj);
+    mkdirSync(outside);
+    symlinkSync(outside, join(proj, "link"));
+    symlinkSync(join(proj, ".pair"), join(proj, "notes-link"));
+    mkdirSync(join(proj, ".pair"));
+    const dd = (toolName: string, path: string) => decide({ toolName, input: { path }, cwd: proj, stage: "build", mode: "act" });
+    expect(dd("read", "link/key")).toEqual({ action: "propose", kind: "read_outside" });
+    expect(dd("write", "link/new-file.txt").action).toBe("block");
+    expect(dd("write", "notes-link/n.md").action).toBe("block");
+    expect(dd("write", "src/new/deep/file.ts")).toEqual({ action: "propose", kind: "file_edit" });
+  });
 });

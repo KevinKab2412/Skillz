@@ -244,8 +244,11 @@ export class NoteSession {
     if (decision === "accept") {
       if (card.kind === "file_edit" || card.kind === "command") {
         const what = card.kind === "command" ? `run: ${opts.command ?? card.input.command}` : `${card.tool} ${card.input.path}`;
-        const cp = await this.transport.checkpoint(what).catch(() => null);
-        card.checkpoint = cp?.n ?? null;
+        try {
+          card.checkpoint = (await this.transport.checkpoint(what))?.n ?? null;
+        } catch {
+          return; // Kevin backed out when no undo point could be saved; the card stays pending.
+        }
       }
       card.status = "accepted";
       await this.transport.respond(card.requestId, JSON.stringify({ decision: "accept", command: opts.command }));
@@ -254,6 +257,13 @@ export class NoteSession {
       card.reason = opts.reason;
       await this.transport.respond(card.requestId, JSON.stringify({ decision: "decline", reason: opts.reason }));
     }
+  }
+
+  /** Answers every suggestion the agent is waiting on with a decline (the note was reloaded). */
+  async declineAllSuggestions(reason: string) {
+    const waiting = [...this.waiting.values()];
+    this.waiting.clear();
+    for (const w of waiting) await this.transport.respond(w.requestId, JSON.stringify({ decision: "decline", reason }));
   }
 
   /** Suggestions Kevin has not answered yet (dropped when the note closes). */

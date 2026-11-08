@@ -40,6 +40,8 @@ pub enum AskOutcome {
 struct Live {
     process: Box<dyn AgentProcess>,
     last_active: Instant,
+    /// Which spawn this is; events from an older process of the same note are ignored.
+    generation: u64,
 }
 
 pub struct Agents {
@@ -169,19 +171,23 @@ impl Agents {
         let spec = self.specs.get(key).ok_or("no start spec for note")?.clone();
         let me = self.me.clone();
         let k = key.to_string();
+        self.next_id += 1;
+        let generation = self.next_id;
         let sink: EventSink = Arc::new(move |ev| {
             if let Some(agents) = me.upgrade() {
-                agents.lock().unwrap().on_event(&k, ev);
+                agents.lock().unwrap().on_event(&k, generation, ev);
             }
         });
         let process = self.provider.start(&spec, sink)?;
-        self.live.insert(key.to_string(), Live { process, last_active: Instant::now() });
+        self.live.insert(key.to_string(), Live { process, last_active: Instant::now(), generation });
         Ok(())
     }
 
-    fn on_event(&mut self, key: &str, ev: ProcessEvent) {
-        if let Some(l) = self.live.get_mut(key) {
-            l.last_active = Instant::now();
+    fn on_event(&mut self, key: &str, generation: u64, ev: ProcessEvent) {
+        match self.live.get_mut(key) {
+            Some(l) if l.generation == generation => l.last_active = Instant::now(),
+            // A process that was closed or reaped (possibly replaced by a new one): ignore it.
+            _ => return,
         }
         match ev {
             ProcessEvent::Record(rec) => {

@@ -54,11 +54,57 @@ export const Modification = suggestionMark("modification", modification as unkno
 /** Block children may carry suggestion marks (an inserted diagram or paragraph). */
 export const PairDocument = Document.extend({ marks: "insertion modification deletion" });
 
-/** Registers suggest-changes' plugin so its commands (apply/revert) work. Kevin's typing stays untracked. */
+/** Meta flag on transactions that carry an agent's suggestion. */
+export const AGENT_META = "pairAgent";
+const SUGGESTION_MARKS = ["insertion", "deletion", "modification"];
+
+/**
+ * Registers suggest-changes' plugin so its commands (apply/revert) work, and keeps Kevin's own
+ * typing untracked: text he types inside a pending suggestion would otherwise pick up its mark,
+ * be left out of the saved file and vanish on Reject.
+ */
 export const SuggestChanges = Extension.create({
   name: "pairSuggestChanges",
   addProseMirrorPlugins() {
-    return [suggestChanges()];
+    return [
+      suggestChanges(),
+      new Plugin({
+        key: new PluginKey("pairUntrackedTyping"),
+        appendTransaction(trs, _old, state) {
+          const ranges: { from: number; to: number }[] = [];
+          for (const tr of trs) {
+            if (!tr.docChanged || tr.getMeta(AGENT_META)) continue;
+            tr.steps.forEach((step, i) => {
+              const json = step.toJSON() as { stepType?: string; slice?: unknown };
+              if (json.stepType !== "replace" || !json.slice) return;
+              step.getMap().forEach((_a, _b, from, to) => {
+                if (to <= from) return;
+                // Map the inserted range through the rest of this and later transactions.
+                let f = from;
+                let t = to;
+                for (let j = i + 1; j < tr.steps.length; j++) {
+                  f = tr.steps[j].getMap().map(f, 1);
+                  t = tr.steps[j].getMap().map(t, -1);
+                }
+                for (const later of trs.slice(trs.indexOf(tr) + 1)) {
+                  f = later.mapping.map(f, 1);
+                  t = later.mapping.map(t, -1);
+                }
+                if (t > f) ranges.push({ from: f, to: t });
+              });
+            });
+          }
+          if (!ranges.length) return null;
+          const fix = state.tr;
+          for (const r of ranges)
+            for (const name of SUGGESTION_MARKS) {
+              const type = state.schema.marks[name];
+              if (type && state.doc.rangeHasMark(r.from, r.to, type)) fix.removeMark(r.from, r.to, type);
+            }
+          return fix.docChanged ? fix : null;
+        },
+      }),
+    ];
   },
 });
 

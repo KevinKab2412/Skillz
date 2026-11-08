@@ -30,7 +30,7 @@
     {/if}
     <p class="cwd muted">in {String(card.input.cwd ?? "the project folder")}</p>
   {:else if card.tool === "write"}
-    <pre class="diff">{#each String(card.input.content ?? "").split("\n").slice(0, 60) as l}<span class="add">+ {l}</span>{"\n"}{/each}</pre>
+    <pre class="diff">{#each String(card.input.content ?? "").split("\n") as l}<span class="add">+ {l}</span>{"\n"}{/each}</pre>
   {:else if edits.length}
     <pre class="diff">{#each edits as e}{#each e.oldText.split("\n") as l}<span class="del">- {l}</span>{"\n"}{/each}{#each e.newText.split("\n") as l}<span class="add">+ {l}</span>{"\n"}{/each}{"\n"}{/each}</pre>
   {:else}
@@ -62,7 +62,7 @@
   .no { color: var(--bad); }
   .cmd { width: 100%; font-family: var(--mono); font-size: 12px; padding: 6px 8px; border: 1px solid var(--rule); border-radius: 6px; background: var(--bg); margin: 0; white-space: pre-wrap; resize: vertical; }
   .cwd { font-size: 11px; margin: 4px 0 0; }
-  .diff { font-family: var(--mono); font-size: 12px; max-height: 260px; overflow: auto; background: var(--bg); padding: 6px 8px; border-radius: 6px; margin: 0; white-space: pre; }
+  .diff { font-family: var(--mono); font-size: 12px; max-height: 420px; resize: vertical; overflow: auto; background: var(--bg); padding: 6px 8px; border-radius: 6px; margin: 0; white-space: pre; }
   .add { color: var(--ok); }
   .del { color: var(--bad); }
   footer { display: flex; gap: 8px; margin-top: 10px; }

@@ -6,7 +6,8 @@ use serde_json::Value;
 use std::collections::VecDeque;
 use std::io::{Read, Write};
 use std::path::PathBuf;
-use std::process::{Child, ChildStdin, Command, Stdio};
+use std::process::{Child, Command, Stdio};
+use std::sync::mpsc;
 use std::sync::{Arc, Mutex};
 
 #[derive(Debug, Clone, PartialEq)]
@@ -79,7 +80,18 @@ impl Provider for PiProvider {
             .stderr(Stdio::piped())
             .spawn()
             .map_err(|e| format!("could not start pi ({}): {e}", self.program.display()))?;
-        let stdin = child.stdin.take();
+        // A dedicated writer thread owns stdin, so sending never blocks the caller (who may hold
+        // the agents lock while Pi is itself blocked writing a large reply).
+        let mut stdin = child.stdin.take().expect("piped stdin");
+        let (tx, rx) = mpsc::channel::<Vec<u8>>();
+        std::thread::spawn(move || {
+            for bytes in rx {
+                if stdin.write_all(&bytes).and_then(|_| stdin.flush()).is_err() {
+                    break;
+                }
+            }
+            // Dropping stdin here closes it, which asks Pi to shut down.
+        });
         let mut stdout = child.stdout.take().expect("piped stdout");
         let mut stderr = child.stderr.take().expect("piped stderr");
 
@@ -121,19 +133,19 @@ impl Provider for PiProvider {
             sink(ProcessEvent::Exited { code, stderr_tail });
         });
 
-        Ok(Box::new(PiProcess { stdin, child }))
+        Ok(Box::new(PiProcess { stdin: Some(tx), child }))
     }
 }
 
 struct PiProcess {
-    stdin: Option<ChildStdin>,
+    stdin: Option<mpsc::Sender<Vec<u8>>>,
     child: Arc<Mutex<Child>>,
 }
 
 impl AgentProcess for PiProcess {
     fn send(&mut self, cmd: &Value) -> Result<(), String> {
-        let stdin = self.stdin.as_mut().ok_or("agent process is stopping")?;
-        stdin.write_all(&encode(cmd)).and_then(|_| stdin.flush()).map_err(|e| e.to_string())
+        let stdin = self.stdin.as_ref().ok_or("agent process is stopping")?;
+        stdin.send(encode(cmd)).map_err(|_| "agent process has exited".to_string())
     }
 
     fn stop(&mut self) {

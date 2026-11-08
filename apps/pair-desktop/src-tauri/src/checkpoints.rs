@@ -61,7 +61,8 @@ fn snapshot_tree(folder: &Path) -> Result<String, String> {
     if git(folder, None, &["rev-parse", "--verify", "-q", "HEAD"]).is_ok() {
         git(folder, Some(&idx.0), &["read-tree", "HEAD"])?;
     }
-    git(folder, Some(&idx.0), &["add", "-A", "--", "."])?;
+    // Notes are never part of an undo point, even if the exclude line is missing.
+    git(folder, Some(&idx.0), &["add", "-A", "--", ".", ":(exclude).pair"])?;
     git(folder, Some(&idx.0), &["write-tree"])
 }
 
@@ -95,18 +96,20 @@ pub fn create(folder: &Path, note: &str, label: &str) -> Result<Checkpoint, Stri
 /// Puts the folder back to checkpoint `n`: files return to their content then, and files
 /// created since are removed. Ignored files and `.pair/` are left alone. Later checkpoints
 /// stay, so undo can itself be undone.
-pub fn restore(folder: &Path, note: &str, n: u32) -> Result<(), String> {
+pub fn restore(folder: &Path, note: &str, n: u32) -> Result<Checkpoint, String> {
     let cp = list(folder, note)?.into_iter().find(|c| c.n == n).ok_or(format!("no checkpoint {n}"))?;
+    // Save the present first, so the undo itself can be undone (files created since included).
+    let before = create(folder, note, &format!("undo to #{n}"))?;
     let then = format!("{}^{{tree}}", cp.commit);
-    let now = snapshot_tree(folder)?;
-    let added = git(folder, None, &["diff", "--name-only", "--no-renames", "--diff-filter=A", &then, &now])?;
-    for f in added.lines().filter(|l| !l.is_empty()) {
+    let now = format!("{}^{{tree}}", before.commit);
+    let added = git(folder, None, &["diff", "--name-only", "--relative", "-z", "--no-renames", "--diff-filter=A", &then, &now, "--", ".", ":(exclude).pair"])?;
+    for f in added.split('\0').filter(|l| !l.is_empty()) {
         let _ = std::fs::remove_file(folder.join(f));
     }
     let idx = temp_index(folder)?;
     git(folder, Some(&idx.0), &["read-tree", &then])?;
     git(folder, Some(&idx.0), &["checkout-index", "-a", "-f"])?;
-    Ok(())
+    Ok(before)
 }
 
 /// Deletes every checkpoint of a note (when the note is deleted).
@@ -129,7 +132,7 @@ pub fn checkpoint_list(folder: String, note: String) -> Result<Vec<Checkpoint>, 
 }
 
 #[tauri::command]
-pub fn checkpoint_restore(folder: String, note: String, n: u32) -> Result<(), String> {
+pub fn checkpoint_restore(folder: String, note: String, n: u32) -> Result<Checkpoint, String> {
     restore(Path::new(&folder), &note, n)
 }
 
@@ -170,7 +173,8 @@ mod tests {
         fs::remove_file(p.join("draft.md")).unwrap();
         fs::write(p.join("ignored.log"), "keep me\n").unwrap();
 
-        restore(p, "auth flow", 1).unwrap();
+        let saved = restore(p, "auth flow", 1).unwrap();
+        assert_eq!(saved.n, 2);
 
         assert_eq!(fs::read_to_string(p.join("a.txt")).unwrap(), "one\n");
         assert_eq!(fs::read_to_string(p.join("draft.md")).unwrap(), "untracked before\n");
@@ -180,6 +184,27 @@ mod tests {
         assert_eq!(head(p), head_before);
         assert_eq!(git(p, None, &["status", "--porcelain"]).unwrap(), status_before);
         assert_eq!(git(p, None, &["rev-parse", "--abbrev-ref", "HEAD"]).unwrap(), "main");
+
+        // The undo can be undone: #2 brings back the edit and the new file.
+        restore(p, "auth flow", 2).unwrap();
+        assert_eq!(fs::read_to_string(p.join("a.txt")).unwrap(), "two\n");
+        assert!(p.join("new.rs").exists());
+    }
+
+    #[test]
+    fn notes_are_never_rolled_back_and_subfolders_restore_correctly() {
+        let d = repo();
+        let sub = d.path().join("app");
+        fs::create_dir_all(sub.join(".pair/notes")).unwrap();
+        fs::write(sub.join(".pair/notes/n.md"), "old note").unwrap();
+        create(&sub, "n", "edit").unwrap();
+        fs::write(sub.join(".pair/notes/n.md"), "new note").unwrap();
+        fs::write(sub.join(".pair/notes/m.md"), "another").unwrap();
+        fs::write(sub.join("made.txt"), "x").unwrap();
+        restore(&sub, "n", 1).unwrap();
+        assert!(!sub.join("made.txt").exists(), "file created in a subfolder is removed");
+        assert_eq!(fs::read_to_string(sub.join(".pair/notes/n.md")).unwrap(), "new note");
+        assert!(sub.join(".pair/notes/m.md").exists());
     }
 
     #[test]

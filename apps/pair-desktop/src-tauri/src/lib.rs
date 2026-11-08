@@ -84,9 +84,18 @@ fn open_note(app: AppHandle, folder: String, name: String) -> Result<Note, Strin
     Ok(note)
 }
 
+/// Saves the note unless the file changed on disk since `expected` was read or written; then it
+/// returns "changed on disk" so the app reloads instead of overwriting an outside edit.
 #[tauri::command]
-fn save_note(folder: String, note: Note) -> Result<(), String> {
-    notes::save(&folder_path(&folder)?, &note).map_err(err)
+fn save_note(folder: String, note: Note, expected: Option<String>) -> Result<(), String> {
+    let root = folder_path(&folder)?;
+    if let Some(exp) = expected
+        && let Ok(disk) = notes::read(&root, &note.name)
+        && disk.markdown != exp
+    {
+        return Err("changed on disk".into());
+    }
+    notes::save(&root, &note).map_err(err)
 }
 
 /// Deletes a note and its undo points. Project files are not touched.

@@ -85,6 +85,33 @@ describe("agent note edits", () => {
   });
 });
 
+describe("review fixes", () => {
+  test("an edit next to a pending suggestion is refused instead of merging", () => {
+    ed = headless(NOTE);
+    expect("id" in proposeEdit(ed, "recursively", "in a loop")).toBe(true);
+    expect(proposeEdit(ed, ", so the stack", ", so stack")).toEqual({ error: expect.stringContaining("Wait for his decision") });
+    expect(suggestionGroups(ed.state.doc)).toHaveLength(1);
+  });
+
+  test("Kevin's typing inside a pending insertion stays his and is saved", () => {
+    ed = headless(NOTE);
+    proposeEdit(ed, "recursively", "in one simple loop");
+    const g = suggestionGroups(ed.state.doc)[0];
+    const mid = ed.state.doc.textBetween(g.from, g.to).indexOf("simple");
+    // Find the absolute position of "simple" inside the insertion and type before it.
+    let at = -1;
+    ed.state.doc.descendants((n, pos) => {
+      if (at === -1 && n.isText && n.text!.includes("in one simple loop")) at = pos + n.text!.indexOf("simple");
+      return at === -1;
+    });
+    expect(mid).toBeGreaterThan(-1);
+    ed.commands.insertContentAt(at, "very ");
+    expect(markdownOf(ed)).toContain("very ");
+    reject(ed, g.id);
+    expect(markdownOf(ed)).toContain("very ");
+  });
+});
+
 describe("thread anchors", () => {
   const thread = (id: string, exact: string): Thread => ({ id, anchor: { quote: { exact, prefix: "", suffix: "" }, pos: 0 }, messages: [], resolved: false, detached: false });
 

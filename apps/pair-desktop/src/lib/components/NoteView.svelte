@@ -73,8 +73,10 @@
       checkpoint: async (label) => {
         try {
           return await agent.checkpoint(folder, note.name, label);
-        } catch {
-          notice = "No undo point: this folder is not a git repository.";
+        } catch (e) {
+          // Without an undo point the change cannot be rolled back: make Kevin say yes twice.
+          const ok = confirm(`pair could not save an undo point (${String(e)}). This change could not be undone from pair. Go ahead anyway?`);
+          if (!ok) throw new Error("no undo point");
           return null;
         }
       },
@@ -103,27 +105,43 @@
     saveTimer = setTimeout(save, 400);
   }
 
-  async function save() {
+  let saving: Promise<void> = Promise.resolve();
+
+  /** Saves are serialised, and refused when the file changed on disk since we last wrote it. */
+  function save(): Promise<void> {
     clearTimeout(saveTimer);
-    const e = ed();
-    if (!e) return;
-    const markdown = markdownOf(e);
-    note.sidecar.threads = refreshQuotes(e, note.sidecar.threads);
-    note.markdown = markdown;
-    lastSaved = markdown;
-    await api.saveNote(folder, $state.snapshot(note) as Note).catch((err) => (notice = String(err)));
+    saving = saving.then(async () => {
+      const e = ed();
+      if (!e) return;
+      const markdown = markdownOf(e);
+      if (markdown === lastSaved) return;
+      note.sidecar.threads = refreshQuotes(e, note.sidecar.threads);
+      note.markdown = markdown;
+      try {
+        await api.saveNote(folder, $state.snapshot(note) as Note, lastSaved);
+        lastSaved = markdown;
+      } catch (err) {
+        if (String(err).includes("changed on disk")) {
+          const disk = await api.openNote(folder, note.name).catch(() => null);
+          if (disk) reloadFromDisk(disk, "The note changed on disk before your last edit was saved; it was reloaded. Re-type anything missing.");
+        } else notice = String(err);
+      }
+    });
+    return saving;
   }
 
   /** Called by the page when the file changed on disk. */
-  export function reloadFromDisk(fresh: Note) {
+  export function reloadFromDisk(fresh: Note, message = "The note changed on disk and was reloaded. Pending suggestions were dropped.") {
     const e = ed();
     if (!e || fresh.markdown === lastSaved) return;
+    // Pending suggestions disappear with the reload: tell the agent, so it is not left waiting.
+    void session.declineAllSuggestions("The note was reloaded from disk, so your suggestion was dropped. Re-read the note.");
     lastSaved = fresh.markdown;
     note.markdown = fresh.markdown;
     note.sidecar = fresh.sidecar;
     e.commands.setContent(fresh.markdown, { contentType: "markdown", emitUpdate: false } as never);
     setThreads(e, note.sidecar.threads);
-    notice = "The note changed on disk and was reloaded. Pending suggestions were dropped.";
+    notice = message;
   }
 
   let raf = 0;
@@ -275,9 +293,9 @@
   }
 
   async function undoTo(cp: Checkpoint) {
-    if (!confirm(`Put the project files back to how they were before “${cp.label}”? Later changes to those files are undone; your note is not touched.`)) return;
+    if (!confirm(`Put the project files back to how they were before “${cp.label}”? Files created since are removed. Your note is not touched, and the current state is saved as a new undo point first.`)) return;
     await agent.restore(folder, note.name, cp.n).then(
-      () => (notice = `Files restored to before “${cp.label}”.`),
+      (saved) => (notice = `Files restored to before “${cp.label}”. The state just before this undo is undo point #${saved.n}.`),
       (e) => (notice = String(e)),
     );
     checkpoints = null;

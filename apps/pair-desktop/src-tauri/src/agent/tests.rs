@@ -183,3 +183,32 @@ fn missing_binary_reports_an_error_and_frees_the_slot() {
     assert!(types.contains(&json!("pair_error")) && types.contains(&json!("pair_settled")));
     assert!(!agents.lock().unwrap().is_running("a"));
 }
+
+#[test]
+fn a_closed_process_exiting_late_does_not_disturb_its_replacement() {
+    let r = rig();
+    r.agents.lock().unwrap().ask("a", spec(&r.dir), "hi".into()).unwrap();
+    r.until("a", "pair_settled");
+    // Close, then immediately ask again: a new process starts while the old one is still exiting.
+    {
+        let mut a = r.agents.lock().unwrap();
+        a.close("a");
+        a.ask("a", spec(&r.dir), "hold".into()).unwrap();
+    }
+    std::thread::sleep(Duration::from_millis(800));
+    let a = r.agents.lock().unwrap();
+    assert!(a.is_live("a") && a.is_running("a"), "old process exit must not kill the new one");
+    while let Ok(e) = r.rx.try_recv() {
+        assert_ne!(e.record["type"], "pair_exited");
+    }
+}
+
+#[test]
+fn large_prompts_do_not_block_the_caller() {
+    let r = rig();
+    let big = "x".repeat(512 * 1024);
+    let started = Instant::now();
+    r.agents.lock().unwrap().ask("a", spec(&r.dir), big).unwrap();
+    assert!(started.elapsed() < Duration::from_millis(500), "send must not wait for the pipe");
+    r.until("a", "pair_settled");
+}
