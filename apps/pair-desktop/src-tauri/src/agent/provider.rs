@@ -23,6 +23,8 @@ pub struct StartSpec {
     pub cwd: PathBuf,
     pub session_id: String,
     pub model: Option<String>,
+    /// The note's name; the extension reads its stage from the sidecar.
+    pub note: String,
 }
 
 pub trait AgentProcess: Send {
@@ -71,6 +73,7 @@ impl Provider for PiProvider {
             .args(self.args(spec))
             .current_dir(&spec.cwd)
             .env("PAIR_DESKTOP", "1")
+            .env("PAIR_NOTE", &spec.note)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())

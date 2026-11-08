@@ -57,7 +57,7 @@ fn rig() -> Rig {
 }
 
 fn spec(dir: &tempfile::TempDir) -> StartSpec {
-    StartSpec { cwd: dir.path().to_path_buf(), session_id: "s1".into(), model: Some("openai-codex/gpt-5".into()) }
+    StartSpec { cwd: dir.path().to_path_buf(), session_id: "s1".into(), model: Some("openai-codex/gpt-5".into()), note: "n".into() }
 }
 
 impl Rig {
@@ -94,7 +94,7 @@ fn ask_starts_pi_streams_events_and_settles() {
 #[test]
 fn pi_args_load_only_pairs_extension_and_the_note_session() {
     let p = PiProvider { program: "pi".into(), prefix_args: vec![], extension: "/x/pair-ext.ts".into(), session_dir: "/d/sessions".into() };
-    let args = p.args(&StartSpec { cwd: "/p".into(), session_id: "abc".into(), model: None }).join(" ");
+    let args = p.args(&StartSpec { cwd: "/p".into(), session_id: "abc".into(), model: None, note: "n".into() }).join(" ");
     assert_eq!(args, "--mode rpc -ne -ns -e /x/pair-ext.ts --session-dir /d/sessions --session-id abc");
 }
 

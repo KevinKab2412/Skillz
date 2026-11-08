@@ -36,6 +36,12 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
-    ]
+    ],
+    "resources": {
+      "../pi-ext/pair-ext.ts": "pi-ext/pair-ext.ts",
+      "../pi-ext/policy.ts": "pi-ext/policy.ts",
+      "../pi-ext/diagram-spec.ts": "pi-ext/diagram-spec.ts",
+      "../pi-ext/PI_VERSION": "pi-ext/PI_VERSION"
+    }
   }
 }

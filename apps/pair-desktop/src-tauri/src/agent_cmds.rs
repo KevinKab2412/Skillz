@@ -109,7 +109,7 @@ pub fn agent_ask(
     message: String,
 ) -> Result<AskOutcome, String> {
     let a = agents(&app, &state)?;
-    let spec = StartSpec { cwd: folder.clone().into(), session_id, model };
+    let spec = StartSpec { cwd: folder.clone().into(), session_id, model, note: name.clone() };
     let mut guard = a.lock().map_err(|e| e.to_string())?;
     guard.ask(&note_key(&folder, &name), spec, message)
 }
