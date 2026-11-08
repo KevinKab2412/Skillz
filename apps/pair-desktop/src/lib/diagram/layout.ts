@@ -12,7 +12,7 @@ const GAP_Y = 44;
 const PAD = 16;
 const LABEL = 22;
 
-export type Box = { ref: string; x: number; y: number; w: number; h: number; kind: "cell" | "node" | "text" | "label" };
+export type Box = { ref: string; x: number; y: number; w: number; h: number; kind: "cell" | "node" | "text" | "label" | "slot" };
 export type Link = { from: string; to: string; label?: string };
 export type Layout = { width: number; height: number; boxes: Box[]; links: Link[] };
 
@@ -45,8 +45,12 @@ function place(o: SceneObject, x0: number, y0: number): { boxes: Box[]; links: L
       return { boxes, links: [], width: left + o.cols * CELL, height: top + o.rows * CELL };
     }
     case "row": {
-      const boxes = o.items.map((n, i) => ({ ref: n.id, x: x0 + i * CELL * 1.4, y: y0, w: CELL * 1.4, h: CELL, kind: "node" as const }));
-      return { boxes, links: [], width: o.items.length * CELL * 1.4, height: CELL };
+      // Cells are sized to the longest label; slot -1 sits left of the first item and slot n right of the last.
+      const w = Math.max(CELL * 1.4, Math.max(...o.items.map((n) => n.label.length)) * 8 + 18);
+      const left = x0 + w;
+      const boxes: Box[] = o.items.map((n, i) => ({ ref: n.id, x: left + i * w, y: y0, w, h: CELL, kind: "node" }));
+      for (let i = -1; i <= o.items.length; i++) boxes.push({ ref: `${o.id}[${i}]`, x: left + i * w, y: y0, w, h: CELL, kind: "slot" });
+      return { boxes, links: [], width: (o.items.length + 2) * w, height: CELL };
     }
     case "text":
       return { boxes: [{ ref: o.id, x: x0, y: y0, w: 360, h: 24, kind: "text" }], links: [], width: 360, height: 24 };

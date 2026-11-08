@@ -102,7 +102,9 @@
       {#each geo.boxes as b (b.ref)}
         {#if !hidden.has(b.ref)}
           <g class={`box ${b.kind}`} class:changed={changed.has(b.ref)} class:focus={focus.has(b.ref)} data-ref={b.ref}>
-            {#if b.kind === "label"}
+            {#if b.kind === "slot"}
+              <!-- Invisible position for pointers before, between or after row items. -->
+            {:else if b.kind === "label"}
               <text x={b.x + b.w / 2} y={b.y + b.h / 2}>{b.ref.split(":").slice(1).join(":")}</text>
             {:else if b.kind === "text"}
               <text class="eq" x={b.x} y={b.y + b.h / 2}>{frame.values[b.ref] ?? ""}</text>

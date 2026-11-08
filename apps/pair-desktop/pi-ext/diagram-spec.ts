@@ -36,8 +36,8 @@ const isStr = (v: unknown): v is string => typeof v === "string";
 const isInt = (v: unknown): v is number => Number.isInteger(v);
 
 /** Every name a step may refer to, mapped to what it is. */
-export function refsOf(spec: SceneSpec): Map<string, "cell" | "line" | "node" | "text"> {
-  const refs = new Map<string, "cell" | "line" | "node" | "text">();
+export function refsOf(spec: SceneSpec): Map<string, "cell" | "line" | "node" | "text" | "slot"> {
+  const refs = new Map<string, "cell" | "line" | "node" | "text" | "slot">();
   for (const o of spec.objects) {
     if (o.kind === "grid") {
       for (let r = 0; r < o.rows; r++) {
@@ -50,6 +50,8 @@ export function refsOf(spec: SceneSpec): Map<string, "cell" | "line" | "node" | 
     } else {
       const items = o.kind === "row" ? o.items : o.nodes;
       for (const n of items) refs.set(n.id, "node");
+      // Row positions, including one before and one after, so pointers like i = -1 or i = n work.
+      if (o.kind === "row") for (let i = -1; i <= o.items.length; i++) refs.set(`${o.id}[${i}]`, "slot");
     }
   }
   return refs;
@@ -154,7 +156,7 @@ export function validate(input: unknown): string[] {
       const g = (input.objects as SceneObject[]).find((o) => o.id === m[1]);
       if (g?.kind === "grid") return ` Cells of "${g.id}" run from [0,0] to [${g.rows - 1},${g.cols - 1}].`;
     }
-    return " Use a grid cell like g[1,2], a row g.r0, a column g.c0, a node id, or a text object id.";
+    return " Use a grid cell like g[1,2], a row g.r0, a column g.c0, a row position like arr[-1] or arr[3], a node id, or a text object id.";
   };
   (input.steps as unknown[]).forEach((s, i) => {
     const where = `steps[${i}]`;
@@ -166,6 +168,7 @@ export function validate(input: unknown): string[] {
       else
         for (const [k, v] of Object.entries(s.set)) {
           if (!known(k)) errs.push(`${where}.set: unknown ref "${k}".${hint(k)}`);
+          else if (refs.get(k) === "slot") errs.push(`${where}.set: "${k}" is a position, not a value; set the item's id instead.`);
           if (!isStr(v)) errs.push(`${where}.set["${k}"] must be text.`);
         }
     }

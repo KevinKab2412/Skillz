@@ -105,3 +105,24 @@ test("parse reports JSON errors", () => {
   expect("errors" in parse("{nope")).toBe(true);
   expect("spec" in parse(JSON.stringify(tree))).toBe(true);
 });
+
+test("row positions -1 and n are valid pointer targets but not values", () => {
+  const spec = {
+    v: 1,
+    title: "Two pointers",
+    objects: [
+      { id: "arr", kind: "row", items: [{ id: "a0", label: "3" }, { id: "a1", label: "5" }] },
+      { id: "i", kind: "text", text: "i" },
+    ],
+    steps: [
+      { caption: "i starts before the array.", arrows: [{ from: "i", to: "arr[-1]" }] },
+      { caption: "and ends after it.", arrows: [{ from: "i", to: "arr[2]" }], focus: ["arr[2]"] },
+    ],
+  };
+  expect(validate(spec)).toEqual([]);
+  const bad = structuredClone(spec) as any;
+  bad.steps[0].arrows = [{ from: "i", to: "arr[3]" }];
+  expect(validate(bad).join()).toContain("arr[-1] or arr[3]");
+  bad.steps[0] = { caption: "x", set: { "arr[0]": "9" } };
+  expect(validate(bad).join()).toContain("is a position");
+});

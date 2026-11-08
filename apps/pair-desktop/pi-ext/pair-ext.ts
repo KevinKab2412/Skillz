@@ -113,7 +113,7 @@ export default function (pi: ExtensionAPI) {
         '{"v":1,"title":"…","objects":[…],"steps":[{"caption":"…", "set":{ref:text}, "add":[nodeIds], "remove":[nodeIds], "arrows":[{"from":ref,"to":ref}], "focus":[refs]}]}',
         'Objects: {"id","kind":"grid","rows","cols","rowLabels"?,"colLabels"?} (refs g[r,c], g.r0 for a row, g.c0 for a column);',
         '{"id","kind":"tree","nodes":[{"id","label","parent"?}]} (exactly one root); {"id","kind":"flow","nodes":[{"id","label"}],"edges":[{"from","to","label"?}]};',
-        '{"id","kind":"row","items":[{"id","label"}]} for arrays and stacks; {"id","kind":"text","text"} for an equation or note.',
+        '{"id","kind":"row","items":[{"id","label"}]} for arrays and stacks (positions arr[-1] … arr[n] are pointer targets); {"id","kind":"text","text"} for an equation or note.',
         "Node ids are refs too. 2–12 steps, one short caption each (≤120 chars). Nodes named in any step's add start hidden.",
         'Only if the scene spec cannot express it after two failed tries, send {"v":1,"kind":"mermaid","title":"…","source":"<mermaid>"} instead (static, no steps).',
       ].join("\n"),
