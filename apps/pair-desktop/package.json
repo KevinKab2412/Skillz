@@ -14,10 +14,16 @@
   },
   "license": "MIT",
   "dependencies": {
+    "@handlewithcare/prosemirror-suggest-changes": "^0.1.8",
     "@tauri-apps/api": "^2",
     "@tauri-apps/plugin-dialog": "2",
     "@tauri-apps/plugin-opener": "^2",
-    "mermaid": "11"
+    "@tiptap/core": "3",
+    "@tiptap/markdown": "3",
+    "@tiptap/pm": "3",
+    "@tiptap/starter-kit": "3",
+    "mermaid": "11",
+    "svelte-tiptap": "3"
   },
   "devDependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
