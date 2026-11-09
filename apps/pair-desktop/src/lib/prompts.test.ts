@@ -35,3 +35,35 @@ test("pair is told it can read the project, what is in it and which file is open
   expect(p).toContain("… and 5 more");
   expect(p).toContain("Kevin has src/basket.ts open beside the note");
 });
+
+test("every reply follows the voice rules", () => {
+  for (const kind of ["passive", "riddle", "ask", "visualize", "doit", "inline"] as const) {
+    const p = buildPrompt({ kind, stage: "build", tell: "", note: "", noteName: "n" });
+    expect(p).toContain("Ask at most one question per reply");
+    expect(p).toContain("name the file and line you read");
+    expect(p).toContain("Keep an even tone");
+  }
+});
+
+test("in Think and Plan, questions get a guiding question before the answer", () => {
+  for (const stage of ["think", "plan"] as const) {
+    for (const kind of ["ask", "inline"] as const) {
+      const p = buildPrompt({ kind, stage, tell: "", note: "", noteName: "n", request: "why is this slow?" });
+      expect(p).toContain("Question first");
+      expect(p).not.toContain("Answer directly");
+    }
+  }
+});
+
+test("in Build and Review, and for actions, pair answers directly", () => {
+  for (const stage of ["build", "review"] as const) {
+    const p = buildPrompt({ kind: "ask", stage, tell: "", note: "", noteName: "n", request: "why?" });
+    expect(p).toContain("Answer directly");
+    expect(p).not.toContain("Question first");
+  }
+  for (const kind of ["doit", "visualize", "riddle", "passive"] as const) {
+    const p = buildPrompt({ kind, stage: "think", tell: "", note: "", noteName: "n" });
+    expect(p).not.toContain("Question first");
+    expect(p).not.toContain("Answer directly");
+  }
+});
