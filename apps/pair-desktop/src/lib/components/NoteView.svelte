@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onDestroy, onMount, untrack } from "svelte";
+  import { mount, onDestroy, onMount, unmount, untrack } from "svelte";
   import type { Readable } from "svelte/store";
   import { createEditor, EditorContent, type Editor } from "svelte-tiptap";
   import { listen } from "@tauri-apps/api/event";
@@ -11,7 +11,6 @@
     editorOptions,
     liveAnchors,
     markdownOf,
-    proposeBlock,
     refreshQuotes,
     reject,
     selectedText,
@@ -19,11 +18,14 @@
     setThreads,
     threadForSelection,
   } from "$lib/editor/note";
-  import { suggestionGroups } from "$lib/editor/extensions";
+  import { suggestionGroups, widgetPlacements } from "$lib/editor/extensions";
   import { quoteAt, textIndex } from "$lib/editor/anchors";
-  import Margin, { type MarginItem } from "./Margin.svelte";
-  import ChatPanel from "./ChatPanel.svelte";
+  import Exchange from "./Exchange.svelte";
+  import CardView from "./CardView.svelte";
+  import type { ExchangeCtx } from "./exchange";
+  import type { AskKind } from "$lib/prompts";
   import { exportMarkdown, exportPdf } from "$lib/export";
+  import { focusOnMount } from "$lib/focus";
 
   let {
     folder,
@@ -31,15 +33,29 @@
     settings,
     pi,
     interrupted = null,
-  }: { folder: string; note: Note; settings: Settings; pi: PiStatus | null; interrupted?: string | null } = $props();
+    files = [],
+    openFile = null,
+    onFilesChanged = () => {},
+  }: {
+    folder: string;
+    note: Note;
+    settings: Settings;
+    pi: PiStatus | null;
+    interrupted?: string | null;
+    files?: string[];
+    openFile?: string | null;
+    onFilesChanged?: () => void;
+  } = $props();
 
   let editor = $state<Readable<Editor>>();
   let column: HTMLDivElement;
   let scroller: HTMLDivElement;
   let page: HTMLDivElement;
-  let items = $state<MarginItem[]>([]);
   let active = $state<string | null>(null);
-  let chatOpen = $state(false);
+  /** Pending text suggestions by id, for their Accept / Reject bars under the passage. */
+  let suggestions = $state<Record<number, { ins: string; del: string }>>({});
+  /** Threads whose passage is gone; they are listed at the end of the note. */
+  let detachedIds = $state<string[]>([]);
   let menu = $state<{ x: number; y: number; asking: boolean; question: string } | null>(null);
   let models = $state<string[]>([]);
   let checkpoints = $state<Checkpoint[] | null>(null);
@@ -89,12 +105,32 @@
       if (e) setThreads(e, note.sidecar.threads);
       void saveSidecar();
     },
+    () => ({ folder, files, openFile }),
   );
 
-  // Pending card → make sure Kevin sees it.
-  $effect(() => {
-    if (session.chat.some((c) => c.type === "card" && c.card.status === "pending")) chatOpen = true;
-  });
+  const ctx: ExchangeCtx = {
+    session,
+    thread: (id) => note.sidecar.threads.find((t) => t.id === id && !t.resolved),
+    suggestion: (id) => suggestions[id],
+    active: () => active,
+    activate: (id) => (active = id),
+    reply: (t, text) => void replyInThread(t, text),
+    resolve: (t) => void resolveThread(t),
+    decideCard: (card, decision, opts) => void session.decideCard(card, decision, opts),
+  };
+
+  /** Each widget under a passage is a Svelte component mounted once into a cached element. */
+  const hosts = new Map<string, { el: HTMLElement; inst: Record<string, unknown> }>();
+  function host(key: string): HTMLElement {
+    const have = hosts.get(key);
+    if (have) return have.el;
+    const el = document.createElement("div");
+    el.className = "pair-widget";
+    el.contentEditable = "false";
+    const inst = mount(Exchange, { target: el, props: { wkey: key, ctx } });
+    hosts.set(key, { el, inst });
+    return el;
+  }
 
   async function saveSidecar() {
     await api.saveSidecar(folder, note.name, $state.snapshot(note.sidecar) as Note["sidecar"]).catch((e) => (notice = String(e)));
@@ -153,27 +189,15 @@
     cancelAnimationFrame(raf);
     raf = requestAnimationFrame(() => {
       const e = ed();
-      if (!e || !column || !e.view.dom.isConnected) return;
-      const base = column.getBoundingClientRect().top;
-      const out: MarginItem[] = [];
-      const byId = new Map(note.sidecar.threads.map((t) => [t.id, t]));
-      for (const a of liveAnchors(e)) {
-        const t = byId.get(a.id);
-        if (!t || a.detached) continue;
-        out.push({ key: a.id, kind: "thread", want: e.view.coordsAtPos(a.from).top - base, thread: t });
-      }
-      for (const g of suggestionGroups(e.state.doc)) {
-        if (g.block) continue;
-        out.push({ key: `s${g.id}`, kind: "suggestion", want: e.view.coordsAtPos(g.from).top - base, id: g.id, ins: g.ins, del: g.del });
-      }
-      items = out;
+      if (!e || e.isDestroyed || !e.view.dom.isConnected) return;
+      const next: Record<number, { ins: string; del: string }> = {};
+      for (const g of suggestionGroups(e.state.doc)) if (!g.block) next[g.id] = { ins: g.ins, del: g.del };
+      suggestions = next;
+      detachedIds = liveAnchors(e).filter((a) => a.detached).map((a) => a.id);
     });
   }
 
-  const detached = $derived.by(() => {
-    const live = new Set(items.filter((i) => i.kind === "thread").map((i) => i.key));
-    return note.sidecar.threads.filter((t) => !t.resolved && !live.has(t.id));
-  });
+  const detached = $derived(note.sidecar.threads.filter((t) => !t.resolved && detachedIds.includes(t.id)));
 
   function selectionQuote(e: Editor) {
     const { from, to } = e.state.selection;
@@ -202,31 +226,34 @@
     menu = { x: Math.max(170, Math.min(mid, box.width - 170)), y: start.top - box.top + scroller.scrollTop - 44, asking: false, question: "" };
   }
 
+  /** A new thread on the current selection; pair's answer, status and cards appear in it. */
+  async function openThread(first: string | null): Promise<string | null> {
+    const e = ed();
+    if (!e) return null;
+    const t = threadForSelection(e, crypto.randomUUID(), first ? { author: "kevin", text: first } : null);
+    if (!t) return null;
+    note.sidecar.threads = [...note.sidecar.threads, t];
+    setThreads(e, note.sidecar.threads);
+    active = t.id;
+    await saveSidecar();
+    return t.id;
+  }
+
   async function action(kind: "riddle" | "ask" | "visualize" | "doit") {
     const e = ed();
     if (!e || !menu) return;
     const selection = selectionQuote(e);
     menuSuppressed = kind !== "ask" || menu.asking;
-    if (kind === "ask") {
-      if (!menu.asking) {
-        menu.asking = true;
-        return;
-      }
-      const q = menu.question.trim();
-      if (!q) return;
-      const t = threadForSelection(e, crypto.randomUUID(), { author: "kevin", text: q });
-      if (!t) return;
-      note.sidecar.threads = [...note.sidecar.threads, t];
-      setThreads(e, note.sidecar.threads);
-      active = t.id;
-      await saveSidecar();
-      menu = null;
-      await session.ask("ask", { request: q, threadId: t.id, selection });
+    if (kind === "ask" && !menu.asking) {
+      menu.asking = true;
       return;
     }
+    const q = kind === "ask" ? menu.question.trim() : "";
+    if (kind === "ask" && !q) return;
     menu = null;
-    if (kind === "doit") chatOpen = true;
-    await session.ask(kind, { selection });
+    const threadId = await openThread(q || null);
+    if (!threadId) return;
+    await session.ask(kind as AskKind, { request: q || undefined, threadId, selection });
   }
 
   async function replyInThread(t: Thread, text: string) {
@@ -275,7 +302,12 @@
     if (!/@pair\b/.test(text)) return false;
     const ix = textIndex(e.state.doc);
     const s = ix.toOffset(from$.start());
-    void session.ask("inline", { request: text.replace(/@pair\b/, "").trim(), selection: { text, quote: quoteAt(ix.text, s, s + text.length) } });
+    const quote = quoteAt(ix.text, s, s + text.length);
+    const t = { id: crypto.randomUUID(), anchor: { quote, pos: s }, messages: [], resolved: false, detached: false };
+    note.sidecar.threads = [...note.sidecar.threads, t];
+    setThreads(e, note.sidecar.threads);
+    void saveSidecar();
+    void session.ask("inline", { request: text.replace(/@pair\b/, "").trim(), threadId: t.id, selection: { text, quote } });
     return false;
   }
 
@@ -305,12 +337,6 @@
     checkpoints = null;
   }
 
-  function addToNote(text: string) {
-    const e = ed();
-    if (!e) return;
-    proposeBlock(e, "pairReply", { text }, e.state.selection.empty ? undefined : selectionQuote(e).quote);
-  }
-
   onMount(() => {
     editor = createEditor({
       ...editorOptions(note.markdown, {
@@ -328,15 +354,42 @@
         },
         onTransaction: relayout,
         onSelectionUpdate: onSelection,
-      }),
+      }, host),
     } as never);
     agent.models().then((m) => (models = m)).catch(() => {});
     const key = noteKey(folder, note.name);
     const un = listen<AgentEvent>("agent-event", ({ payload }) => {
-      if (payload.key === key) void session.onRecord(payload.record);
+      if (payload.key !== key) return;
+      const r = payload.record;
+      void session.onRecord(r);
+      // Files may have changed: refresh the tree and the open file.
+      if (r.type === "pair_settled" || (r.type === "tool_execution_end" && ["edit", "write", "bash"].includes(r.toolName))) onFilesChanged();
     });
-    const ro = new ResizeObserver(relayout);
-    ro.observe(column);
+    // Clicking an underlined passage opens its thread.
+    const onClick = (e: MouseEvent) => {
+      const target = e.target as Element | null;
+      const a = target?.closest?.("[data-thread]") as HTMLElement | null;
+      if (a?.dataset.thread) active = a.dataset.thread;
+    };
+    column.addEventListener("click", onClick);
+    // A press on blank page below the text puts the cursor at the end of the note. Handled on
+    // mousedown, before ProseMirror places its own cursor in the last paragraph.
+    const onBlankDown = (e: MouseEvent) => {
+      const e2 = ed();
+      const target = e.target as Element | null;
+      if (!e2 || !target || !(target === scroller || target === page || target === column || target.classList.contains("note-body"))) return;
+      const last = e2.view.dom.lastElementChild?.getBoundingClientRect();
+      if (last && e.clientY <= last.bottom) return;
+      e.preventDefault();
+      // After a thread at the very end there is no line to type on: start a fresh one below it.
+      const size = e2.state.doc.content.size;
+      const lastNode = e2.state.doc.lastChild;
+      const endsInThread = widgetPlacements(e2.state).some((w) => w.at === size);
+      if (endsInThread && !(lastNode?.type.name === "paragraph" && lastNode.content.size === 0)) {
+        e2.chain().insertContentAt(size, { type: "paragraph" }).focus("end").run();
+      } else e2.commands.focus("end");
+    };
+    scroller.addEventListener("mousedown", onBlankDown, true);
     const onProposal = (e: Event) => {
       const d = (e as CustomEvent<{ id: number; decision: "accept" | "reject"; reason?: string }>).detail;
       void decideSuggestion(d.id, d.decision, d.reason);
@@ -349,7 +402,8 @@
       page.removeEventListener("pair-proposal", onProposal);
       column.removeEventListener("pointerdown", unsuppress);
       column.removeEventListener("keydown", unsuppress);
-      ro.disconnect();
+      column.removeEventListener("click", onClick);
+      scroller.removeEventListener("mousedown", onBlankDown, true);
       void un.then((f) => f());
     };
   });
@@ -369,10 +423,11 @@
       }
     }
     void agent.close(folder, note.name).catch(() => {});
+    for (const h of hosts.values()) void unmount(h.inst);
+    hosts.clear();
     $editor?.destroy();
   });
 
-  // Keep the active thread highlighted in the text.
   // Keep the active thread highlighted. Only `active` is tracked: dispatching updates the editor
   // store, so reading the editor here would re-run this effect forever.
   $effect(() => {
@@ -387,36 +442,30 @@
 <div class="note-view">
   <div class="main">
     <header class="bar" data-tauri-drag-region>
-      <span class="title">{note.name}</span>
+      <span class="who" title={session.running ? "pair is working" : "pair"}>
+        <span class="dot" class:working={session.running}></span>pair
+        {#if session.running && session.activity}<span class="status">{session.activity.status}…</span>{/if}
+        {#if session.queued}<span class="status">{session.queued} waiting</span>{/if}
+      </span>
+      <button class="quiet" title="Thinks with you: pair reads along after you pause. When you ask: it waits to be asked." onclick={() => (thinks = !thinks)}>
+        {thinks ? "Thinks with you" : "When you ask"} <span class="chev">⌄</span>
+      </button>
       <div class="stages" role="tablist" aria-label="Stage">
-        {#each STAGES as s}
+        {#each STAGES as s, i}
+          {#if i}<span class="sep">·</span>{/if}
           <button role="tab" aria-selected={note.sidecar.stage === s.id} class:on={note.sidecar.stage === s.id} onclick={() => setStage(s.id)}>{s.label}</button>
         {/each}
       </div>
       <div class="right">
-        {#if session.running}
-          <span class="busy">pair is working{session.queued ? ` · ${session.queued} waiting` : ""}</span>
-          <button class="btn" onclick={() => session.stop()}>Stop</button>
-        {:else if session.queued}
-          <span class="busy">{session.queued} waiting</span>
-        {/if}
-        <label class="toggle" title="pair reads along after you pause and may leave margin notes">
-          <input type="checkbox" bind:checked={thinks} /> Thinks with you
-        </label>
-        <select aria-label="Model" value={note.sidecar.model ?? ""} onchange={(e) => setModel(e.currentTarget.value)}>
+        {#if session.running || session.queued}<button class="quiet" onclick={() => session.stop()}>Stop</button>{/if}
+        <select class="quiet" aria-label="Model" value={note.sidecar.model ?? ""} onchange={(e) => setModel(e.currentTarget.value)}>
           <option value="">{settings.default_model ?? "Pi default model"}</option>
           {#each models as m}<option value={m}>{m}</option>{/each}
         </select>
-        <button class="btn" onclick={openUndo}>Undo…</button>
-        <button class="btn" onclick={() => (exporting = true)}>Export</button>
-        <button class="btn" class:primary={chatOpen} onclick={() => (chatOpen = !chatOpen)}>Chat</button>
+        <button class="quiet" onclick={openUndo}>Undo…</button>
+        <button class="quiet" onclick={() => (exporting = true)}>Export</button>
       </div>
     </header>
-
-    <div class="tell">
-      <label for="tell">Tell pair</label>
-      <input id="tell" placeholder="A standing instruction for this note, e.g. “prefer small diffs; we use bun”" bind:value={note.sidecar.tell} onchange={saveSidecar} />
-    </div>
 
     {#if pi && !pi.path}
       <p class="banner bad">Pi is not installed or not on your login shell PATH. Install it, sign in with <code>pi</code>, then reopen pair.</p>
@@ -435,7 +484,7 @@
     {/if}
     {#if session.error}<p class="banner bad">{session.error} <button class="btn" onclick={() => (session.error = null)}>×</button></p>{/if}
     {#if session.stageSuggestion}
-      <p class="banner accent">pair suggests moving to <strong>{session.stageSuggestion.stage}</strong>: {session.stageSuggestion.why}
+      <p class="banner">pair suggests moving to <strong>{session.stageSuggestion.stage}</strong>: {session.stageSuggestion.why}
         <button class="btn ok" onclick={() => setStage(session.stageSuggestion!.stage as Stage)}>Move</button>
         <button class="btn" onclick={() => (session.stageSuggestion = null)}>Not yet</button></p>
     {/if}
@@ -444,23 +493,40 @@
     <div class="scroller" bind:this={scroller}>
       <div class="page" bind:this={page}>
         <div class="column" bind:this={column}>
+          <div class="tell">
+            <label for="tell">Tell pair</label>
+            <input id="tell" placeholder="what this note is for, e.g. “Ship the basket fix by Friday.”" bind:value={note.sidecar.tell} onchange={saveSidecar} />
+          </div>
           {#if $editor}<EditorContent editor={$editor} />{/if}
+
+          {#if detached.length || session.cards.some((c) => c.threadId === null) || session.loose.length}
+            <section class="elsewhere">
+              <h3>Not tied to a passage</h3>
+              {#each detached as t (t.id)}
+                <Exchange wkey={`t:${t.id}`} {ctx} quoted />
+              {/each}
+              {#each session.cards.filter((c) => c.threadId === null) as card (card.requestId)}
+                <CardView {card} onDecide={(d, o) => session.decideCard(card, d, o)} />
+              {/each}
+              {#each session.loose as text, i (i)}
+                <div class="loose"><span class="dot"></span><p>{text}</p></div>
+              {/each}
+            </section>
+          {/if}
         </div>
         <section class="print-only print-threads">
-          {#if note.sidecar.threads.some((t) => !t.resolved && t.messages.length)}<h2>Margin notes</h2>{/if}
+          {#if note.sidecar.threads.some((t) => !t.resolved && t.messages.length)}<h2>Threads</h2>{/if}
           <ol>
             {#each note.sidecar.threads.filter((t) => !t.resolved && t.messages.length) as t (t.id)}
               <li><em>“{t.anchor.quote.exact}”</em> — {#each t.messages as m}<span>{m.author === "agent" ? "pair" : "you"}: {m.text} </span>{/each}</li>
             {/each}
           </ol>
         </section>
-        <Margin {items} {detached} {active} onActivate={(id) => (active = id)} onReply={replyInThread} onResolve={resolveThread} onSuggestion={decideSuggestion} />
       </div>
       {#if menu}
         <div class="menu" style={`left:${menu.x}px; top:${menu.y}px`} role="toolbar" aria-label="Ask pair about the selection">
           {#if menu.asking}
-            <!-- svelte-ignore a11y_autofocus -->
-            <input autofocus placeholder="Ask about this…" bind:value={menu.question} onkeydown={(e) => (e.key === "Enter" ? action("ask") : e.key === "Escape" && (menu = null))} />
+            <input use:focusOnMount placeholder="Ask about this…" bind:value={menu.question} onkeydown={(e) => (e.key === "Enter" ? action("ask") : e.key === "Escape" && (menu = null))} />
             <button onclick={() => action("ask")}>Ask</button>
           {:else}
             <button onmousedown={(e) => e.preventDefault()} onclick={() => action("riddle")}>Riddle this</button>
@@ -472,10 +538,6 @@
       {/if}
     </div>
   </div>
-
-  {#if chatOpen}
-    <ChatPanel {session} onAddToNote={addToNote} onClose={() => (chatOpen = false)} />
-  {/if}
 
   {#if exporting}
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
@@ -513,45 +575,66 @@
 <style>
   .note-view { flex: 1; display: flex; min-width: 0; min-height: 0; }
   .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
-  .bar { height: 44px; flex: none; display: flex; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--rule); }
-  .title { font-weight: 600; color: var(--ink-soft); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
-  .stages { display: flex; background: var(--sidebar); border-radius: 8px; padding: 2px; }
-  .stages button { padding: 4px 12px; border-radius: 6px; color: var(--ink-soft); }
-  .stages button.on { background: var(--surface); color: var(--ink); box-shadow: 0 0 0 1px var(--rule); font-weight: 600; }
-  .right { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-  .busy { font-size: 12px; color: var(--accent); }
-  .toggle { font-size: 12px; color: var(--ink-soft); display: flex; gap: 4px; align-items: center; white-space: nowrap; }
-  select { max-width: 180px; padding: 3px 6px; border: 1px solid var(--rule); border-radius: 6px; background: var(--surface); }
-  .tell { display: flex; gap: 10px; align-items: center; padding: 6px 16px; border-bottom: 1px solid var(--rule); font-size: 13px; }
-  .tell label { color: var(--ink-faint); white-space: nowrap; }
-  .tell input { flex: 1; border: 0; background: transparent; outline: none; }
-  .banner { margin: 8px 16px 0; padding: 8px 12px; border-radius: 8px; background: var(--sidebar); font-size: 13px; }
+  .bar { height: 44px; flex: none; display: flex; align-items: center; gap: 18px; padding: 0 18px 0 22px; font-size: 13px; color: var(--ink-faint); overflow: hidden; container-type: inline-size; }
+  .who { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); white-space: nowrap; min-width: 0; flex: 0 1 auto; overflow: hidden; }
+  .bar > .quiet, .stages { flex: none; }
+  .right { min-width: 0; }
+  /* Narrow (file pane open): drop the least-used controls first. */
+  @container (max-width: 640px) { select.quiet, .status { display: none; } }
+  @container (max-width: 520px) { .stages .sep, .bar > .quiet { display: none; } }
+  .status { color: var(--ink-faint); font-style: italic; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+  .quiet { color: var(--ink-faint); font-size: 13px; white-space: nowrap; }
+  .quiet:hover { color: var(--ink); }
+  .chev { font-size: 10px; }
+  .stages { display: flex; align-items: center; gap: 6px; }
+  .stages button { color: var(--ink-faint); }
+  .stages button:hover { color: var(--ink-soft); }
+  .stages button.on { color: var(--ink); }
+  .sep { color: var(--rule); }
+  .right { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+  select.quiet { border: 0; background: none; max-width: 200px; padding: 0; appearance: none; cursor: pointer; text-overflow: ellipsis; }
+  .banner { margin: 6px 22px 0; padding: 8px 12px; border-radius: 8px; background: var(--sidebar); font-size: 13px; }
   .banner.bad { background: var(--bad-soft); color: var(--bad); }
-  .banner.accent { background: var(--accent-soft); }
   .banner pre { white-space: pre-wrap; font-size: 11px; max-height: 120px; overflow: auto; }
   .scroller { flex: 1; overflow-y: auto; position: relative; }
-  .page { display: flex; gap: 32px; justify-content: center; padding: 40px 24px 160px; }
+  .page { display: flex; justify-content: center; padding: 36px 32px 0; min-height: 100%; }
   .column { width: 680px; max-width: 100%; position: relative; }
-  .menu { position: absolute; transform: translateX(-50%); display: flex; gap: 2px; padding: 4px; background: var(--ink); color: var(--bg); border-radius: 8px; z-index: 20; box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 25%, transparent); }
-  .menu button { padding: 4px 10px; border-radius: 5px; font-size: 13px; white-space: nowrap; }
+  .tell { display: flex; gap: 10px; align-items: baseline; margin-bottom: 26px; font-size: 13px; }
+  .tell label { color: var(--ink-faint); white-space: nowrap; }
+  .tell input { flex: 1; border: 0; background: transparent; outline: none; font-family: var(--serif); font-size: 16px; color: var(--ink); }
+  .tell input::placeholder { color: var(--ink-faint); opacity: 0.7; }
+  .elsewhere { margin-top: 48px; padding-top: 14px; border-top: 1px solid var(--rule); }
+  .elsewhere h3 { font-size: 12px; font-weight: 500; color: var(--ink-faint); margin: 0 0 12px; }
+  .loose { display: grid; grid-template-columns: 7px 1fr; column-gap: 12px; font-family: var(--serif); color: var(--agent-ink); }
+  .loose .dot { margin-top: 0.62em; }
+  .loose p { margin: 0 0 10px; white-space: pre-wrap; }
+  .menu { position: absolute; transform: translateX(-50%); display: flex; gap: 2px; padding: 4px; background: var(--ink); color: var(--bg); border-radius: 999px; z-index: 20; box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 20%, transparent); }
+  .menu button { padding: 4px 12px; border-radius: 999px; font-size: 13px; white-space: nowrap; }
   .menu button:hover { background: color-mix(in srgb, var(--bg) 18%, transparent); }
-  .menu input { width: 260px; border: 0; border-radius: 5px; padding: 4px 8px; background: var(--bg); color: var(--ink); }
+  .menu input { width: 260px; border: 0; border-radius: 999px; padding: 4px 10px; background: var(--bg); color: var(--ink); outline: none; }
   .overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--ink) 30%, transparent); display: grid; place-items: center; z-index: 40; }
   .sheet { width: min(520px, 92vw); max-height: 80vh; overflow: auto; background: var(--surface); border-radius: 12px; padding: 18px 20px; }
   .sheet h3 { margin: 0 0 4px; }
   .cp { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--rule); font-size: 13px; }
   .row-end { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
 
-  :global(.note-body) { outline: none; font-family: var(--serif); font-size: var(--text-size); line-height: 1.65; color: var(--ink); }
-  :global(.note-body h1) { font-size: 1.9em; line-height: 1.2; margin: 0 0 0.6em; }
-  :global(.note-body h2) { font-size: 1.25em; margin: 1.6em 0 0.4em; padding-top: 0.6em; border-top: 1px solid var(--rule); }
-  :global(.note-body code) { font-family: var(--mono); font-size: 0.85em; background: var(--sidebar); padding: 1px 4px; border-radius: 4px; }
+  /* Kevin writes in sans; pair's ink is serif. */
+  :global(.note-body) { outline: none; font-family: var(--sans); font-size: var(--text-size); line-height: 1.75; color: var(--ink); min-height: 40vh; padding-bottom: 30vh; cursor: text; }
+  :global(.note-body > *:first-child) { margin-top: 0; }
+  :global(.note-body p) { margin: 0 0 0.8em; }
+  :global(.note-body h1) { font-size: 1.75em; font-weight: 600; letter-spacing: -0.02em; line-height: 1.2; margin: 0 0 0.6em; }
+  :global(.note-body h2) { font-size: 1.2em; font-weight: 600; letter-spacing: -0.01em; margin: 1.6em 0 0.4em; }
+  :global(.note-body h3) { font-size: 1.05em; font-weight: 600; margin: 1.3em 0 0.3em; }
+  :global(.note-body code) { font-family: var(--mono); font-size: 0.82em; background: var(--sidebar); padding: 1px 4px; border-radius: 4px; }
   :global(.note-body pre) { font-family: var(--mono); font-size: 13px; background: var(--sidebar); padding: 12px 14px; border-radius: 8px; overflow-x: auto; }
-  :global(.note-body .anchor) { background: color-mix(in srgb, #f5d76e 35%, transparent); border-bottom: 1px solid #e0b93a; }
-  :global(.note-body .anchor.active) { background: color-mix(in srgb, #f5d76e 70%, transparent); }
+  :global(.note-body p.is-editor-empty:first-child::before) { content: attr(data-placeholder); color: var(--ink-faint); pointer-events: none; float: left; height: 0; }
+  /* A passage pair is talking about: a soft underline, washed when its thread is active. */
+  :global(.note-body .anchor) { background-image: linear-gradient(var(--line), var(--line)); background-size: 100% 1px; background-repeat: no-repeat; background-position: 0 95%; cursor: pointer; }
+  :global(.note-body .anchor.active) { background-color: var(--mark); background-image: linear-gradient(var(--ink-soft), var(--ink-soft)); }
   :global(.note-body .sg-insertion), :global(.note-body ins) { color: var(--ok); text-decoration: none; background: var(--ok-soft); }
   :global(.note-body .sg-deletion), :global(.note-body del) { color: var(--bad); background: var(--bad-soft); }
-  :global(.note-body .block-proposal) { outline: 1px dashed var(--accent); outline-offset: 4px; border-radius: 6px; }
+  :global(.note-body .block-proposal) { outline: 1px dashed var(--line); outline-offset: 6px; border-radius: 6px; }
   /* A pending block sits inside the insertion mark; keep its own colours. */
   :global(.note-body ins.sg-insertion:has(.block-proposal)) { display: block; color: inherit; background: none; }
+  :global(.note-body .pair-widget) { white-space: normal; }
 </style>

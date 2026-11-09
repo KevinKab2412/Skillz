@@ -250,3 +250,58 @@ export function suggestionGroups(doc: PMNode): { id: number; from: number; to: n
   });
   return [...groups.values()].sort((a, b) => a.from - b.from);
 }
+
+// --- widgets under passages -------------------------------------------------------------------
+
+/** Returns the (cached) DOM element that renders one widget; the app mounts Svelte into it. */
+export type WidgetHost = (key: string) => HTMLElement;
+export const widgetKey = new PluginKey("pairWidgets");
+
+/** Position just after the top-level block that contains `pos`. */
+export function blockEndAt(doc: PMNode, pos: number): number {
+  const $p = doc.resolve(Math.min(pos, doc.content.size));
+  return $p.depth >= 1 ? $p.after(1) : pos;
+}
+
+/** Widget keys and where they go: one per live thread (`t:<id>`), one per text suggestion (`s:<id>`). */
+export function widgetPlacements(state: EditorState): { key: string; at: number; order: number }[] {
+  const out: { key: string; at: number; order: number }[] = [];
+  const anchors = anchorKey.getState(state)?.anchors ?? [];
+  for (const a of anchors) {
+    if (a.detached || a.to <= a.from) continue;
+    out.push({ key: `t:${a.id}`, at: blockEndAt(state.doc, a.to), order: a.from });
+  }
+  for (const g of suggestionGroups(state.doc)) {
+    if (g.block) continue;
+    out.push({ key: `s:${g.id}`, at: blockEndAt(state.doc, g.to), order: g.from });
+  }
+  return out.sort((x, y) => x.at - y.at || x.order - y.order);
+}
+
+/**
+ * Threads, their answers and approval cards live under the passage they are about: each is a
+ * widget placed after the passage's block, so the note's own text flows around it.
+ */
+export const PassageWidgets = Extension.create<{ host: WidgetHost | null }>({
+  name: "passageWidgets",
+  addOptions: () => ({ host: null }),
+  addProseMirrorPlugins() {
+    const host = this.options.host;
+    if (!host) return [];
+    return [
+      new Plugin({
+        key: widgetKey,
+        props: {
+          decorations(state) {
+            return DecorationSet.create(
+              state.doc,
+              widgetPlacements(state).map((p, i) =>
+                Decoration.widget(p.at, () => host(p.key), { key: p.key, side: 1 + i, stopEvent: () => true, ignoreSelection: true }),
+              ),
+            );
+          },
+        },
+      }),
+    ];
+  },
+});

@@ -12,19 +12,9 @@ const note = {
   name: "checkout-loop",
   markdown: `# Checkout loop
 
-## Think
-
-Prices are summed recursively, so the stack depth grows with the basket. A 200-seat group booking crashed last week.
-
-## Plan
+Prices are summed recursively in sum.ts, so the stack depth grows with the basket. A 200-seat group booking crashed last week.
 
 Replace the recursive helper with a loop and keep the rounding rules identical.
-
-## Build
-
-
-## Review
-
 `,
   sidecar: {
     v: 1,
@@ -32,7 +22,11 @@ Replace the recursive helper with a loop and keep the rounding rules identical.
       {
         id: "t1",
         anchor: { quote: { exact: "A 200-seat group booking crashed last week.", prefix: "", suffix: "" }, pos: 0 },
-        messages: [{ author: "agent", text: "Do we know the crash was stack depth, not the payment timeout that week?" }],
+        messages: [
+          { author: "agent", text: "Do we know the crash was stack depth, not the payment timeout that week?" },
+          { author: "kevin", text: "The trace shows RangeError: Maximum call stack size exceeded." },
+          { author: "agent", text: "Then it is the recursion: sumPrices calls itself once per seat, so 200 seats means 200 waiting frames." },
+        ],
         resolved: false,
         detached: false,
       },
@@ -53,11 +47,40 @@ const say = async (text: string) => {
   }
 };
 
+const FILES: Record<string, string> = {
+  "src/checkout/sum.ts": `// Sums line prices in cents.
+export function sumPrices(prices: number[]): number {
+  if (prices.length === 0) return 0;
+  const [head, ...rest] = prices;
+  return head + sumPrices(rest);
+}
+`,
+  "src/checkout/sum.test.ts": `import { expect, test } from "bun:test";
+import { sumPrices } from "./sum";
+
+test("sums", () => expect(sumPrices([1, 2, 3])).toBe(6));
+`,
+  "src/checkout/round.ts": "export const round = (c: number) => Math.round(c);\n",
+  "package.json": `{ "name": "basket", "scripts": { "test": "bun test" } }\n`,
+  "README.md": "# basket\n",
+};
+
+const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const tool = async (toolName: string, args: Record<string, unknown>) => {
+  await send({ type: "tool_execution_start", toolName, args });
+  await wait(700);
+  await send({ type: "tool_execution_end", toolName });
+};
+
 async function runAsk(message: string) {
   await send({ type: "pair_started", message });
-  await new Promise((r) => setTimeout(r, 300));
+  await wait(500);
   if (message.includes("riddle it")) {
-    await send({ type: "extension_ui_request", id: `ui${++n}`, method: "editor", title: "pair:thread", prefill: JSON.stringify({ quote: { exact: "keep the rounding rules identical" }, text: "Which rounding: per line or on the total? The recursive version rounds per line." }) });
+    await tool("read", { path: "src/checkout/sum.ts" });
+    await say("Which rounding: per line or on the total? The recursive version rounds per line.");
+  } else if (message.includes("asked a question")) {
+    await tool("read", { path: "src/checkout/sum.ts" });
+    await say("sumPrices takes the first price, then asks itself for the sum of the rest. An empty list returns 0, and the totals add up on the way back.");
   } else if (message.includes("visualize")) {
     const spec = {
       v: 1,
@@ -75,11 +98,11 @@ async function runAsk(message: string) {
     };
     await send({ type: "extension_ui_request", id: `ui${++n}`, method: "editor", title: "pair:diagram", prefill: JSON.stringify({ spec }) });
     await say("Drew the call stack against the loop.");
-  } else if (message.includes("do it") || message.includes("side chat")) {
-    await say("I'll propose the plan edit first, then the code change.");
+  } else if (message.includes("do it") || message.includes("@pair")) {
+    await tool("read", { path: "src/checkout/sum.ts" });
     await send({ type: "extension_ui_request", id: `ui${++n}`, method: "editor", title: "pair:note_edit", prefill: JSON.stringify({ find: "Replace the recursive helper with a loop", replace: "Replace sumPrices' recursion with a for…of loop" }) });
     await send({ type: "extension_ui_request", id: `ui${++n}`, method: "editor", title: "pair:file_edit", prefill: JSON.stringify({ tool: "edit", input: { path: "src/checkout/sum.ts", edits: [{ oldText: "return head + sumPrices(rest);", newText: "let total = 0;\nfor (const p of prices) total += p;\nreturn total;" }] }, cwd: FOLDER }) });
-    await send({ type: "extension_ui_request", id: `ui${++n}`, method: "editor", title: "pair:command", prefill: JSON.stringify({ tool: "bash", input: { command: "bun test src/checkout" }, cwd: FOLDER }) });
+    await say("Proposed the loop in sum.ts; the tests run once you accept it.");
   } else {
     await say("Looks fine to me.");
   }
@@ -88,6 +111,7 @@ async function runAsk(message: string) {
 }
 
 export function installMock() {
+  (window as unknown as { __pairNote: typeof note }).__pairNote = note;
   mockIPC(
     async (cmd, args) => {
       const a = (args ?? {}) as Record<string, any>;
@@ -119,6 +143,10 @@ export function installMock() {
           return { n: ++n, commit: "abc", label: a.label };
         case "checkpoint_list":
           return [{ n: 1, commit: "abc", label: "edit src/checkout/sum.ts" }];
+        case "list_files":
+          return Object.keys(FILES).sort();
+        case "read_file":
+          return { path: a.path, text: FILES[a.path] ?? "", truncated: false, binary: false };
         case "plugin:dialog|open":
           return FOLDER;
         default:

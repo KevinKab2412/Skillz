@@ -33,7 +33,9 @@ fn real() -> Real {
     std::fs::write(f.join("README.md"), "# demo\n").unwrap();
     run(f, &["git", "add", "."]);
     run(f, &["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "init"]);
-    notes::create(f, "demo").unwrap();
+    let mut note = notes::create(f, "demo").unwrap();
+    note.markdown = "# demo\n\nThe demo README is the only file so far.\n".into();
+    notes::save(f, &note).unwrap();
 
     let provider = PiProvider { program: pi.into(), prefix_args: vec![], extension: ext, session_dir: data.path().join("sessions") };
     let (tx, rx) = mpsc::channel();

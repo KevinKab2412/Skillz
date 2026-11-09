@@ -1,6 +1,8 @@
 /**
  * One note's conversation with its agent: what is running, what waits for Kevin, and where each
- * answer goes. The app wires `transport` to Tauri; tests pass a fake.
+ * answer goes. Every ask about a passage has a thread, and everything pair does for that ask (its
+ * live status, its answer, its approval cards) shows under that passage. The app wires
+ * `transport` to Tauri; tests pass a fake.
  */
 import type { Editor } from "@tiptap/core";
 import type { Note, Thread, TextQuote } from "$lib/api";
@@ -15,9 +17,12 @@ export type Transport = {
   checkpoint(label: string): Promise<{ n: number } | null>;
 };
 
+/** What the prompt needs to know about the project beyond the note. */
+export type Context = { folder?: string; files?: string[]; openFile?: string | null };
+
 export type Answer = { decision: "accept" | "decline"; reason?: string; command?: string; note?: string };
 
-/** A file edit, command, outside read or unknown tool waiting for Kevin. */
+/** A file edit, command, outside read or unknown tool waiting for Kevin, shown under its passage. */
 export type Card = {
   requestId: string;
   kind: "file_edit" | "command" | "read_outside" | "tool";
@@ -26,26 +31,57 @@ export type Card = {
   status: "pending" | "accepted" | "rejected";
   reason?: string;
   checkpoint?: number | null;
+  /** The thread this card belongs to; null shows it at the end of the note. */
+  threadId: string | null;
 };
 
-export type ChatItem =
-  | { type: "kevin"; text: string }
-  | { type: "agent"; text: string; done: boolean; kind: AskKind }
-  | { type: "card"; card: Card }
-  | { type: "notice"; text: string };
+/** What pair is doing right now, and where: a thread, or the note as a whole. */
+export type Activity = { threadId: string | null; status: string; text: string };
 
 type TaskCtx = { kind: AskKind; message: string; threadId?: string; quote?: TextQuote; display: string };
+
+/** Plain words for a tool call, for the line under the passage while pair works. */
+export function describeTool(name: string, args: Record<string, any> = {}): string {
+  const path = typeof args.path === "string" ? args.path.replace(/^@/, "") : "";
+  switch (name) {
+    case "read":
+      return path ? `reading ${path}` : "reading";
+    case "grep":
+      return args.pattern ? `searching for “${String(args.pattern).slice(0, 40)}”` : "searching";
+    case "find":
+    case "ls":
+      return path && path !== "." ? `looking through ${path}` : "looking through the project";
+    case "bash":
+      return "asking to run a command";
+    case "edit":
+    case "write":
+      return path ? `changing ${path}` : "changing a file";
+    case "add_diagram":
+      return "drawing";
+    case "suggest_note_edit":
+      return "suggesting an edit to the note";
+    case "add_thread":
+      return "writing a note";
+    case "review_verdict":
+      return "writing the verdict";
+    default:
+      return `using ${name}`;
+  }
+}
 
 export class NoteSession {
   running = $state(false);
   queued = $state(0);
-  chat = $state<ChatItem[]>([]);
+  activity = $state<Activity | null>(null);
+  cards = $state<Card[]>([]);
+  /** Answers with no passage to sit under (a retry after a restart). */
+  loose = $state<string[]>([]);
   stageSuggestion = $state<{ stage: string; why: string } | null>(null);
   crash = $state<{ stderr: string; code: number | null } | null>(null);
   error = $state<string | null>(null);
 
   /** Suggestion ids (note edits, diagrams, replies) the agent is waiting on → request id. */
-  private waiting = new Map<number, { requestId: string; onAccept?: () => void }>();
+  private waiting = new Map<number, { requestId: string }>();
   private pendingTasks: TaskCtx[] = [];
   private current: TaskCtx | null = null;
   private lastTask: TaskCtx | null = null;
@@ -55,25 +91,30 @@ export class NoteSession {
     private editor: () => Editor | null,
     private note: () => Note,
     private onThreads: (update: (threads: Thread[]) => Thread[]) => void,
+    private context: () => Context = () => ({}),
   ) {}
 
-  /** Sends an ask. `selection` is the passage it is about (with its quote, to place results). */
+  /**
+   * Sends an ask. `selection` is the passage it is about; `threadId` is the thread its answer,
+   * status and cards appear in (the caller creates it).
+   */
   async ask(kind: AskKind, opts: { request?: string; selection?: { text: string; quote: TextQuote }; threadId?: string } = {}) {
     const ed = this.editor();
     const note = this.note();
     if (!ed) return;
     this.crash = null;
+    this.error = null;
     const message = buildPrompt({
       kind,
       stage: note.sidecar.stage,
       tell: note.sidecar.tell,
       note: markdownOf(ed),
       noteName: note.name,
+      ...this.context(),
       selection: opts.selection?.text,
       request: opts.request,
     });
     const ctx: TaskCtx = { kind, message, threadId: opts.threadId, quote: opts.selection?.quote, display: opts.request ?? opts.selection?.text ?? "" };
-    if (kind === "chat" || kind === "doit") this.chat.push({ type: "kevin", text: kind === "doit" ? `Do it: ${ctx.display}` : ctx.display });
     this.pendingTasks.push(ctx);
     try {
       const r = await this.transport.ask(message);
@@ -85,7 +126,7 @@ export class NoteSession {
   }
 
   retryLast() {
-    if (this.lastTask) void this.ask("retry", { request: this.lastTask.display });
+    if (this.lastTask) void this.ask("retry", { request: this.lastTask.display, threadId: this.lastTask.threadId });
   }
 
   async stop() {
@@ -94,23 +135,41 @@ export class NoteSession {
     await this.transport.stop();
   }
 
+  /** Is pair working on this thread right now (or queued for it)? */
+  workingOn(threadId: string): boolean {
+    return this.activity?.threadId === threadId || this.pendingTasks.some((t) => t.threadId === threadId);
+  }
+
   /** Feeds one record from the agent (Pi's records plus pair's lifecycle records). */
   async onRecord(rec: Record<string, any>) {
     switch (rec.type) {
       case "pair_started": {
         this.running = true;
-        this.current = this.pendingTasks.shift() ?? { kind: "chat", message: rec.message, display: "" };
+        this.current = this.pendingTasks.shift() ?? { kind: "retry", message: rec.message, display: "" };
         this.lastTask = this.current;
         this.queued = this.pendingTasks.length;
-        if (this.showsInChat(this.current.kind)) this.chat.push({ type: "agent", text: "", done: false, kind: this.current.kind });
+        this.activity = { threadId: this.current.threadId ?? null, status: "thinking", text: "" };
         break;
       }
       case "pair_queued":
         this.queued = rec.queued ?? this.queued;
         break;
+      case "tool_execution_start": {
+        if (this.activity) this.activity.status = describeTool(rec.toolName ?? rec.tool ?? "tool", rec.args ?? rec.input ?? {});
+        break;
+      }
       case "message_update": {
         const ev = rec.assistantMessageEvent;
-        if (ev?.type === "text_delta") this.appendText(ev.delta);
+        if (ev?.type === "text_delta" && this.activity) {
+          this.activity.text += ev.delta;
+          this.activity.status = "writing";
+        }
+        break;
+      }
+      case "message_end": {
+        // Provider failures (usage limits, auth, network) end the message with an error.
+        const m = rec.message;
+        if (m?.role === "assistant" && m.stopReason === "error") this.error = `The model stopped: ${m.errorMessage ?? "unknown error"}`;
         break;
       }
       case "pair_settled":
@@ -132,33 +191,24 @@ export class NoteSession {
     }
   }
 
-  private showsInChat(kind: AskKind) {
-    return kind === "chat" || kind === "doit" || kind === "retry" || kind === "visualize";
-  }
-
-  private appendText(delta: string) {
-    if (!this.current) return;
-    const open = this.showsInChat(this.current.kind) ? this.chat.findLast((c) => c.type === "agent" && !c.done) : undefined;
-    if (open?.type === "agent") open.text += delta;
-    else this.currentText += delta;
-  }
-
-  private currentText = "";
-
   private finishTask() {
     const ctx = this.current;
-    const text = this.currentText.trim();
-    this.currentText = "";
+    const text = (this.activity?.text ?? "").trim();
     this.running = false;
     this.current = null;
-    for (const item of this.chat) if (item.type === "agent") item.done = true;
-    if (!ctx || !text) return;
-    if (ctx.kind === "ask" && ctx.threadId) {
-      const id = ctx.threadId;
-      this.onThreads((ts) => ts.map((t) => (t.id === id ? { ...t, messages: [...t.messages, { author: "agent", text }] } : t)));
-    } else if (ctx.kind === "inline") {
-      const ed = this.editor();
-      if (ed) proposeBlock(ed, "pairReply", { text }, ctx.quote);
+    this.activity = null;
+    if (!ctx) return;
+    const id = ctx.threadId;
+    if (id) {
+      // The answer joins its thread; a thread that never got a message (e.g. a riddle with no
+      // nudge) is dropped so no empty hook is left under the passage.
+      this.onThreads((ts) =>
+        ts
+          .map((t) => (t.id === id && text ? { ...t, messages: [...t.messages, { author: "agent", text }] } : t))
+          .filter((t) => t.id !== id || t.messages.length > 0 || this.cards.some((c) => c.threadId === id)),
+      );
+    } else if (text && ctx.kind !== "passive") {
+      this.loose.push(text);
     }
   }
 
@@ -212,8 +262,8 @@ export class NoteSession {
       case "command":
       case "read_outside":
       case "tool": {
-        const card: Card = { requestId, kind, tool: p.tool, input: p.input ?? {}, status: "pending" };
-        this.chat.push({ type: "card", card });
+        this.cards.push({ requestId, kind, tool: p.tool, input: p.input ?? {}, status: "pending", threadId: this.current?.threadId ?? null });
+        if (this.activity) this.activity.status = "waiting for you";
         return;
       }
       default:
@@ -257,6 +307,7 @@ export class NoteSession {
       card.reason = opts.reason;
       await this.transport.respond(card.requestId, JSON.stringify({ decision: "decline", reason: opts.reason }));
     }
+    if (this.activity?.status === "waiting for you") this.activity.status = "thinking";
   }
 
   /** Answers every suggestion the agent is waiting on with a decline (the note was reloaded). */

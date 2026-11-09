@@ -36,7 +36,11 @@ export const api = {
     invoke<void>("save_sidecar", { folder, name, sidecar }),
   watchFolder: (folder: string) => invoke<void>("watch_folder", { folder }),
   deleteNote: (folder: string, name: string) => invoke<void>("delete_note", { folder, name }),
+  listFiles: (folder: string) => invoke<string[]>("list_files", { folder }),
+  readFile: (folder: string, path: string) => invoke<FileText>("read_file", { folder, path }),
 };
+
+export interface FileText { path: string; text: string; truncated: boolean; binary: boolean }
 
 export interface PiStatus { path: string | null; version: string | null; expected: string; extension: string }
 export interface Settings {

@@ -1,5 +1,6 @@
 <script lang="ts">
   import { folderLabel, type NoteSummary } from "$lib/api";
+  import FileTree, { buildTree } from "./FileTree.svelte";
 
   let {
     folders,
@@ -9,6 +10,9 @@
     onOpen,
     onNew,
     onSettings,
+    files = [],
+    openFile = null,
+    onOpenFile = () => {},
   }: {
     folders: string[];
     notesByFolder: Record<string, NoteSummary[]>;
@@ -17,7 +21,19 @@
     onOpen: (folder: string, name: string) => void;
     onNew: (folder: string) => void;
     onSettings: () => void;
+    files?: string[];
+    openFile?: string | null;
+    onOpenFile?: (path: string) => void;
   } = $props();
+
+  const tree = $derived(buildTree(files));
+  let expanded = $state<Record<string, boolean>>({});
+  // Opening a file from elsewhere unfolds its folders.
+  $effect(() => {
+    if (!openFile) return;
+    const parts = openFile.split("/");
+    for (let i = 1; i < parts.length; i++) expanded[parts.slice(0, i).join("/")] = true;
+  });
 </script>
 
 <nav class="sidebar" aria-label="Projects and notes">
@@ -41,6 +57,12 @@
       </ul>
     </section>
   {/each}
+  {#if current && files.length}
+    <section class="files">
+      <header><span title={current.folder}>Files</span></header>
+      <FileTree nodes={tree} open={openFile} {expanded} onOpen={onOpenFile} />
+    </section>
+  {/if}
   <button class="open" onclick={onAddFolder}>Open folder…</button>
   <button class="open" onclick={onSettings}>Settings</button>
 </nav>
@@ -57,6 +79,7 @@
   li button:hover { background: var(--rule); }
   li button.active { background: var(--surface); box-shadow: 0 0 0 1px var(--rule); }
   .empty { padding: 5px 8px; font-size: 13px; }
+  .files { border-top: 1px solid var(--rule); padding-top: 12px; }
   .open { display: block; margin-top: 4px; padding: 6px 8px; color: var(--ink-soft); }
   .open:hover { color: var(--ink); }
 </style>

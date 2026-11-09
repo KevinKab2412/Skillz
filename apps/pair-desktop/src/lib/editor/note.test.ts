@@ -2,7 +2,7 @@ import { afterEach, describe, expect, test } from "vitest";
 import type { Editor } from "@tiptap/core";
 import { accept, headless, liveAnchors, markdownOf, proposeBlock, proposeEdit, refreshQuotes, reject, setThreads, threadForQuote } from "./note";
 import { quoteAt, resolveQuote } from "./anchors";
-import { suggestionGroups } from "./extensions";
+import { suggestionGroups, widgetPlacements } from "./extensions";
 import type { Thread } from "$lib/api";
 
 const NOTE = `# Basket
@@ -173,4 +173,32 @@ test("quote matching prefers context, then nearness", () => {
   expect(resolveQuote(text, q)).toBe(15);
   expect(resolveQuote(text, { exact: "cat", prefix: "", suffix: "" }, 30)).toBe(26);
   expect(resolveQuote(text, { exact: "dog", prefix: "", suffix: "" })).toBeNull();
+});
+
+describe("widgets under passages", () => {
+  const t = (id: string, exact: string): Thread => ({ id, anchor: { quote: { exact, prefix: "", suffix: "" }, pos: 0 }, messages: [], resolved: false, detached: false });
+
+  test("each thread and text suggestion sits right after its passage's block, in order", () => {
+    ed = headless(NOTE);
+    setThreads(ed, [t("b", "Replace the recursive helper"), t("a", "stack depth")]);
+    proposeEdit(ed, "recursively", "in a loop");
+    const placed = widgetPlacements(ed.state);
+    const doc = ed.state.doc;
+    const blockText = (at: number) => doc.resolve(at - 1).parent.textContent;
+    // "recursively" comes before "stack depth" in that paragraph, so its suggestion bar comes first.
+    expect(placed.map((p) => p.key[0])).toEqual(["s", "t", "t"]);
+    expect(blockText(placed[0].at)).toContain("stack depth");
+    expect(placed[0].at).toBe(placed[1].at);
+    expect(blockText(placed[2].at)).toContain("Replace the recursive helper");
+  });
+
+  test("accepting pair's rewrite of a passage moves its thread to the new words", () => {
+    ed = headless(NOTE);
+    setThreads(ed, [t("x", "Replace the recursive helper with a loop")]);
+    const { id } = proposeEdit(ed, "Replace the recursive helper with a loop", "Use a for loop") as { id: number };
+    accept(ed, id);
+    const a = liveAnchors(ed).find((x) => x.id === "x")!;
+    expect(a.detached).toBe(false);
+    expect(ed.state.doc.textBetween(a.from, a.to)).toBe("Use a for loop");
+  });
 });

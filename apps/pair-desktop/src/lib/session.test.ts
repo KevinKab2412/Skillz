@@ -33,34 +33,64 @@ afterEach(() => ed?.destroy());
 
 const ui = (id: string, kind: string, payload: object) => ({ type: "extension_ui_request", id, method: "editor", title: `pair:${kind}`, prefill: JSON.stringify(payload) });
 
-test("chat ask streams into the chat and settles", async () => {
+const thread = (id: string, messages: Thread["messages"] = []): Thread => ({ id, anchor: { quote: { exact: "loop", prefix: "", suffix: "" }, pos: 0 }, messages, resolved: false, detached: false });
+const loop = { text: "loop", quote: { exact: "loop", prefix: "", suffix: "" } };
+
+test("an answer streams under its passage, then joins its thread", async () => {
   const r = rig();
   ed = r.ed;
-  await r.s.ask("chat", { request: "what is left?" });
-  expect(r.sent[0]).toMatch(/^<pair mode="act"\/>/);
+  let threads: Thread[] = [thread("t1", [{ author: "kevin", text: "why?" }])];
+  (r.s as any).onThreads = (f: (t: Thread[]) => Thread[]) => (threads = f(threads));
+  await r.s.ask("ask", { request: "why?", threadId: "t1", selection: loop });
+  expect(r.sent[0]).toMatch(/^<pair mode="thread"\/>/);
+  expect(r.s.workingOn("t1")).toBe(true);
   await r.s.onRecord({ type: "pair_started" });
-  expect(r.s.running).toBe(true);
-  await r.s.onRecord({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "Two " } });
-  await r.s.onRecord({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "steps." } });
+  expect(r.s.activity).toEqual({ threadId: "t1", status: "thinking", text: "" });
+  await r.s.onRecord({ type: "tool_execution_start", toolName: "read", args: { path: "src/basket.ts" } });
+  expect(r.s.activity?.status).toBe("reading src/basket.ts");
+  await r.s.onRecord({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "Constant " } });
+  await r.s.onRecord({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "stack." } });
+  expect(r.s.activity).toMatchObject({ status: "writing", text: "Constant stack." });
   await r.s.onRecord({ type: "pair_settled" });
   expect(r.s.running).toBe(false);
-  expect(r.s.chat).toEqual([
-    { type: "kevin", text: "what is left?" },
-    { type: "agent", text: "Two steps.", done: true, kind: "chat" },
-  ]);
+  expect(r.s.activity).toBeNull();
+  expect(threads[0].messages).toEqual([{ author: "kevin", text: "why?" }, { author: "agent", text: "Constant stack." }]);
 });
 
-test("text after a card still streams into the open agent message, which closes on settle", async () => {
+test("a riddle that comes back empty leaves no empty thread behind", async () => {
   const r = rig();
   ed = r.ed;
-  await r.s.ask("doit", { selection: { text: "Use a loop.", quote: { exact: "Use a loop.", prefix: "", suffix: "" } } });
+  let threads: Thread[] = [thread("t1")];
+  (r.s as any).onThreads = (f: (t: Thread[]) => Thread[]) => (threads = f(threads));
+  await r.s.ask("riddle", { threadId: "t1", selection: loop });
   await r.s.onRecord({ type: "pair_started" });
-  await r.s.onRecord({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "Editing. " } });
-  await r.s.onRecord(ui("c1", "file_edit", { tool: "edit", input: { path: "a.ts" } }));
-  await r.s.onRecord({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "Done." } });
   await r.s.onRecord({ type: "pair_settled" });
-  const agentItem = r.s.chat.find((c) => c.type === "agent") as { text: string; done: boolean };
-  expect(agentItem).toMatchObject({ text: "Editing. Done.", done: true });
+  expect(threads).toEqual([]);
+});
+
+test("cards belong to the thread of the task that asked for them", async () => {
+  const r = rig();
+  ed = r.ed;
+  await r.s.ask("doit", { threadId: "t9", selection: loop });
+  await r.s.onRecord({ type: "pair_started" });
+  await r.s.onRecord(ui("c1", "file_edit", { tool: "edit", input: { path: "a.ts" } }));
+  expect(r.s.cards[0]).toMatchObject({ requestId: "c1", threadId: "t9", status: "pending" });
+  expect(r.s.activity?.status).toBe("waiting for you");
+});
+
+test("a provider error is shown instead of a silent empty answer", async () => {
+  const r = rig();
+  ed = r.ed;
+  await r.s.onRecord({ type: "message_end", message: { role: "assistant", stopReason: "error", errorMessage: "Codex error: The usage limit has been reached" } });
+  expect(r.s.error).toContain("usage limit");
+});
+
+test("the prompt carries the project context", async () => {
+  const r = rig();
+  ed = r.ed;
+  (r.s as any).context = () => ({ folder: "/w/p", files: ["src/a.ts"], openFile: "src/a.ts" });
+  await r.s.ask("ask", { request: "?" });
+  expect(r.sent[0]).toContain("src/a.ts open beside the note");
 });
 
 test("a note edit waits for Kevin's decision and passes the reason back", async () => {
@@ -94,24 +124,11 @@ test("agent threads attach to quoted passages; replies go into existing threads"
   expect(r.responses[2][1].decision).toBe("decline");
 });
 
-test("an Ask's answer lands in its thread, not the chat", async () => {
-  const r = rig();
-  ed = r.ed;
-  await r.s.ask("ask", { request: "why?", threadId: "t1", selection: { text: "loop", quote: { exact: "loop", prefix: "", suffix: "" } } });
-  await r.s.onRecord({ type: "pair_started" });
-  await r.s.onRecord({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "Constant stack." } });
-  let threads: Thread[] = [{ id: "t1", anchor: { quote: { exact: "loop", prefix: "", suffix: "" }, pos: 0 }, messages: [], resolved: false, detached: false }];
-  (r.s as any).onThreads = (f: (t: Thread[]) => Thread[]) => (threads = f(threads));
-  await r.s.onRecord({ type: "pair_settled" });
-  expect(threads[0].messages).toEqual([{ author: "agent", text: "Constant stack." }]);
-  expect(r.s.chat).toEqual([]);
-});
-
 test("accepting a file card takes a checkpoint first; an edited command is passed on", async () => {
   const r = rig();
   ed = r.ed;
   await r.s.onRecord(ui("c1", "command", { tool: "bash", input: { command: "rm -rf build" } }));
-  const card = (r.s.chat[0] as any).card;
+  const card = r.s.cards[0];
   expect(card.status).toBe("pending");
   await r.s.decideCard(card, "accept", { command: "rm -rf build/tmp" });
   expect(r.checkpoints).toEqual(["run: rm -rf build/tmp"]);

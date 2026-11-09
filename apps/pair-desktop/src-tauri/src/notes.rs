@@ -133,9 +133,9 @@ fn sidecar_path(folder: &Path, name: &str) -> PathBuf {
     notes_dir(folder).join(format!("{name}.pair.json"))
 }
 
-/// Seed text for a new note: one H2 per stage, so the note reads as a document.
-pub fn template(title: &str) -> String {
-    format!("# {title}\n\n## Think\n\n\n## Plan\n\n\n## Build\n\n\n## Review\n\n")
+/// A new note starts blank: the page is Kevin's to fill.
+pub fn template(_title: &str) -> String {
+    String::new()
 }
 
 pub fn list(folder: &Path) -> io::Result<Vec<NoteSummary>> {
@@ -275,7 +275,7 @@ mod tests {
     fn create_writes_template_and_default_sidecar() {
         let d = tmp();
         let note = create(d.path(), "auth-flow").unwrap();
-        assert!(note.markdown.contains("## Think") && note.markdown.contains("## Review"));
+        assert_eq!(note.markdown, "");
         let back = read(d.path(), "auth-flow").unwrap();
         assert_eq!(back, note);
         assert_eq!(back.sidecar.stage, Stage::Think);

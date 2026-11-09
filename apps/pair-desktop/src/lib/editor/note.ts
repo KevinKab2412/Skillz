@@ -5,6 +5,7 @@
 import { Editor, type EditorOptions } from "@tiptap/core";
 import StarterKit from "@tiptap/starter-kit";
 import { Markdown } from "@tiptap/markdown";
+import { Placeholder } from "@tiptap/extensions";
 import { applySuggestion, revertSuggestion, transformToSuggestionTransaction } from "@handlewithcare/prosemirror-suggest-changes";
 import type { Transaction } from "@tiptap/pm/state";
 import type { Thread, TextQuote } from "$lib/api";
@@ -19,6 +20,8 @@ import {
   PairReply,
   SuggestChanges,
   ThreadAnchors,
+  PassageWidgets,
+  type WidgetHost,
   AGENT_META,
   anchorKey,
   cleanDoc,
@@ -26,7 +29,7 @@ import {
   type LiveAnchor,
 } from "./extensions";
 
-export function extensions() {
+export function extensions(host: WidgetHost | null = null) {
   return [
     StarterKit.configure({ document: false, codeBlock: false, link: false }),
     PairDocument,
@@ -39,11 +42,13 @@ export function extensions() {
     PairDiagram,
     PairReply,
     ThreadAnchors,
+    PassageWidgets.configure({ host }),
+    Placeholder.configure({ placeholder: "Start writing. Select anything to ask pair, or type @pair on a line." }),
   ];
 }
 
-export function editorOptions(markdown: string, extra: Partial<EditorOptions> = {}): Partial<EditorOptions> {
-  return { extensions: extensions(), content: markdown, contentType: "markdown", ...extra } as Partial<EditorOptions>;
+export function editorOptions(markdown: string, extra: Partial<EditorOptions> = {}, host: WidgetHost | null = null): Partial<EditorOptions> {
+  return { extensions: extensions(host), content: markdown, contentType: "markdown", ...extra } as Partial<EditorOptions>;
 }
 
 /** Headless editor (tests, export). */
@@ -115,13 +120,28 @@ export function afterBlockOf(editor: Editor, quote?: TextQuote): number {
 /** Agent block insert (diagram or reply) as a suggestion under a passage. */
 export function proposeBlock(editor: Editor, type: "pairDiagram" | "pairReply", attrs: Record<string, string>, quote?: TextQuote): number | null {
   const at = afterBlockOf(editor, quote);
-  if (touchesSuggestion(editor, at, at)) return null;
+  // A block goes between blocks, so only another pending block right at that spot can merge with it;
+  // a text edit at the start of the next paragraph is unaffected.
+  if (suggestionGroups(editor.state.doc).some((g) => (g.block && (g.from === at || g.to === at)) || (g.from < at && g.to > at))) return null;
   const node = editor.schema.nodes[type].create(attrs);
   return propose(editor, (tr) => tr.insert(at, node));
 }
 
+/**
+ * Applies one suggestion. A thread whose passage the edit rewrote moves to the new wording
+ * instead of coming loose from the note.
+ */
 export function accept(editor: Editor, id: number): boolean {
-  return applySuggestion(id)(editor.state, editor.view.dispatch);
+  const g = suggestionGroups(editor.state.doc).find((x) => x.id === id);
+  const touched = new Set(g ? liveAnchors(editor).filter((a) => !a.detached && a.from < g.to && a.to > g.from).map((a) => a.id) : []);
+  const ok = applySuggestion(id)(editor.state, editor.view.dispatch);
+  if (!ok || !g || g.block || !g.ins || !touched.size) return ok;
+  const from = g.from;
+  const to = from + g.ins.length;
+  if (to > editor.state.doc.content.size || editor.state.doc.textBetween(from, to) !== g.ins) return ok;
+  const anchors = liveAnchors(editor).map((a) => (touched.has(a.id) && (a.detached || a.to <= a.from) ? { ...a, from, to, detached: false } : a));
+  editor.view.dispatch(editor.state.tr.setMeta(anchorKey, { anchors }));
+  return ok;
 }
 
 export function reject(editor: Editor, id: number): boolean {

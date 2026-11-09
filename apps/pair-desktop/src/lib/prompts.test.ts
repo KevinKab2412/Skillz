@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { buildPrompt, modeOf } from "./prompts";
+import { buildPrompt, MAX_LISTED_FILES, modeOf } from "./prompts";
 import { readHeader } from "$pi/policy";
 
 test("thread-only asks are marked so the extension blocks changes", () => {
@@ -7,7 +7,7 @@ test("thread-only asks are marked so the extension blocks changes", () => {
   expect(modeOf("riddle")).toBe("thread");
   expect(modeOf("ask")).toBe("thread");
   expect(modeOf("doit")).toBe("act");
-  expect(modeOf("chat")).toBe("act");
+  expect(modeOf("inline")).toBe("act");
 });
 
 test("the prompt carries header, stage, Tell line, note and selection, and the extension can read it", () => {
@@ -22,5 +22,16 @@ test("the prompt carries header, stage, Tell line, note and selection, and the e
 });
 
 test("an empty Tell line is left out", () => {
-  expect(buildPrompt({ kind: "chat", stage: "build", tell: "  ", note: "", noteName: "n", request: "hi" })).not.toContain("standing instruction");
+  expect(buildPrompt({ kind: "inline", stage: "build", tell: "  ", note: "", noteName: "n", request: "hi" })).not.toContain("standing instruction");
+});
+
+test("pair is told it can read the project, what is in it and which file is open", () => {
+  const files = Array.from({ length: MAX_LISTED_FILES + 5 }, (_, i) => `src/f${i}.ts`);
+  const p = buildPrompt({ kind: "ask", stage: "think", tell: "", note: "", noteName: "n", folder: "/w/proj", files, openFile: "src/basket.ts" });
+  expect(p).toContain("working directory (/w/proj)");
+  expect(p).toContain("never ask Kevin where the code is");
+  expect(p).toContain("src/f0.ts");
+  expect(p).not.toContain(`src/f${MAX_LISTED_FILES}.ts`);
+  expect(p).toContain("… and 5 more");
+  expect(p).toContain("Kevin has src/basket.ts open beside the note");
 });

@@ -1,6 +1,7 @@
 mod agent;
 mod agent_cmds;
 mod checkpoints;
+mod files;
 mod index;
 mod notes;
 mod settings;
@@ -196,6 +197,8 @@ pub fn run() {
             checkpoints::checkpoint_create,
             checkpoints::checkpoint_list,
             checkpoints::checkpoint_restore,
+            files::list_files,
+            files::read_file,
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

@@ -6,6 +6,7 @@
   import Sidebar from "$lib/components/Sidebar.svelte";
   import NoteView from "$lib/components/NoteView.svelte";
   import SettingsSheet from "$lib/components/SettingsSheet.svelte";
+  import FilePane from "$lib/components/FilePane.svelte";
   import { agent, api, noteKey, settingsApi, type Note, type NoteSummary, type PiStatus, type Settings } from "$lib/api";
 
   let folders = $state<string[]>([]);
@@ -17,6 +18,22 @@
   let interrupted = $state<Record<string, string>>({});
   let showSettings = $state(false);
   let view = $state<NoteView>();
+  let files = $state<string[]>([]);
+  let filesFolder: string | null = null;
+  let openFile = $state<string | null>(null);
+  let fileTick = $state(0);
+
+  async function loadFiles(folder: string) {
+    if (filesFolder !== folder) openFile = null;
+    filesFolder = folder;
+    files = await api.listFiles(folder).catch(() => []);
+  }
+
+  /** After pair changes files, the tree and the open file are re-read. */
+  function filesChanged() {
+    if (current) void loadFiles(current.folder);
+    fileTick++;
+  }
 
   $effect(() => {
     if (!settings) return;
@@ -56,6 +73,7 @@
   async function openNote(folder: string, name: string) {
     const note = await api.openNote(folder, name);
     current = { folder, note };
+    void loadFiles(folder);
   }
 
   async function newNote(folder: string) {
@@ -67,6 +85,7 @@
     const note = await api.createNote(folder, name);
     await refresh(folder);
     current = { folder, note };
+    void loadFiles(folder);
   }
 
   async function saveSettings(next: Settings) {
@@ -96,15 +115,21 @@
     onAddFolder={addFolder}
     onOpen={(f, n) => openNote(f, n).catch((e) => (error = String(e)))}
     onNew={(f) => newNote(f).catch((e) => (error = String(e)))}
-    onSettings={() => (showSettings = true)} />
+    onSettings={() => (showSettings = true)}
+    {files}
+    {openFile}
+    onOpenFile={(p) => (openFile = p)} />
 
   <main>
     {#if error}<p class="error" role="alert">{error} <button onclick={() => (error = null)}>×</button></p>{/if}
     {#if current && settings}
+      <div class="split">
       {#key current.folder + "::" + current.note.name}
-        <NoteView bind:this={view} folder={current.folder} bind:note={current.note} {settings} {pi}
+        <NoteView bind:this={view} folder={current.folder} bind:note={current.note} {settings} {pi} {files} {openFile} onFilesChanged={filesChanged}
           interrupted={interrupted[noteKey(current.folder, current.note.name)] ?? null} />
       {/key}
+      {#if openFile}<FilePane folder={current.folder} path={openFile} tick={fileTick} onClose={() => (openFile = null)} />{/if}
+      </div>
     {:else}
       <div class="bar" data-tauri-drag-region></div>
       <div class="empty">
@@ -122,6 +147,7 @@
 <style>
   .app { display: flex; height: 100vh; }
   main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  .split { flex: 1; display: flex; min-height: 0; }
   .bar { height: 44px; flex: none; border-bottom: 1px solid var(--rule); }
   .empty { flex: 1; display: grid; place-content: center; text-align: center; gap: 12px; }
   .error { margin: 8px 20px; padding: 8px 12px; border-radius: 6px; background: var(--bad-soft); color: var(--bad); }
