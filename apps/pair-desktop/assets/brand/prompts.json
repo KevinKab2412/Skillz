@@ -1,0 +1,16 @@
+{
+  "tool": "built-in image_gen",
+  "assets": [
+    {
+      "id": "pair-app-icon",
+      "prompt": "Use case: precise-object-edit. Input image: approved Pair brand concept board, edit target. Deliver a standalone square desktop app icon extracted and faithfully redrawn from the LEFT icon in the reference. Preserve the exact approved identity: deep forest-green rounded-square tile, centered pear composed of bright lime left lobe and olive-green right lobe divided by a flowing warm-ivory S-shaped gap, small lime stem and green leaf. Keep the original curves, proportions, colors and very subtle tonal depth; crisp clean edges suitable for an app icon. The tile should fill almost all of a square canvas with equal small transparent outer margins; only outside its rounded corners is transparent. Keep all tile interior opaque deep forest green. No wordmark, no text, no extra objects, no board, no perspective, no drop shadow outside the tile. This is the selected design prepared as an individual asset, do not redesign or invent alternatives.",
+      "source": "/Users/kevinkabeya/.codex/generated_images/01a1c185-420d-7e80-913f-e9d80ac7c3f2/exec-2b36ecd9-a318-458e-a561-e35492f58361.png"
+    },
+    {
+      "id": "pair-logo-transparent",
+      "prompt": "Use case: background-extraction. Input image: approved Pair brand concept board, edit target. Deliver ONLY the horizontal logo on the RIGHT of this reference as a standalone transparent-background brand graphic. Preserve faithfully the approved split pear symbol with lime left lobe, olive right lobe, flowing S-shaped separation, small dark forest-green stem, green leaf, beside the exact lowercase rounded dark forest-green wordmark \"pair\". Preserve the reference's letter shapes, spacing, colors, symbol proportions and baseline relationship. Remove the cream background, and make the S-shaped gap and all letter counters genuinely transparent. Clean crisp edges, subtle color shading matching the original. Tight balanced transparent padding, landscape composition, entire logo visible. Do not include the app icon tile on the left, do not add objects, text, labels, shadows, mockups or watermarks. This is a faithful standalone asset export of the selected direction, do not redesign.",
+      "source": "/Users/kevinkabeya/.codex/generated_images/01a1c185-420d-7e80-913f-e9d80ac7c3f2/exec-24819bce-438c-4858-97b9-00c0ea441805.png"
+    }
+  ],
+  "cleanupPrompt": "Use case: precise-object-edit. Edit target: attached transparent Pair logo. Clean up the logo's alpha edges. Remove ALL bright yellow and neon green fringe pixels, rough speckles, edge noise, holes, and extraction residue around the pear silhouette, leaf and S-shaped gap. Re-render the existing logo as immaculate smooth vector-like shapes with clean antialiased transparency. Preserve exact silhouette geometry, two pear colors with their gentle gradients, dark forest green stem, leaf, and exact lowercase \"pair\" wordmark geometry, size, placement and color. Only clean the boundaries and fill any tiny accidental holes inside the solid shapes; do not change the design. True transparent background and letter counters and S gap. No background color, no checkerboard baked in, no shadow or glow. High-quality transparent PNG logo asset."
+}
