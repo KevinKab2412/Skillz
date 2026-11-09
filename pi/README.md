@@ -97,12 +97,12 @@ to reproduce the same working capabilities; configuration restore alone cannot s
 ## Inline skill names
 
 After setup, restart Pi or run `/reload`. Type `hey /pa` to see the suggestion menu
-with skill descriptions, then use Tab to complete `hey /pair`. The menu opens while
+with skill descriptions, then use Tab to complete `hey /cook`. The menu opens while
 typing, including on later lines; short names also work at the beginning of a prompt. On submission,
 the extension loads each mentioned skill once and keeps your original request intact:
 
 ```text
-/pair --auto fix the failing test
+/cook --auto fix the failing test
 Can you use /explain to walk me through this?
 ```
 

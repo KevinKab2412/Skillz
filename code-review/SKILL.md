@@ -5,7 +5,7 @@ description: >
   Read the goal and architecture contract from the PR, tickets, and planning epic; run Standards and
   Spec reviews in parallel; orient the reader; and surface only blockers and should-fixes with
   ready-to-paste comments. Use for "review this PR", "review my changes", "should I merge this",
-  "review this branch", "did the build match the plan", "code review", or as /pair's review stage.
+  "review this branch", "did the build match the plan", "code review", or as /cook's review stage.
   Also use when the user asks to understand a change: "explain this diff", "walk me through this PR",
   or "help me understand this change"; in that case build the full HTML teaching artifact and quiz.
   Also owns bug-focused and security-focused reviews, including Bugbot when available.
@@ -93,7 +93,7 @@ so the review never disturbs your current checkout:
 
 - **Reviewing a branch or a GitHub PR** (a named head branch) → check `git worktree list --porcelain`
   for a `branch refs/heads/<branch>` line. If one exists, `cd` into that path. If not, run
-  the internal [worktree module](../pair/references/worktree/SKILL.md) for that branch and `cd` into
+  the internal [worktree module](../cook/references/worktree/SKILL.md) for that branch and `cd` into
   the worktree it reports. Then
   resolve the target and gather the goal there.
 - **Reviewing the working diff** ("my changes", "what I just did") → skip this step. The uncommitted
@@ -185,7 +185,7 @@ or `MISSING` line, into the Standards subagent verbatim.
 When the change creates or materially changes a domain concept, invariant, operational behavior, or
 framework integration, ground the review in the task subject before dispatching the lanes. Read the
 epic's **Domain Grounding** section when present. If it is absent or incomplete, use the shared
-[`experts`](../pair/references/experts/SKILL.md) module to search the topic broadly with `find`; use
+[`experts`](../cook/references/experts/SKILL.md) module to search the topic broadly with `find`; use
 `route` first when the owning domain is unclear or the change spans domains. Look for the domain's
 invariants, tradeoffs, failure modes, and operational or security constraints, not only testing
 advice. Inspect manifests and lockfiles, then consult official documentation matching the relevant
@@ -225,8 +225,8 @@ return defeats the purpose.
 request is needed. Explicit bug-only or security-only scope still limits every lane to that scope.
 Missing tools or low-confidence results are disclosed, never treated as a clean experts pass.
 
-When a concrete claim depends on an unknown external fact, read pair's
-[`research`](../pair/references/research/SKILL.md) module directly and cite the evidence. For a
+When a concrete claim depends on an unknown external fact, read cook's
+[`research`](../cook/references/research/SKILL.md) module directly and cite the evidence. For a
 material domain change, this focused grounding belongs before lane dispatch as described above;
 mechanical reviews need only a narrow check of the specific fact in question.
 
@@ -475,7 +475,7 @@ pays best.>
 Append ` (trunk)` after the path on either form — e.g. `### 🟡 Should fix · path/file.py:88 (trunk)` —
 when the owning lane tagged the file a hub; omit it for leaf files. This is the position signal from
 `to-pr`'s blast-radius rubric, kept lightweight here (full version:
-[pair's internal blast-radius reference](../pair/references/to-pr/references/blast-radius.md)). It never changes severity —
+[cook's internal blast-radius reference](../cook/references/to-pr/references/blast-radius.md)). It never changes severity —
 blocker/should-fix still means what it always meant — it just tells the reader which findings to act
 on first when they can't get to all of them.
 <Plain English, intern-level: what's wrong, no unglossed jargon — 1 sentence.>
@@ -513,7 +513,7 @@ including any coverage gap; never imply a missing or low-confidence pass cleared
 
 ## Want the deep dive?
 If any of the above didn't land, say "explain it" and I'll build the full walkthrough — background →
-intuition → literate diff → a short quiz — the same explainer pair's internal PR module can distil into a PR body.
+intuition → literate diff → a short quiz — the same explainer cook's internal PR module can distil into a PR body.
 ````
 
 **The review plan — order by when the author's reasoning becomes legible, not by the diff.** The user
@@ -628,9 +628,9 @@ options:
   are fulfilled and closure is authorized: `gh issue close -R KevinKab2412/planning <epic-n>`.
   Urgency never grants the agent bypass authority; retain unresolved checks and follow-up.
 
-## Pipeline notes (when called from /pair)
+## Pipeline notes (when called from /cook)
 
-`code-review` is the review stage of `/pair`, replacing the old two-axis stage. These behaviours carry
+`code-review` is the review stage of `/cook`, replacing the old two-axis stage. These behaviours carry
 over from that role:
 
 - **Intent trace.** If a design sketch exists in `docs/sketches/` (from `sketch-change`, written
@@ -649,9 +649,9 @@ over from that role:
 Before the final response, and again after a Fix-it-now or Explain-it pass that ran the app, tear down
 every container this review started (a dev stack for an evidence check, a test database, a
 subagent's compose run), following the worktree module's
-[containers rule](../pair/references/worktree/SKILL.md#containers-started-during-a-run). Leave
-pre-existing containers and the review worktree alone. When called from `/pair`, the stack can stay up
-for the next stage; `/pair`'s own teardown removes it.
+[containers rule](../cook/references/worktree/SKILL.md#containers-started-during-a-run). Leave
+pre-existing containers and the review worktree alone. When called from `/cook`, the stack can stay up
+for the next stage; `/cook`'s own teardown removes it.
 
 ## Done when
 

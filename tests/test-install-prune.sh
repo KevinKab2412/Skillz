@@ -12,7 +12,7 @@ cp -f "$repo_root/retired-skills.txt" "$fixture/retired-skills.txt"
 mkdir -p "$fixture/scripts"
 cp -f "$repo_root/scripts/prune-retired-skills.py" "$fixture/scripts/prune-retired-skills.py"
 cp -rf "$repo_root/shared" "$fixture/shared"
-for skill in pair code-review explain visualise utils; do
+for skill in cook code-review explain visualise utils; do
   cp -rf "$repo_root/$skill" "$fixture/$skill"
 done
 mkdir -p "$fixture/home/.claude" "$fixture/home/.codex/skills"
@@ -29,8 +29,8 @@ mkdir -p "$fixture/agents/to-visual/library/concepts"
 printf 'private-card\n' > "$fixture/agents/to-visual/library/concepts/test.md"
 
 # An upgrade removes the old injected policy and never invokes model/service tooling.
-mkdir -p "$fixture/agents/skills/pair/references/memory" "$fixture/bin"
-printf 'retired policy\n' > "$fixture/agents/skills/pair/references/memory/workflow-memory.md"
+mkdir -p "$fixture/agents/skills/cook/references/memory" "$fixture/bin"
+printf 'retired policy\n' > "$fixture/agents/skills/cook/references/memory/workflow-memory.md"
 for tool in claude uv agent-memory-init agent-memory-service agent-memory-setup; do
   printf '#!/bin/sh\necho "unexpected memory/model tool invocation" >&2\nexit 99\n' > "$fixture/bin/$tool"
   chmod +x "$fixture/bin/$tool"
@@ -39,14 +39,14 @@ export PATH="$fixture/bin:$PATH"
 
 # First run: installs the repo skills and records the manifest.
 run_install
-test ! -e "$fixture/agents/skills/pair/references/memory"
+test ! -e "$fixture/agents/skills/cook/references/memory"
 test -f "$fixture/agents/visualise/library/concepts/test.md"
 test ! -e "$fixture/agents/to-visual"
 grep -qx private-card "$fixture/agents/visualise/library/concepts/test.md"
 skills_dir="$fixture/agents/skills"
 manifest="$skills_dir/.skillz-manifest"
 test -f "$manifest"
-grep -qx pair "$manifest"
+grep -qx cook "$manifest"
 grep -qx visualise "$manifest"
 test -f "$skills_dir/visualise/SKILL.md"
 test ! -e "$skills_dir/to-visual"
@@ -56,7 +56,7 @@ for asset in SKILL.md references/constructive-review.md references/draft-reviews
 done
 
 # Shared evidence policy is injected identically for implementers and reviewers.
-for skill in pair code-review; do
+for skill in cook code-review; do
   diff -r "$fixture/shared/evidence" "$skills_dir/$skill/references/evidence"
 done
 
@@ -126,18 +126,18 @@ test ! -e "$fixture/pi/skills/synced/$legacy"
 
 test ! -d "$skills_dir/review"
 test ! -d "$skills_dir/synced/vendor/canvas"
-test -f "$skills_dir/pair/references/worktree/SKILL.md"
-test ! -e "$skills_dir/pair/references/memory"
-test -f "$skills_dir/pair/references/research/SKILL.md"
-test -f "$skills_dir/pair/references/grill/SKILL.md"
-test -f "$skills_dir/pair/references/experts/SKILL.md"
-test -f "$skills_dir/pair/references/to-pr/SKILL.md"
-test -f "$skills_dir/pair/references/brevity/output-discipline.md"
+test -f "$skills_dir/cook/references/worktree/SKILL.md"
+test ! -e "$skills_dir/cook/references/memory"
+test -f "$skills_dir/cook/references/research/SKILL.md"
+test -f "$skills_dir/cook/references/grill/SKILL.md"
+test -f "$skills_dir/cook/references/experts/SKILL.md"
+test -f "$skills_dir/cook/references/to-pr/SKILL.md"
+test -f "$skills_dir/cook/references/brevity/output-discipline.md"
 test -f "$skills_dir/explain/references/show-me.md"
 test -f "$skills_dir/explain/references/show-me/visual-formats.md"
 grep -qx 'name: explain' "$skills_dir/explain/SKILL.md"
 for retired in grill experts show-me to-pr; do test ! -e "$skills_dir/$retired"; done
-test -L "$fixture/home/.cursor/skills/pair"
+test -L "$fixture/home/.cursor/skills/cook"
 grep -q 'Keep this custom rule.' "$fixture/home/AGENTS.md"
 ! grep -q 'stale listing' "$fixture/home/AGENTS.md"
 find "$fixture/home/.agents/skill-backups" -name SKILL.md | grep -q .
@@ -145,8 +145,8 @@ find "$fixture/home/.agents/skill-backups" -name SKILL.md | grep -q .
 test ! -e "$skills_dir/oldskill"                    # our removed skill: pruned
 test ! -e "$fixture/home/.codex/skills/oldskill"    # its symlink: pruned
 test -d "$skills_dir/codex-tool"                     # external skill: untouched
-test -d "$skills_dir/pair"                           # current repo skill: kept
-grep -qx pair "$manifest"
+test -d "$skills_dir/cook"                           # current repo skill: kept
+grep -qx cook "$manifest"
 ! grep -qx oldskill "$manifest"                      # manifest drops the pruned skill
 ! grep -qx codex-tool "$manifest"                    # external skill never enters manifest
 

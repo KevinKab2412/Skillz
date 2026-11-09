@@ -7,7 +7,7 @@ description: >-
   Also owns visual-only requests: "show me", "diagram this", "visualise the flow", "draw the call
   tree", or "sketch the file layout". That mode reads the internal show-me module and returns the
   smallest useful visual without a quiz or teaching ceremony. Code-review reuses the teaching mode;
-  any caller may read its visual module directly. Domain standards can be grounded through pair's
+  any caller may read its visual module directly. Domain standards can be grounded through cook's
   shared experts module when requested or needed.
 argument-hint: "What should I explain? (or nothing — I'll re-pitch whatever lost you)"
 ---
@@ -32,8 +32,8 @@ a nod is cheap and understanding is not, ask them something back.
   a shape is clearer than prose.
 
 For explicit expert questions or claims that need domain standards, read the shared
-[experts module](../pair/references/experts/SKILL.md) directly. Use the existing MCP tools and cite
-returned Standard IDs. This does not run pair. Missing tools or low confidence are reported plainly;
+[experts module](../cook/references/experts/SKILL.md) directly. Use the existing MCP tools and cite
+returned Standard IDs. This does not run cook. Missing tools or low confidence are reported plainly;
 never pass general knowledge off as a corpus-backed answer. Do not add an experts pass to every
 simple explanation.
 

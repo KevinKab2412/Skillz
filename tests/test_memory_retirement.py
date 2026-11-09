@@ -17,7 +17,7 @@ class MemoryRetirementTests(unittest.TestCase):
         self.assertFalse((ROOT / 'workflow_memory_release').exists())
         for path in ROOT.glob('*/references/.shared'):
             self.assertNotIn('memory', path.read_text().splitlines(), str(path))
-        for path in (ROOT / 'pair').rglob('*.md'):
+        for path in (ROOT / 'cook').rglob('*.md'):
             for token in ('workflow-memory', 'workflow memory', 'memory session',
                           'memory/workflow-memory.md'):
                 self.assertNotIn(token, path.read_text(), str(path))

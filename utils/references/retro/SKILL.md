@@ -76,7 +76,7 @@ else in this toolset.
 
 All work here goes through two stages with very different context pressure. **Implement** carries the
 most: it explores, writes, and debugs, one task at a time — see
-[`pair/references/implement/SKILL.md`](../../../pair/references/implement/SKILL.md), which already scopes its
+[`cook/references/implement/SKILL.md`](../../../cook/references/implement/SKILL.md), which already scopes its
 own cleanup step to the current batch and nothing wider. **Review** carries the least — it receives a
 diff, so no exploration is needed — which is why `code-review`'s Standards lane, not `implement`, is the
 one that reads and enforces `CODING_STANDARDS.md`

@@ -84,7 +84,7 @@ export async function expandSkillMentions(text: string, commands: SlashCommandIn
 		const escape = (value: string) => value.replace(/&/g, "&amp;").replace(/"/g, "&quot;").replace(/</g, "&lt;");
 		return `<skill name="${escape(name)}" location="${escape(path)}">\nReferences are relative to ${dirname(path)}.\n\n${body}\n</skill>`;
 	}));
-	// Preserve the exact request, including explicit pair options following /pair.
+	// Preserve the exact request, including explicit cook options following /cook.
 	return blocks.length ? `${blocks.join("\n\n")}\n\n${text}` : text;
 }
 
