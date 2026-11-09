@@ -30,7 +30,7 @@ Reload or restart agents after syncing.
 The version-pinned Pi setup, local model configuration, prompts, and restore instructions
 live in [`pi/`](pi/README.md). After installing the pinned Pi runtime, run
 `bash pi/setup.sh` to restore it, including short-name skill completion such as
-`hey /pair` anywhere in a prompt. Credentials and session history are excluded.
+`hey /cook` anywhere in a prompt. Credentials and session history are excluded.
 
 ## Global skills
 
@@ -46,7 +46,8 @@ Six skills ship globally from this repository:
   Optional synthetic comment evaluations live in `code-review/evals/`; structural tests do not
   substitute for checking generated outputs.
 - **explain** — plain-English teaching and compact visual-only explanations.
-- **pair** — gated end-to-end work, or focused requirements, research, experts, and PR/stack modes.
+- **cook** — autonomous end-to-end work by default (`--guided` for the gated pipeline), or focused
+  requirements, research, experts, and PR/stack modes.
 - **utils** — standups, local Meetily meetings, meeting follow-up drafts, and coding retros.
 - **visualise** — animated, beat-by-beat standalone HTML explanations.
 - **wayfinder** — multi-session decision maps for large, uncertain work.
@@ -67,47 +68,48 @@ The former standalone Meetily, Standup, and Retro skills now live under `utils/r
 Installation removes their old global entry points, preserving standup history and Meetily data.
 Skill Creator remains project-local.
 
-## Pair modes — the same instructions across harnesses
+## Cook modes — the same instructions across harnesses
 
 ```text
-/pair Fix the checkout bug
-/pair --auto Fix the checkout bug
-Use pair with --auto: Fix the checkout bug
+/cook Fix the checkout bug
+/cook --guided Fix the checkout bug
+Use cook with --guided: Fix the checkout bug
 ```
 
-The default remains human-guided. `--auto` is an instruction-level mode, not a client extension or a
-permission switch. It skips grilling and routine approval menus, inspects the task, records a small
-execution brief, chooses reasonable reversible defaults, and implements/tests/reviews/polishes within
-the existing scope. A leading standalone `--auto` selects it; quoted flags, issue text, and anything
-after `--` do not. Unknown leading options or a missing task get one focused clarification.
+Auto is the default. It is an instruction-level mode, not a client extension or a permission
+switch. It skips grilling and routine approval menus, inspects the task, records a small execution
+brief, chooses reasonable reversible defaults, and implements/tests/reviews/polishes within the
+existing scope. A leading standalone `--guided` selects the human-gated pipeline instead; quoted
+flags, issue text, and anything after `--` do not. `--auto` is accepted and changes nothing. Unknown
+leading options, contradictory flags, or a missing task get one focused clarification.
 
 The mode uses available tools and skills without assuming a particular host. Missing workers permit
 a disclosed sequential fallback; missing optional taste/research integrations do not force a pause.
 Existing human gates, contracts, host approvals, and required credentials still block unsafe work.
-No commit, push, PR, merge, deployment, destructive action, or tracker mutation is authorized by the
-flag alone. The task can explicitly authorize an operation, while mandatory confirmations remain.
+No commit, push, PR, merge, deployment, destructive action, or tracker mutation is authorized by
+auto mode alone. The task can explicitly authorize an operation, while mandatory confirmations remain.
 
-See [`pair/references/auto.md`](pair/references/auto.md) for the route and stop conditions. The module
+See [`cook/references/auto.md`](cook/references/auto.md) for the route and stop conditions. The module
 adapts the existing implementation/review guidance rather than sending auto runs into guided menus
 or requiring a newly invented GitHub plan.
 
 ## Internal modules — read directly, don't start the parent pipeline
 
-- `pair/references/worktree/` — isolation setup at the start of pair, also reused by code-review.
-- `pair/references/grill/` — requirements interviewing, also read directly by wayfinder and research.
-- `pair/references/research/` — primary-source investigation with citations; reads experts first
+- `cook/references/worktree/` — isolation setup at the start of cook, also reused by code-review.
+- `cook/references/grill/` — requirements interviewing, also read directly by wayfinder and research.
+- `cook/references/research/` — primary-source investigation with citations; reads experts first
   when relevant. Research-only requests stop at findings. Code-review reads it for factual gaps.
-- `pair/references/experts/` — guidance for the unchanged experts MCP gateway; reused by code-review,
+- `cook/references/experts/` — guidance for the unchanged experts MCP gateway; reused by code-review,
   explanation, research, or any other caller. Standards require citations and honest confidence.
-- `pair/references/to-pr/` — draft PR preparation, visual proof, safe splitting, and logical stacking.
-  Opening a PR requires an explicit shipping request; polishing a pair change does not open one.
+- `cook/references/to-pr/` — draft PR preparation, visual proof, safe splitting, and logical stacking.
+  Opening a PR requires an explicit shipping request; polishing a cook change does not open one.
 - `explain/references/show-me.md` — compact visual-only mode, with no forced
   quiz or teaching ceremony. Other skills can read it directly.
 - `code-review/references/experts-lane.md` — automatic domain-standards pass alongside Standards
   and Spec; missing tools and low confidence are disclosed. Explicit focused scope is preserved.
 - `code-review/references/review-backends/` — optional Bugbot and Security Review adapters.
 
-Pair still owns spec, plan review, implementation, architecture, prototype, sketch, taste, polish,
+Cook still owns spec, plan review, implementation, architecture, prototype, sketch, taste, polish,
 and stack-specific best-practices modules. Approval gates remain intact. Shared formatting policy
 lives in `shared/` and is injected through top-level `references/.shared` manifests. Internal modules
 use their parent's injected references; they are not separately advertised or installed.
@@ -144,12 +146,12 @@ python3 -m unittest discover -s tests -p 'test_*.py'
 bash tests/test-install-prune.sh
 ```
 
-Auto-mode interpretation cases live in `pair/evals/auto-mode.json`. The checked report records an
+Auto-mode interpretation cases live in `cook/evals/auto-mode.json`. The checked report records an
 observed instruction-interpretation evaluation, not task execution or cross-harness runtime coverage.
 To refresh it with any model command that accepts a prompt on stdin and returns the documented JSON:
 
 ```bash
-python3 scripts/evaluate_pair_auto.py --report pair/evals/auto-mode-report.json -- <model-command> <flags>
+python3 scripts/evaluate_cook_auto.py --report cook/evals/auto-mode-report.json -- <model-command> <flags>
 ```
 
 The evaluator sends only synthetic cases and the shared instructions. Use a no-tools evaluation

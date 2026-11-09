@@ -185,7 +185,7 @@ if [ -f "$MANIFEST" ]; then
 fi
 
 # Explicit retirements also cover externally installed and synced skills. Keep backups outside
-# discovery; retained skills own their nested reference modules (e.g. pair's worktree module).
+# discovery; retained skills own their nested reference modules (e.g. cook's worktree module).
 if [ -f "$SCRIPT_DIR/retired-skills.txt" ]; then
   python3 "$SCRIPT_DIR/scripts/prune-retired-skills.py" \
     --policy "$SCRIPT_DIR/retired-skills.txt" --home "$HOME" \
@@ -224,7 +224,7 @@ AGENTS_MD="$AGENTS_HOME_DIR/AGENTS.md"
 ## Standing Rules
 
 - **Always do repository work in a dedicated git worktree.** Follow the internal module at
-  `~/.agents/skills/pair/references/worktree/SKILL.md`; `pair` runs it at the start, and
+  `~/.agents/skills/cook/references/worktree/SKILL.md`; `cook` runs it at the start, and
   `code-review` reuses it for isolated branch reviews.
 - **Planning always lives in [`KevinKab2412/planning`](https://github.com/KevinKab2412/planning)** (private).
   Every spec epic, task sub-issue and wayfinder map goes there — never in a code repo, and never in
@@ -306,7 +306,7 @@ if [ -f "$HOME_AGENTS_MD" ] && [ ! -L "$HOME_AGENTS_MD" ] \
   home_tmp=$(mktemp)
   {
     awk '/^## Available Skills$/ { exit } { print }' "$HOME_AGENTS_MD" \
-      | python3 -c 'import sys; print(sys.stdin.read().replace("Use `/worktree` when creating one", "Use the internal module at `~/.agents/skills/pair/references/worktree/SKILL.md` when creating one"), end="")'
+      | python3 -c 'import sys; print(sys.stdin.read().replace("Use `/worktree` when creating one", "Use the internal module at `~/.agents/skills/cook/references/worktree/SKILL.md` when creating one").replace("skills/pair/references/worktree", "skills/cook/references/worktree"), end="")'
     echo '## Available Skills'
     echo ''
     echo 'Skills load from `~/.agents/skills/`; nested modules are reached through their parent skill.'

@@ -6,7 +6,7 @@ understands, then prove it with a quiz. You reach it three ways:
 - The user asks to *understand* rather than *judge* — "explain this diff", "help me understand this
   change", "walk me through this PR", "what did my agent actually do here".
 - A review pass didn't land and the user picked **"Explain it"** at the gate.
-- The user wants a teaching artifact that pair's internal PR module can later distil into a PR
+- The user wants a teaching artifact that cook's internal PR module can later distil into a PR
   body. PR preparation alone does not require or create an explainer.
 
 The naive explanation is the raw `git diff`. This does better by inverting the order of *review* into

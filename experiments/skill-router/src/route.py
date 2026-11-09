@@ -170,7 +170,7 @@ res_nl, _ = evaluate(test_nl, ROUTERS)
 show("TEST (NL-only: user did NOT type the slash command)", res_nl)
 
 # substantive task requests only: a real ask, not a 2-word continuation deep in
-# an agent run (those auto-load pair sub-skills no message could predict)
+# an agent run (those auto-load cook sub-skills no message could predict)
 test_sub = [e for e in test if len(e["text"]) >= 30]
 res_sub, _ = evaluate(test_sub, ROUTERS)
 show(f"TEST (substantive requests only, >=30 chars, n={len(test_sub)})", res_sub)

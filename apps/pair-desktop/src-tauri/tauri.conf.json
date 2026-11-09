@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "pair",
+  "version": "0.1.0",
+  "identifier": "com.kevinkab.pair",
+  "build": {
+    "beforeDevCommand": "bun run dev",
+    "devUrl": "http://localhost:1420",
+    "beforeBuildCommand": "bun run build",
+    "frontendDist": "../build"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "pair",
+        "width": 1280,
+        "height": 820,
+        "minWidth": 900,
+        "minHeight": 600,
+        "titleBarStyle": "Overlay",
+        "hiddenTitle": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "app"
+    ],
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": {
+      "../pi-ext/pair-ext.ts": "pi-ext/pair-ext.ts",
+      "../pi-ext/policy.ts": "pi-ext/policy.ts",
+      "../pi-ext/diagram-spec.ts": "pi-ext/diagram-spec.ts",
+      "../pi-ext/PI_VERSION": "pi-ext/PI_VERSION"
+    }
+  }
+}

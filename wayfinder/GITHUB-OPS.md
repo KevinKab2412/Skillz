@@ -118,5 +118,5 @@ gh api repos/$R/issues/<MAP_N>/sub_issues --jq '.[] | select(.state=="closed") |
 gh issue view -R $R <TICKET_N> --comments   # to pull each resolution comment
 ```
 
-Feed those into [`spec`](../pair/references/spec/SKILL.md), which links each spec section back to its ticket URL as the
+Feed those into [`spec`](../cook/references/spec/SKILL.md), which links each spec section back to its ticket URL as the
 primary source.

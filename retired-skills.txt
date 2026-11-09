@@ -48,3 +48,4 @@ update-cursor-settings
 visualize
 worktree
 xlsx
+pair

@@ -12,10 +12,10 @@ class VerificationMethodTests(unittest.TestCase):
     def test_policy_and_spec_reach_bank(self):
         for path, pointer in (
             (BANK / "behavior-evidence.md", "verification-methods.md"),
-            (ROOT / "pair/references/spec/SKILL.md", "../evidence/verification-methods.md"),
+            (ROOT / "cook/references/spec/SKILL.md", "../evidence/verification-methods.md"),
         ):
             self.assertIn(f"]({pointer})", path.read_text())
-        for skill in ("pair", "code-review"):
+        for skill in ("cook", "code-review"):
             manifest = (ROOT / skill / "references/.shared").read_text().splitlines()
             self.assertEqual(manifest.count("evidence"), 1)
 

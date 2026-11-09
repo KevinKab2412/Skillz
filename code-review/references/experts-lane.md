@@ -7,8 +7,8 @@ alongside Standards and Spec in every normal review.
 For an explicit bug-only or security-only review, restrict this lane to that requested scope too;
 an explicit exclusion by the user takes precedence. Keep only blockers and should-fixes.
 
-First read the shared [experts module](../../pair/references/experts/SKILL.md) directly and pass
-its path to the reviewer. This reuses MCP guidance without starting the pair pipeline or invoking
+First read the shared [experts module](../../cook/references/experts/SKILL.md) directly and pass
+its path to the reviewer. This reuses MCP guidance without starting the cook pipeline or invoking
 a retired standalone skill. The module owns tool selection, citation, and low-confidence rules.
 
 Add a **third subagent** alongside Standards and Spec, in the same parallel
@@ -25,7 +25,7 @@ invariants/failure modes, and version-matched official docs; or state that none 
 <paste the diff>
 
 ## What to do
-Read the shared experts module at <absolute path to pair/references/experts/SKILL.md> first.
+Read the shared experts module at <absolute path to cook/references/experts/SKILL.md> first.
 1. Summarise the task's subject and the diff in 1–2 sentences. Use the packet's domain findings to
    identify the key invariants, tradeoffs, and failure modes that should inform the review.
 2. If the packet lacks topic-level expert grounding, search the task subject with `find(query, expert)`

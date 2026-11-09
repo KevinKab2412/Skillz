@@ -9,16 +9,16 @@ POLICY = ROOT / "shared/evidence/behavior-evidence.md"
 
 class BehaviorEvidenceTests(unittest.TestCase):
     def test_both_callers_opt_into_one_policy(self):
-        for skill in ("pair", "code-review"):
+        for skill in ("cook", "code-review"):
             manifest = (ROOT / skill / "references/.shared").read_text().splitlines()
             self.assertEqual(manifest.count("evidence"), 1)
             self.assertFalse((ROOT / skill / "references/evidence").exists())
 
     def test_guided_auto_implementation_and_review_reach_policy(self):
         pointers = {
-            "pair/SKILL.md": "references/evidence/behavior-evidence.md",
-            "pair/references/auto.md": "evidence/behavior-evidence.md",
-            "pair/references/implement/SKILL.md": "../evidence/behavior-evidence.md",
+            "cook/SKILL.md": "references/evidence/behavior-evidence.md",
+            "cook/references/auto.md": "evidence/behavior-evidence.md",
+            "cook/references/implement/SKILL.md": "../evidence/behavior-evidence.md",
             "code-review/SKILL.md": "references/evidence/behavior-evidence.md",
         }
         for path, pointer in pointers.items():

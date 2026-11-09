@@ -36,8 +36,8 @@ class RetirementTests(unittest.TestCase):
                    self.skill('.pi/agent/skills/review'),
                    self.skill('.config/opencode/skills/review'),
                    self.skill('.agents/skills/synced/import/review')]
-        keep = self.skill('.agents/skills/pair')
-        nested = self.skill('.agents/skills/pair/references/worktree')
+        keep = self.skill('.agents/skills/cook')
+        nested = self.skill('.agents/skills/cook/references/worktree')
         external = self.skill('.agents/skills/unrelated')
         outside = self.skill('project/.agents/skills/review')
         self.prune()
@@ -90,7 +90,7 @@ class RetirementTests(unittest.TestCase):
 
     def test_invalid_policy_refused_before_deletion(self):
         path = self.skill('.agents/skills/review')
-        self.policy.write_text('review\n../pair\n')
+        self.policy.write_text('review\n../cook\n')
         with self.assertRaises(ValueError):
             self.prune()
         self.assertTrue(path.exists())
@@ -116,42 +116,42 @@ class WiringTests(unittest.TestCase):
         self.assertTrue((ROOT / 'utils/references/standup/schema.sql').is_file())
 
     def test_worktree_is_internal_and_reused(self):
-        self.assertTrue((ROOT / 'pair/references/worktree/scripts/mkworktree.sh').is_file())
-        self.assertIn('(references/worktree/SKILL.md)', (ROOT / 'pair/SKILL.md').read_text())
-        self.assertIn('(../pair/references/worktree/SKILL.md)', (ROOT / 'code-review/SKILL.md').read_text())
+        self.assertTrue((ROOT / 'cook/references/worktree/scripts/mkworktree.sh').is_file())
+        self.assertIn('(references/worktree/SKILL.md)', (ROOT / 'cook/SKILL.md').read_text())
+        self.assertIn('(../cook/references/worktree/SKILL.md)', (ROOT / 'code-review/SKILL.md').read_text())
 
     def test_to_pr_inspects_both_branch_scopes_and_requires_approval(self):
-        layout = (ROOT / 'pair/references/to-pr/references/pr-layout.md').read_text()
+        layout = (ROOT / 'cook/references/to-pr/references/pr-layout.md').read_text()
         for marker in ('git branch --no-merged', 'git branch -r --no-merged',
                        'Ask for approval', 'does not include untracked', 'drafts only'):
             self.assertIn(marker, layout)
-        self.assertIn('(references/pr-layout.md)', (ROOT / 'pair/references/to-pr/SKILL.md').read_text())
+        self.assertIn('(references/pr-layout.md)', (ROOT / 'cook/references/to-pr/SKILL.md').read_text())
 
     def test_internal_grill_and_experts_are_reachable_without_pipeline(self):
-        pair = (ROOT / 'pair/SKILL.md').read_text()
-        self.assertIn('(references/grill/SKILL.md)', pair)
-        self.assertIn('(references/experts/SKILL.md)', pair)
-        self.assertIn('(references/to-pr/SKILL.md)', pair)
-        self.assertIn('Do not automatically create a spec or start implementation', pair)
+        cook = (ROOT / 'cook/SKILL.md').read_text()
+        self.assertIn('(references/grill/SKILL.md)', cook)
+        self.assertIn('(references/experts/SKILL.md)', cook)
+        self.assertIn('(references/to-pr/SKILL.md)', cook)
+        self.assertIn('Do not automatically create a spec or start implementation', cook)
         for path in ('wayfinder/SKILL.md',):
-            self.assertIn('pair/references/grill/SKILL.md', (ROOT / path).read_text())
+            self.assertIn('cook/references/grill/SKILL.md', (ROOT / path).read_text())
         for path in ('code-review/references/experts-lane.md',
                      'explain/SKILL.md'):
-            self.assertIn('pair/references/experts/SKILL.md', (ROOT / path).read_text())
+            self.assertIn('cook/references/experts/SKILL.md', (ROOT / path).read_text())
 
     def test_research_is_internal_and_review_experts_are_automatic(self):
-        pair = (ROOT / 'pair/SKILL.md').read_text()
-        research = (ROOT / 'pair/references/research/SKILL.md').read_text()
+        cook = (ROOT / 'cook/SKILL.md').read_text()
+        research = (ROOT / 'cook/references/research/SKILL.md').read_text()
         review = (ROOT / 'code-review/SKILL.md').read_text()
         lane = (ROOT / 'code-review/references/experts-lane.md').read_text()
-        self.assertIn('Research only', pair)
-        self.assertIn('(references/research/SKILL.md)', pair)
+        self.assertIn('Research only', cook)
+        self.assertIn('(references/research/SKILL.md)', cook)
         self.assertIn('(../experts/SKILL.md)', research)
         self.assertIn('Consult the local experts first', research)
         self.assertIn('no background-agent tool', research)
         self.assertIn('research', retire.retired_names(ROOT / 'retired-skills.txt'))
         self.assertIn('Experts lane runs automatically', review)
-        self.assertIn('(../pair/references/research/SKILL.md)', review)
+        self.assertIn('(../cook/references/research/SKILL.md)', review)
         self.assertIn('any lane classified `blocker`', review)
         self.assertIn('low confidence', lane)
         self.assertNotIn('off by default', lane)
@@ -190,12 +190,12 @@ class WiringTests(unittest.TestCase):
                 'utils/references/meetily/SKILL.md',
                 'utils/references/standup/SKILL.md',
                 'utils/references/retro/SKILL.md',
-                'pair/references/research/SKILL.md',
-                'pair/references/auto.md',
-                'pair/references/grill/SKILL.md',
-                'pair/references/experts/SKILL.md',
-                'pair/references/to-pr/SKILL.md',
-                'pair/references/to-pr/references/visual-proof.md',
+                'cook/references/research/SKILL.md',
+                'cook/references/auto.md',
+                'cook/references/grill/SKILL.md',
+                'cook/references/experts/SKILL.md',
+                'cook/references/to-pr/SKILL.md',
+                'cook/references/to-pr/references/visual-proof.md',
                 'explain/references/show-me.md',
                 'code-review/references/experts-lane.md',
                 'code-review/references/constructive-review.md',
