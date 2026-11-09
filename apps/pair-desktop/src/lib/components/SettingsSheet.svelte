@@ -21,7 +21,7 @@
     <label>Default model for new notes
       <input placeholder="e.g. openai-codex/gpt-6-sol (empty: Pi's default)" value={draft.default_model ?? ""} oninput={(e) => (draft.default_model = e.currentTarget.value || null)} /></label>
     <label>Path to pi
-      <input placeholder="Found through your login shell" value={draft.pi_path ?? ""} oninput={(e) => (draft.pi_path = e.currentTarget.value || null)} /></label>
+      <input placeholder="Found on your shell PATH" value={draft.pi_path ?? ""} oninput={(e) => (draft.pi_path = e.currentTarget.value || null)} /></label>
     <p class="muted small">
       {#if pi?.path}Using {pi.path} · Pi {pi.version ?? "?"}{pi.expected && pi.version !== pi.expected ? ` (tested with ${pi.expected})` : ""}{:else}Pi not found.{/if}
       Sign in to ChatGPT or add an OpenRouter key in Pi itself (run <code>pi</code>, then <code>/login</code>); pair never stores credentials.
