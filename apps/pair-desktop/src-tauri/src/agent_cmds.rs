@@ -41,15 +41,42 @@ fn ext_dir(app: &AppHandle) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../pi-ext")
 }
 
-/// GUI apps on macOS start with a minimal PATH, so ask the login shell where `pi` is.
+/// Apps opened from Finder, the Dock or Shortcuts start with launchd's minimal PATH, and many
+/// shells only extend PATH in their interactive rc file (`~/.zshrc`). Adopt the PATH of an
+/// interactive login shell once at startup, so `pi`, the Node it runs on, and the tools it
+/// calls resolve the same way they do in Terminal.
+pub fn adopt_shell_path() {
+    if let Some(path) = shell_path() {
+        // Runs before any other thread starts.
+        unsafe { std::env::set_var("PATH", path) };
+    }
+}
+
+const PATH_START: &str = "__PAIR_PATH_START__";
+const PATH_END: &str = "__PAIR_PATH_END__";
+
+fn shell_path() -> Option<String> {
+    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into());
+    let script = format!("printf '%s%s%s' '{PATH_START}' \"$PATH\" '{PATH_END}'");
+    let out = Command::new(shell).args(["-ilc", &script]).stdin(std::process::Stdio::null()).output().ok()?;
+    parse_shell_path(&String::from_utf8_lossy(&out.stdout))
+}
+
+/// The PATH between the markers; rc files may print banners around it.
+fn parse_shell_path(stdout: &str) -> Option<String> {
+    let start = stdout.rfind(PATH_START)? + PATH_START.len();
+    let len = stdout[start..].find(PATH_END)?;
+    let path = stdout[start..start + len].trim();
+    (!path.is_empty()).then(|| path.to_string())
+}
+
+/// The Pi to run: the path set in Settings, else the first `pi` on PATH.
 pub(crate) fn resolve_pi(override_path: Option<String>) -> Option<String> {
     if let Some(p) = override_path.filter(|p| !p.trim().is_empty()) {
         return Some(p);
     }
-    let shell = std::env::var("SHELL").unwrap_or_else(|_| "/bin/zsh".into());
-    let out = Command::new(shell).args(["-lc", "command -v pi"]).output().ok()?;
-    let path = String::from_utf8_lossy(&out.stdout).trim().to_string();
-    (!path.is_empty()).then_some(path)
+    let path = std::env::var_os("PATH")?;
+    std::env::split_paths(&path).map(|dir| dir.join("pi")).find(|p| p.is_file()).map(|p| p.to_string_lossy().into_owned())
 }
 
 fn pi_version(path: &str) -> Option<String> {
@@ -71,7 +98,7 @@ fn agents(app: &AppHandle, state: &AgentState) -> Result<Arc<Mutex<Agents>>, Str
         return Ok(a.clone());
     }
     let s = status(app, crate::settings::load(app).pi_path);
-    let program = s.path.clone().ok_or("pi is not installed or not on your login shell PATH")?;
+    let program = s.path.clone().ok_or("pi is not installed or not on your shell PATH")?;
     let data = app.path().app_data_dir().map_err(|e| e.to_string())?;
     let provider = PiProvider {
         program: program.into(),
@@ -164,7 +191,15 @@ pub fn parse_models(table: &str) -> Vec<String> {
 
 #[cfg(test)]
 mod tests {
-    use super::parse_models;
+    use super::{parse_models, parse_shell_path};
+
+    #[test]
+    fn reads_the_path_between_markers_despite_rc_noise() {
+        let out = "Welcome back!\n__PAIR_PATH_START__/usr/bin:/Users/k/.local/bin__PAIR_PATH_END__\n";
+        assert_eq!(parse_shell_path(out).as_deref(), Some("/usr/bin:/Users/k/.local/bin"));
+        assert_eq!(parse_shell_path("no markers"), None);
+        assert_eq!(parse_shell_path("__PAIR_PATH_START____PAIR_PATH_END__"), None);
+    }
 
     #[test]
     fn keeps_only_v1_providers() {

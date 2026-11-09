@@ -168,6 +168,7 @@ fn touch(app: &AppHandle, folder: &str, name: &str) -> Result<(), String> {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    agent_cmds::adopt_shell_path();
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())

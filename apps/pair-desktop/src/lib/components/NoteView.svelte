@@ -468,7 +468,7 @@
     </header>
 
     {#if pi && !pi.path}
-      <p class="banner bad">Pi is not installed or not on your login shell PATH. Install it, sign in with <code>pi</code>, then reopen pair.</p>
+      <p class="banner bad">pair can't find Pi on your shell PATH. Install it and sign in with <code>pi</code>, or set its path in Settings, then reopen pair.</p>
     {:else if pi && pi.version && pi.expected && pi.version !== pi.expected}
       <p class="banner">Pi {pi.version} is installed; pair was tested with {pi.expected}. It will still run.</p>
     {/if}

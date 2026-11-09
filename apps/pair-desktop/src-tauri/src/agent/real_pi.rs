@@ -24,7 +24,7 @@ struct Real {
 }
 
 fn real() -> Real {
-    let pi = crate::agent_cmds::resolve_pi(None).expect("pi is not on the login shell PATH");
+    let pi = crate::agent_cmds::resolve_pi(None).expect("pi is not on PATH");
     let ext = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../pi-ext/pair-ext.ts");
     let data = tempfile::tempdir().unwrap();
     let folder = tempfile::tempdir().unwrap();
