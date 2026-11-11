@@ -219,6 +219,17 @@ export function cleanDoc(state: EditorState): PMNode {
   return clean.doc;
 }
 
+/** The clean doc (see `cleanDoc`) with a map from positions in the current doc to positions in it. */
+export function cleanDocMapped(state: EditorState): { doc: PMNode; map: (pos: number, assoc?: number) => number } {
+  let clean = state;
+  let map = (pos: number) => pos;
+  revertSuggestions(state, (tr) => {
+    clean = state.apply(tr);
+    map = (pos: number, assoc = 1) => tr.mapping.map(pos, assoc);
+  });
+  return { doc: clean.doc, map };
+}
+
 /** True when the doc holds any pending suggestion mark. */
 export function hasSuggestions(doc: PMNode): boolean {
   let found = false;

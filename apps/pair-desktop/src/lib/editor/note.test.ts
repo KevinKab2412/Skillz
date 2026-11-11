@@ -1,9 +1,9 @@
 import { afterEach, describe, expect, test } from "vitest";
 import type { Editor } from "@tiptap/core";
-import { accept, headless, liveAnchors, markdownOf, proposeBlock, proposeEdit, refreshQuotes, reject, setThreads, threadForQuote } from "./note";
+import { accept, headless, liveAnchors, markdownOf, proposalAnchors, proposeBlock, proposeEdit, refreshQuotes, reject, restoreProposal, setThreads, threadForQuote } from "./note";
 import { quoteAt, resolveQuote } from "./anchors";
 import { suggestionGroups, widgetPlacements } from "./extensions";
-import type { Thread } from "$lib/api";
+import type { Proposal, Thread } from "$lib/api";
 
 const NOTE = `# Basket
 
@@ -200,5 +200,70 @@ describe("widgets under passages", () => {
     const a = liveAnchors(ed).find((x) => x.id === "x")!;
     expect(a.detached).toBe(false);
     expect(ed.state.doc.textBetween(a.from, a.to)).toBe("Use a for loop");
+  });
+});
+
+describe("proposals saved with the note", () => {
+  /** Saves the note and its pending proposals the way the app does, as the files would hold them. */
+  function saveWith(e: Editor, proposals: Record<number, Omit<Proposal, "anchor">>): { md: string; proposals: Proposal[] } {
+    const anchors = proposalAnchors(e);
+    return { md: markdownOf(e), proposals: [...anchors].map(([id, anchor]) => ({ ...proposals[id], anchor: anchor ?? null })) };
+  }
+  const edit = (replace: string): Omit<Proposal, "anchor"> => ({ id: "p", kind: "edit", replace, thread_id: null, request_id: null });
+
+  test("an edit and a diagram come back as the same suggestions when the note reopens", () => {
+    ed = headless(NOTE);
+    const a = proposeEdit(ed, "recursively", "in a loop") as { id: number };
+    const quote = quoteAt("Replace the recursive helper with a loop.", 0, 7);
+    const b = proposeBlock(ed, "pairDiagram", { spec: '{"v":1}' }, quote)!;
+    const saved = saveWith(ed, { [a.id]: edit("in a loop"), [b]: { id: "d", kind: "diagram", spec: '{"v":1}', thread_id: null, request_id: null } });
+    expect(saved.md).not.toContain("in a loop");
+    expect(saved.proposals.map((p) => p.anchor?.quote.exact)).toEqual(["recursively", "Replace the recursive helper with a loop."]);
+    const before = suggestionGroups(ed.state.doc).map((g) => ({ ins: g.ins, del: g.del, block: g.block }));
+    ed.destroy();
+
+    ed = headless(saved.md);
+    for (const p of saved.proposals) expect(restoreProposal(ed, p)).not.toBeNull();
+    expect(suggestionGroups(ed.state.doc).map((g) => ({ ins: g.ins, del: g.del, block: g.block }))).toEqual(before);
+    expect(markdownOf(ed)).toBe(saved.md);
+    const diagram = ed.state.doc.content.content.findIndex((n) => n.type.name === "pairDiagram" && n.attrs.spec === '{"v":1}');
+    expect(ed.state.doc.child(diagram - 1).textContent).toBe("Replace the recursive helper with a loop.");
+  });
+
+  test("an edit finds its passage after the note was changed outside pair", () => {
+    ed = headless(NOTE);
+    const a = proposeEdit(ed, "stays flat", "stays constant") as { id: number };
+    const saved = saveWith(ed, { [a.id]: edit("stays constant") });
+    ed.destroy();
+    // Someone added a paragraph above, repeating the words elsewhere.
+    const outside = saved.md.replace("## Think", "## Think\n\nMemory stays flat too, they said.");
+    ed = headless(outside);
+    expect(restoreProposal(ed, saved.proposals[0])).not.toBeNull();
+    const [g] = suggestionGroups(ed.state.doc);
+    expect(g.del).toBe("stays flat");
+    expect(ed.state.doc.resolve(g.from).parent.textContent).toContain("Prices are summed");
+  });
+
+  test("an edit whose passage is gone is not restored; a block whose passage is gone goes to the end", () => {
+    ed = headless(NOTE);
+    const a = proposeEdit(ed, "recursively", "in a loop") as { id: number };
+    const b = proposeBlock(ed, "pairReply", { text: "Ready: yes" }, quoteAt("Replace the recursive helper with a loop.", 0, 7))!;
+    const saved = saveWith(ed, { [a.id]: edit("in a loop"), [b]: { id: "r", kind: "reply", text: "Ready: yes", thread_id: null, request_id: null } });
+    ed.destroy();
+    const outside = saved.md.replace("Prices are summed recursively, so the stack depth stays flat for large baskets.", "Gone.").replace("Replace the recursive helper with a loop.", "Different plan.");
+    ed = headless(outside);
+    expect(restoreProposal(ed, saved.proposals[0])).toBeNull();
+    expect(restoreProposal(ed, saved.proposals[1])).not.toBeNull();
+    // The editor keeps an empty paragraph after the last block; the reply is the last thing before it.
+    const filled = ed.state.doc.content.content.filter((n) => n.type.name !== "paragraph" || n.textContent);
+    expect(filled.at(-1)?.type.name).toBe("pairReply");
+    expect(filled.at(-1)?.attrs.text).toBe("Ready: yes");
+  });
+
+  test("a suggestion Kevin already answered is not saved", () => {
+    ed = headless(NOTE);
+    const a = proposeEdit(ed, "recursively", "in a loop") as { id: number };
+    reject(ed, a.id);
+    expect(proposalAnchors(ed).size).toBe(0);
   });
 });

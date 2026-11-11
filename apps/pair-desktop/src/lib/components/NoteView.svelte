@@ -106,6 +106,7 @@
       void saveSidecar();
     },
     () => ({ folder, files, openFile }),
+    () => void saveSidecar(),
   );
 
   const ctx: ExchangeCtx = {
@@ -132,7 +133,13 @@
     return el;
   }
 
+  /** Copies the session's pending proposals and approvals into the sidecar, anchored where they sit now. */
+  function syncPending() {
+    Object.assign(note.sidecar, session.saved());
+  }
+
   async function saveSidecar() {
+    syncPending();
     await api.saveSidecar(folder, note.name, $state.snapshot(note.sidecar) as Note["sidecar"]).catch((e) => (notice = String(e)));
   }
 
@@ -153,6 +160,7 @@
       const markdown = markdownOf(e);
       if (markdown === lastSaved) return;
       note.sidecar.threads = refreshQuotes(e, note.sidecar.threads);
+      syncPending();
       note.markdown = markdown;
       const expected = lastSaved;
       // Mark this text as ours before writing, so the watcher's echo is not taken for an outside edit.
@@ -171,18 +179,21 @@
   }
 
   /** Called by the page when the file changed on disk. */
-  export function reloadFromDisk(fresh: Note, message = "The note changed on disk and was reloaded. Pending suggestions were dropped.") {
+  export function reloadFromDisk(fresh: Note, message = "The note changed on disk and was reloaded.") {
     const e = ed();
     if (!e || fresh.markdown === lastSaved || fresh.markdown === writing) return;
-    // Pending suggestions disappear with the reload: tell the agent, so it is not left waiting.
-    void session.declineAllSuggestions("The note was reloaded from disk, so your suggestion was dropped. Re-read the note.");
+    // Pending suggestions go back in at their passages in the new text; the agent stays waiting.
+    const pending = session.takeProposals();
     lastSaved = fresh.markdown;
     note.markdown = fresh.markdown;
     note.sidecar = fresh.sidecar;
     e.commands.setContent(fresh.markdown, { contentType: "markdown", emitUpdate: false } as never);
     setThreads(e, note.sidecar.threads);
-    notice = message;
+    const lost = session.reapply(pending);
+    notice = lost ? `${message} ${dropped(lost)}` : message;
   }
+
+  const dropped = (n: number) => `${n === 1 ? "One suggestion" : `${n} suggestions`} from pair no longer fit the note and ${n === 1 ? "was" : "were"} dropped.`;
 
   let raf = 0;
   function relayout() {
@@ -346,6 +357,8 @@
         },
         onCreate: ({ editor: e }) => {
           setThreads(e as Editor, note.sidecar.threads);
+          const lost = session.restore(note.sidecar);
+          if (lost) notice = dropped(lost);
           relayout();
         },
         onUpdate: () => {
@@ -417,6 +430,7 @@
       const markdown = markdownOf(e);
       if (markdown !== lastSaved) {
         note.sidecar.threads = refreshQuotes(e, note.sidecar.threads);
+        syncPending();
         const snapshot = { ...($state.snapshot(note) as Note), markdown };
         const expected = lastSaved;
         void saving.then(() => api.saveNote(folder, snapshot, expected)).catch(() => {});
@@ -499,13 +513,13 @@
           </div>
           {#if $editor}<EditorContent editor={$editor} />{/if}
 
-          {#if detached.length || session.cards.some((c) => c.threadId === null) || session.loose.length}
+          {#if detached.length || session.unthreadedCards().length || session.loose.length}
             <section class="elsewhere">
               <h3>Not tied to a passage</h3>
               {#each detached as t (t.id)}
                 <Exchange wkey={`t:${t.id}`} {ctx} quoted />
               {/each}
-              {#each session.cards.filter((c) => c.threadId === null) as card (card.requestId)}
+              {#each session.unthreadedCards() as card (card.requestId)}
                 <CardView {card} onDecide={(d, o) => session.decideCard(card, d, o)} />
               {/each}
               {#each session.loose as text, i (i)}

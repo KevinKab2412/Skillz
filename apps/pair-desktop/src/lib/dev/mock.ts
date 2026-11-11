@@ -8,7 +8,7 @@ import { mockIPC } from "@tauri-apps/api/mocks";
 const FOLDER = "/Users/demo/basket";
 const KEY = `${FOLDER}::checkout-loop`;
 
-const note = {
+const seed = {
   name: "checkout-loop",
   markdown: `# Checkout loop
 
@@ -17,7 +17,9 @@ Prices are summed recursively in sum.ts, so the stack depth grows with the baske
 Replace the recursive helper with a loop and keep the rounding rules identical.
 `,
   sidecar: {
-    v: 1,
+    v: 2,
+    proposals: [],
+    approvals: [],
     threads: [
       {
         id: "t1",
@@ -36,6 +38,23 @@ Replace the recursive helper with a loop and keep the rounding rules identical.
     tell: "We use bun; keep diffs small.",
     stage: "plan",
   },
+};
+
+// The note's "disk" survives a page reload, so reloading stands in for quitting and reopening pair.
+const DISK = "pair-mock-note";
+const note: typeof seed = (() => {
+  try {
+    return JSON.parse(sessionStorage.getItem(DISK) ?? "null") ?? seed;
+  } catch {
+    return seed;
+  }
+})();
+const persist = () => {
+  try {
+    sessionStorage.setItem(DISK, JSON.stringify(note));
+  } catch {
+    /* storage unavailable: the note lives for this page only */
+  }
 };
 
 let n = 0;
@@ -124,9 +143,11 @@ export function installMock() {
           return structuredClone(note);
         case "save_note":
           Object.assign(note, a.note);
+          persist();
           return null;
         case "save_sidecar":
           note.sidecar = a.sidecar;
+          persist();
           return null;
         case "get_settings":
           return { thinks_with_you: false, pace: "normal", appearance: "system", text_size: "m", accent: "#d2553a", pi_path: null, default_model: "openai-codex/gpt-6-sol" };

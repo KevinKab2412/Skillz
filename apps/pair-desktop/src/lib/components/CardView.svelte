@@ -30,7 +30,7 @@
 </script>
 
 <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
-<div class="card" class:done={card.status !== "pending"} onclick={stop}>
+<div class="card" class:done={card.status === "accepted" || card.status === "rejected"} onclick={stop}>
   <header>
     <span class="dot" class:working={card.status === "pending"}></span>
     {#if path}<b>{path}</b>{:else if card.kind === "command"}<b>terminal</b>{/if}
@@ -38,6 +38,7 @@
     <span class="ask">
       {#if card.status === "accepted"}<span class="good">Accepted{card.checkpoint ? ` · undo point #${card.checkpoint}` : ""}</span>
       {:else if card.status === "rejected"}<span class="no">Rejected{card.reason ? `: ${card.reason}` : ""}</span>
+      {:else if card.status === "expired"}pair closed before you answered, so this did not run
       {:else}{ask}{/if}
     </span>
   </header>
@@ -54,7 +55,12 @@
     <pre class="diff">{JSON.stringify(card.input, null, 2)}</pre>
   {/if}
 
-  {#if card.status === "pending"}
+  {#if card.status === "expired"}
+    <footer>
+      <button class="pill" onclick={() => onDecide("reject", {})}>Dismiss</button>
+      <button class="pill go" onclick={() => onDecide("accept", {})}>Ask again</button>
+    </footer>
+  {:else if card.status === "pending"}
     <footer>
       {#if rejecting}
         <input use:focusOnMount placeholder="Why not? (optional, goes to pair)" bind:value={reason} onkeydown={(e) => e.key === "Enter" && onDecide("reject", { reason: reason.trim() || undefined })} />

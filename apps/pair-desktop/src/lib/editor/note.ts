@@ -8,7 +8,7 @@ import { Markdown } from "@tiptap/markdown";
 import { Placeholder } from "@tiptap/extensions";
 import { applySuggestion, revertSuggestion, transformToSuggestionTransaction } from "@handlewithcare/prosemirror-suggest-changes";
 import type { Transaction } from "@tiptap/pm/state";
-import type { Thread, TextQuote } from "$lib/api";
+import type { Anchor, Proposal, Thread, TextQuote } from "$lib/api";
 import { quoteAt, rangeOf, textIndex, resolveQuote } from "./anchors";
 import {
   Deletion,
@@ -25,6 +25,7 @@ import {
   AGENT_META,
   anchorKey,
   cleanDoc,
+  cleanDocMapped,
   suggestionGroups,
   type LiveAnchor,
 } from "./extensions";
@@ -97,11 +98,15 @@ export function proposeEdit(editor: Editor, find: string, replace: string): { id
   const from = ix.toPos(first);
   const to = ix.toPos(first + find.length);
   if (touchesSuggestion(editor, from, to)) return { error: WAIT };
-  const id = propose(editor, (tr) => {
+  const id = proposeRange(editor, from, to, replace);
+  return id === null ? { error: "The edit changes nothing." } : { id };
+}
+
+function proposeRange(editor: Editor, from: number, to: number, replace: string): number | null {
+  return propose(editor, (tr) => {
     if (replace) tr.insertText(replace, from, to);
     else tr.delete(from, to);
   });
-  return id === null ? { error: "The edit changes nothing." } : { id };
 }
 
 /** Position just after the top-level block containing `quote` (or the end of the doc). */
@@ -125,6 +130,51 @@ export function proposeBlock(editor: Editor, type: "pairDiagram" | "pairReply", 
   if (suggestionGroups(editor.state.doc).some((g) => (g.block && (g.from === at || g.to === at)) || (g.from < at && g.to > at))) return null;
   const node = editor.schema.nodes[type].create(attrs);
   return propose(editor, (tr) => tr.insert(at, node));
+}
+
+/**
+ * Where each pending suggestion sits, as an anchor over the saved note text (suggestions
+ * reverted), so it can be re-applied when the note opens again, even after outside edits.
+ * An edit is anchored on the passage it replaces; a block on the text block it goes under
+ * (null: nothing before it). An edit whose replaced words Kevin deleted has nothing left to
+ * quote: it maps to undefined, so its last anchor is kept. Ids with no suggestion left in the
+ * note are missing from the map.
+ */
+export function proposalAnchors(editor: Editor): Map<number, Anchor | null | undefined> {
+  const { doc, map } = cleanDocMapped(editor.state);
+  const ix = textIndex(doc);
+  const out = new Map<number, Anchor | null | undefined>();
+  for (const g of suggestionGroups(editor.state.doc)) {
+    if (g.block) {
+      const end = ix.toOffset(map(g.from, -1));
+      const start = ix.text.lastIndexOf("\n", end - 1) + 1;
+      out.set(g.id, end > start ? { quote: quoteAt(ix.text, start, end), pos: start } : null);
+      continue;
+    }
+    const s = ix.toOffset(map(g.from, 1));
+    const e = ix.toOffset(map(g.to, -1));
+    out.set(g.id, e > s && g.del ? { quote: quoteAt(ix.text, s, e), pos: s } : undefined);
+  }
+  return out;
+}
+
+/**
+ * Puts a saved proposal back into the note as a suggestion. Returns its suggestion id, or null
+ * when an edit's passage is gone. A block whose passage is gone goes at the end of the note,
+ * the way a thread that lost its passage is listed there. Unlike a fresh agent edit, a restored
+ * edit may sit next to another suggestion: they sat side by side before the note closed.
+ */
+export function restoreProposal(editor: Editor, p: Proposal): number | null {
+  const ix = textIndex(editor.state.doc);
+  const at = p.anchor ? resolveQuote(ix.text, p.anchor.quote, p.anchor.pos) : null;
+  if (p.kind === "edit") {
+    if (at === null || !p.anchor) return null;
+    const from = ix.toPos(at);
+    const to = ix.toPos(at + p.anchor.quote.exact.length);
+    return proposeRange(editor, from, to, p.replace ?? "");
+  }
+  const block = p.kind === "diagram" ? (["pairDiagram", { spec: p.spec ?? "" }] as const) : (["pairReply", { text: p.text ?? "" }] as const);
+  return proposeBlock(editor, block[0], block[1], at === null ? undefined : p.anchor!.quote);
 }
 
 /**

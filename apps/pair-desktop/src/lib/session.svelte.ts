@@ -5,9 +5,9 @@
  * `transport` to Tauri; tests pass a fake.
  */
 import type { Editor } from "@tiptap/core";
-import type { Note, Thread, TextQuote } from "$lib/api";
+import type { Approval, Note, Proposal, Sidecar, Thread, TextQuote } from "$lib/api";
 import { buildPrompt, type AskKind } from "$lib/prompts";
-import { markdownOf, proposeBlock, proposeEdit, threadForQuote } from "$lib/editor/note";
+import { markdownOf, proposalAnchors, proposeBlock, proposeEdit, restoreProposal, threadForQuote } from "$lib/editor/note";
 import { quoteAt, textIndex } from "$lib/editor/anchors";
 
 export type Transport = {
@@ -22,13 +22,16 @@ export type Context = { folder?: string; files?: string[]; openFile?: string | n
 
 export type Answer = { decision: "accept" | "decline"; reason?: string; command?: string; note?: string };
 
-/** A file edit, command, outside read or unknown tool waiting for Kevin, shown under its passage. */
+/**
+ * A file edit, command, outside read or unknown tool waiting for Kevin, shown under its passage.
+ * "expired": it was saved with the note, but the agent that asked is gone, so it cannot run.
+ */
 export type Card = {
   requestId: string;
   kind: "file_edit" | "command" | "read_outside" | "tool";
   tool: string;
   input: Record<string, unknown>;
-  status: "pending" | "accepted" | "rejected";
+  status: "pending" | "accepted" | "rejected" | "expired";
   reason?: string;
   checkpoint?: number | null;
   /** The thread this card belongs to; null shows it at the end of the note. */
@@ -69,6 +72,21 @@ export function describeTool(name: string, args: Record<string, any> = {}): stri
   }
 }
 
+/** What Kevin would be approving, in a few words for a prompt. */
+function describeCard(card: Card): string {
+  const path = String(card.input.path ?? "").replace(/^@/, "");
+  switch (card.kind) {
+    case "command":
+      return `run \`${String(card.input.command ?? "")}\``;
+    case "file_edit":
+      return `${card.tool === "write" ? "write" : "edit"} ${path}`;
+    case "read_outside":
+      return `read ${path}`;
+    default:
+      return `use ${card.tool}`;
+  }
+}
+
 export class NoteSession {
   running = $state(false);
   queued = $state(0);
@@ -80,8 +98,11 @@ export class NoteSession {
   crash = $state<{ stderr: string; code: number | null } | null>(null);
   error = $state<string | null>(null);
 
-  /** Suggestion ids (note edits, diagrams, replies) the agent is waiting on → request id. */
-  private waiting = new Map<number, { requestId: string }>();
+  /**
+   * Pending suggestions (note edits, diagrams, replies) by suggestion id. A proposal with a
+   * request id has the agent waiting on Kevin's answer.
+   */
+  private proposals = new Map<number, Proposal>();
   private pendingTasks: TaskCtx[] = [];
   private current: TaskCtx | null = null;
   private lastTask: TaskCtx | null = null;
@@ -92,6 +113,8 @@ export class NoteSession {
     private note: () => Note,
     private onThreads: (update: (threads: Thread[]) => Thread[]) => void,
     private context: () => Context = () => ({}),
+    /** Proposals or approvals changed: save the sidecar (it reads them with `saved()`). */
+    private onPending: () => void = () => {},
   ) {}
 
   /**
@@ -236,24 +259,22 @@ export class NoteSession {
         return answer({ decision: "accept", note: `thread_id ${t.id}` });
       }
       case "note_edit": {
-        const r = proposeEdit(ed, p.find ?? "", p.replace ?? "");
+        const replace = p.replace ?? "";
+        const r = proposeEdit(ed, p.find ?? "", replace);
         if ("error" in r) return answer({ decision: "decline", reason: r.error });
-        this.waiting.set(r.id, { requestId });
-        return;
+        return this.keep(r.id, { kind: "edit", replace }, requestId);
       }
       case "diagram": {
-        const quote = this.current?.quote;
-        const id = proposeBlock(ed, "pairDiagram", { spec: JSON.stringify(p.spec, null, 0) }, quote);
+        const spec = JSON.stringify(p.spec, null, 0);
+        const id = proposeBlock(ed, "pairDiagram", { spec }, this.current?.quote);
         if (id === null) return answer({ decision: "decline", reason: "Could not place the diagram." });
-        this.waiting.set(id, { requestId });
-        return;
+        return this.keep(id, { kind: "diagram", spec }, requestId);
       }
       case "verdict": {
         const text = `${p.ready ? "Ready" : "Not ready"}: ${p.summary}`;
         const id = proposeBlock(ed, "pairReply", { text }, this.endOfNote());
         if (id === null) return answer({ decision: "decline", reason: "The end of the note has a suggestion Kevin has not answered; give the verdict again after he does." });
-        this.waiting.set(id, { requestId });
-        return;
+        return this.keep(id, { kind: "reply", text }, requestId);
       }
       case "stage":
         this.stageSuggestion = { stage: p.stage, why: p.why };
@@ -264,6 +285,7 @@ export class NoteSession {
       case "tool": {
         this.cards.push({ requestId, kind, tool: p.tool, input: p.input ?? {}, status: "pending", threadId: this.current?.threadId ?? null });
         if (this.activity) this.activity.status = "waiting for you";
+        this.onPending();
         return;
       }
       default:
@@ -280,16 +302,27 @@ export class NoteSession {
     return end > start ? quoteAt(ix.text, start, end) : undefined;
   }
 
-  /** Kevin answered an inline suggestion (note edit, diagram, reply) in the editor. */
-  async onSuggestionDecided(id: number, decision: "accept" | "reject", reason?: string) {
-    const w = this.waiting.get(id);
-    if (!w) return;
-    this.waiting.delete(id);
-    await this.transport.respond(w.requestId, JSON.stringify(decision === "accept" ? { decision: "accept" } : { decision: "decline", reason }));
+  private keep(id: number, what: Pick<Proposal, "kind" | "replace" | "spec" | "text">, requestId: string) {
+    this.proposals.set(id, { id: crypto.randomUUID(), ...what, anchor: null, thread_id: this.current?.threadId ?? null, request_id: requestId });
+    this.onPending();
   }
 
-  /** Kevin answered a file/command card. Accepting takes an undo point first. */
+  /** Kevin answered an inline suggestion (note edit, diagram, reply) in the editor. */
+  async onSuggestionDecided(id: number, decision: "accept" | "reject", reason?: string) {
+    const p = this.proposals.get(id);
+    if (!p) return;
+    this.proposals.delete(id);
+    this.onPending();
+    // A proposal restored from disk has no agent waiting; the decision only changes the note.
+    if (p.request_id) await this.transport.respond(p.request_id, JSON.stringify(decision === "accept" ? { decision: "accept" } : { decision: "decline", reason }));
+  }
+
+  /**
+   * Kevin answered a file/command card. Accepting takes an undo point first. An expired card
+   * cannot run: accepting asks pair to request it again, rejecting dismisses it.
+   */
   async decideCard(card: Card, decision: "accept" | "reject", opts: { reason?: string; command?: string } = {}) {
+    if (card.status === "expired") return this.settleExpired(card, decision);
     if (card.status !== "pending") return;
     if (decision === "accept") {
       if (card.kind === "file_edit" || card.kind === "command") {
@@ -301,24 +334,90 @@ export class NoteSession {
         }
       }
       card.status = "accepted";
+      this.onPending();
       await this.transport.respond(card.requestId, JSON.stringify({ decision: "accept", command: opts.command }));
     } else {
       card.status = "rejected";
       card.reason = opts.reason;
+      this.onPending();
       await this.transport.respond(card.requestId, JSON.stringify({ decision: "decline", reason: opts.reason }));
     }
     if (this.activity?.status === "waiting for you") this.activity.status = "thinking";
   }
 
-  /** Answers every suggestion the agent is waiting on with a decline (the note was reloaded). */
-  async declineAllSuggestions(reason: string) {
-    const waiting = [...this.waiting.values()];
-    this.waiting.clear();
-    for (const w of waiting) await this.transport.respond(w.requestId, JSON.stringify({ decision: "decline", reason }));
+  private async settleExpired(card: Card, decision: "accept" | "reject") {
+    this.cards = this.cards.filter((c) => c !== card);
+    this.onPending();
+    if (decision === "reject") return;
+    const t = card.threadId ? this.note().sidecar.threads.find((x) => x.id === card.threadId && !x.resolved) : undefined;
+    const request = `Earlier you asked to ${describeCard(card)}, but pair closed before I answered, so it never ran. Ask for it again if it is still needed.`;
+    await this.ask("ask", t ? { request, threadId: t.id, selection: { text: t.anchor.quote.exact, quote: t.anchor.quote } } : { request });
   }
 
-  /** Suggestions Kevin has not answered yet (dropped when the note closes). */
-  pendingSuggestionIds(): number[] {
-    return [...this.waiting.keys()];
+  /** Cards with no open thread to sit under: they are listed at the end of the note. */
+  unthreadedCards(): Card[] {
+    const open = new Set(this.note().sidecar.threads.filter((t) => !t.resolved).map((t) => t.id));
+    return this.cards.filter((c) => c.threadId === null || !open.has(c.threadId));
+  }
+
+  /** Pending proposals and approvals as the sidecar saves them, anchored where they sit now. */
+  saved(): Pick<Sidecar, "proposals" | "approvals"> {
+    const ed = this.editor();
+    const anchors = ed ? proposalAnchors(ed) : null;
+    const proposals: Proposal[] = [];
+    for (const [id, p] of this.proposals) {
+      if (anchors && !anchors.has(id)) {
+        // Kevin deleted the text it sat in: nothing is left to accept, so let a waiting agent go.
+        this.proposals.delete(id);
+        if (p.request_id) void this.transport.respond(p.request_id, JSON.stringify({ decision: "decline", reason: "Kevin removed the passage your suggestion was in, so it was dropped. Re-read the note." }));
+        continue;
+      }
+      const anchor = anchors?.get(id);
+      if (anchor !== undefined) p.anchor = anchor;
+      proposals.push({ ...p });
+    }
+    const approvals: Approval[] = this.cards
+      .filter((c): c is Card & { status: Approval["status"] } => c.status === "pending" || c.status === "expired")
+      .map((c) => ({ id: c.requestId, kind: c.kind, tool: c.tool, input: c.input, thread_id: c.threadId, status: c.status }));
+    return { proposals, approvals };
+  }
+
+  /**
+   * Brings back what the sidecar saved when the note opens. No agent is waiting on any of it any
+   * more: proposals come back as suggestions whose answer only changes the note, approvals as
+   * expired cards. Returns how many proposals no longer fit the note.
+   */
+  restore(sidecar: Pick<Sidecar, "proposals" | "approvals">): number {
+    this.cards = (sidecar.approvals ?? []).map((a) => ({ requestId: a.id, kind: a.kind, tool: a.tool, input: a.input ?? {}, status: "expired", threadId: a.thread_id }));
+    return this.reapply((sidecar.proposals ?? []).map((p) => ({ ...p, request_id: null })));
+  }
+
+  /** Takes the pending proposals out before the note's text is replaced; give them to `reapply`. */
+  takeProposals(): Proposal[] {
+    const { proposals } = this.saved();
+    this.proposals.clear();
+    return proposals;
+  }
+
+  /**
+   * Re-applies proposals to the note. One whose passage is gone is dropped, and an agent waiting
+   * on it is told so. Returns how many were dropped.
+   */
+  reapply(proposals: Proposal[]): number {
+    const ed = this.editor();
+    let lost = 0;
+    // Blocks first: they add no text, so they cannot shift the passage another proposal quotes.
+    const ordered = [...proposals.filter((p) => p.kind !== "edit"), ...proposals.filter((p) => p.kind === "edit")];
+    for (const p of ordered) {
+      const id = ed ? restoreProposal(ed, p) : null;
+      if (id !== null) {
+        this.proposals.set(id, p);
+        continue;
+      }
+      lost++;
+      if (p.request_id) void this.transport.respond(p.request_id, JSON.stringify({ decision: "decline", reason: "The passage your suggestion was about changed outside pair, so it was dropped. Re-read the note." }));
+    }
+    if (proposals.length) this.onPending();
+    return lost;
   }
 }

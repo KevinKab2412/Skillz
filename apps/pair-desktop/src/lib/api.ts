@@ -12,9 +12,31 @@ export interface Thread {
   resolved: boolean;
   detached: boolean;
 }
+/** An agent change to the note Kevin has not answered yet; see `Proposal` in notes.rs. */
+export interface Proposal {
+  id: string;
+  kind: "edit" | "diagram" | "reply";
+  anchor: Anchor | null;
+  replace?: string;
+  spec?: string;
+  text?: string;
+  thread_id: string | null;
+  request_id: string | null;
+}
+/** A tool call waiting for Kevin's approval; see `Approval` in notes.rs. */
+export interface Approval {
+  id: string;
+  kind: "file_edit" | "command" | "read_outside" | "tool";
+  tool: string;
+  input: Record<string, unknown>;
+  thread_id: string | null;
+  status: "pending" | "expired";
+}
 export interface Sidecar {
   v: number;
   threads: Thread[];
+  proposals: Proposal[];
+  approvals: Approval[];
   session: { id: string | null; interrupted: string | null };
   model: string | null;
   tell: string;
