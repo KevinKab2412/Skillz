@@ -29,6 +29,10 @@ When the request is clear, execute it directly without showing a menu. A standup
 a request about what was said in a standup meeting uses Meetily. Clarify only when the distinction
 or scope materially changes the work.
 
+Standup storage is always `~/Documents/Standup/`: the SQLite history, delivered updates,
+commit logs, and other generated standup artifacts all stay there. Follow Standup's storage
+layout even when invoked from another project; never put these outputs on Desktop.
+
 ## Combine workflows
 
 For "write my standup using yesterday's meeting", read both modules. Use Standup's history window

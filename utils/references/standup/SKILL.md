@@ -11,10 +11,34 @@ argument-hint: "[yesterday | today | blockers]"
 
 Generate a standup update by pulling together recent activity across your tools.
 
+## Storage
+
+All standup state and generated artifacts live under `~/Documents/Standup/`
+(`/Users/kevinkabeya/Documents/Standup` on Kevin's machine), regardless of the
+current project or working directory:
+
+- `standups.db` — authoritative SQLite history, including its WAL/SHM sidecars.
+- `updates/` — delivered updates, named `YYYY-MM-DD-<project>.md`.
+- `commit-logs/` — activity exports such as `commit-log-YYYY-MM-DD.md`.
+- `artifacts/` — any other generated standup notes, evidence, or intermediate files.
+
+Create these directories before use. Never write standup artifacts to Desktop,
+Downloads, a code repository, or its current working directory. Read source
+repositories and meeting databases in place; this rule relocates only standup
+outputs, not their source material.
+
+If migrating an existing database, use SQLite's backup API or `.backup` so committed
+WAL contents are included. Verify the destination with `PRAGMA integrity_check` and
+compare table counts before switching over. Do not overwrite an existing destination
+or merge histories by guesswork. Stop active writers before retiring the old database;
+keep the old database and any sidecars together as a backup under Standup rather than
+moving or deleting live SQLite files independently.
+
 ## History (do this first, and last)
 
-Standup history lives in `~/Desktop/standups.db` (SQLite, schema in
-[schema.sql](schema.sql) — run it against the file if it does not exist yet).
+Standup history lives in `~/Documents/Standup/standups.db` (SQLite, schema in
+[schema.sql](schema.sql) — run it against the file if it does not exist yet;
+resolve that schema path relative to this module, not the current directory).
 It exists so the update covers **everything since the last standup**, not
 everything that happened today. Work done at 11pm and reported the next
 afternoon still gets said once, in the right update.
@@ -22,8 +46,10 @@ afternoon still gets said once, in the right update.
 ### Before gathering
 
 ```bash
+STANDUP_DIR="$HOME/Documents/Standup"
+mkdir -p "$STANDUP_DIR"/{updates,commit-logs,artifacts}
 PROJECT=$(basename "$(git rev-parse --show-toplevel 2>/dev/null || pwd)")
-sqlite3 ~/Desktop/standups.db \
+sqlite3 "$STANDUP_DIR/standups.db" \
   "SELECT id, covers_to, body FROM standups WHERE project='$PROJECT' ORDER BY created_at DESC LIMIT 1;"
 ```
 
@@ -35,7 +61,7 @@ sqlite3 ~/Desktop/standups.db \
 Then drop anything already spoken for:
 
 ```bash
-sqlite3 ~/Desktop/standups.db "SELECT sha FROM reported_commits;"
+sqlite3 "$HOME/Documents/Standup/standups.db" "SELECT sha FROM reported_commits;"
 ```
 
 Dedupe on sha, not just timestamp — a rebase can move a commit's date forward
@@ -66,11 +92,15 @@ Write the update, in the exact wording delivered:
 ```
 
 Insert one `standups` row, its `points`, its `reported_commits` and
-`reported_prs`. Use ISO8601 with offset for every timestamp.
+`reported_prs` in `~/Documents/Standup/standups.db`. Use ISO8601 with offset for
+every timestamp. Save the delivered body to `updates/YYYY-MM-DD-<project>.md`
+under the storage root too; sanitize the project name to a filename component.
+Keep distinct same-day updates as separate files (add a time suffix rather than
+overwriting an earlier update).
 
 **If the user rewrites the update** — which they often will, to match their voice
 — update that row's `body` and replace its `points` so the history holds what was
-actually said, not the draft.
+actually said, not the draft. Update the matching delivered Markdown artifact too.
 
 ## House Style (always applies)
 

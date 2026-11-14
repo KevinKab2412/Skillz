@@ -115,6 +115,21 @@ class WiringTests(unittest.TestCase):
         self.assertTrue(script.is_file())
         self.assertTrue((ROOT / 'utils/references/standup/schema.sql').is_file())
 
+    def test_standup_storage_is_centralized_in_documents(self):
+        router = (ROOT / 'utils/SKILL.md').read_text()
+        module = (ROOT / 'utils/references/standup/SKILL.md').read_text()
+        self.assertIn('~/Documents/Standup/', router)
+        self.assertIn('~/Documents/Standup/standups.db', module)
+        self.assertIn('STANDUP_DIR="$HOME/Documents/Standup"', module)
+        self.assertIn('mkdir -p "$STANDUP_DIR"/{updates,commit-logs,artifacts}', module)
+        self.assertIn('sqlite3 "$STANDUP_DIR/standups.db"', module)
+        self.assertIn('sqlite3 "$HOME/Documents/Standup/standups.db"', module)
+        self.assertNotIn('~/Desktop/standups.db', module)
+        for marker in ('updates/YYYY-MM-DD-<project>.md', 'commit-logs/',
+                       'artifacts/', 'backup API', 'PRAGMA integrity_check',
+                       'Stop active writers', 'Update the matching delivered Markdown'):
+            self.assertIn(marker, module)
+
     def test_worktree_is_internal_and_reused(self):
         self.assertTrue((ROOT / 'cook/references/worktree/scripts/mkworktree.sh').is_file())
         self.assertIn('(references/worktree/SKILL.md)', (ROOT / 'cook/SKILL.md').read_text())
