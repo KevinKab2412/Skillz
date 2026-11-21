@@ -6,7 +6,7 @@ import { emit } from "@tauri-apps/api/event";
 import { mockIPC } from "@tauri-apps/api/mocks";
 
 const FOLDER = "/Users/demo/basket";
-const KEY = `${FOLDER}::checkout-loop`;
+let activeKey = `${FOLDER}::checkout-loop`;
 
 const seed = {
   name: "checkout-loop",
@@ -17,7 +17,7 @@ Prices are summed recursively in sum.ts, so the stack depth grows with the baske
 Replace the recursive helper with a loop and keep the rounding rules identical.
 `,
   sidecar: {
-    v: 2,
+    v: 3,
     proposals: [],
     approvals: [],
     threads: [
@@ -37,6 +37,8 @@ Replace the recursive helper with a loop and keep the rounding rules identical.
     model: null,
     tell: "We use bun; keep diffs small.",
     stage: "plan",
+    kind: "note",
+    review: null,
   },
 };
 
@@ -58,7 +60,7 @@ const persist = () => {
 };
 
 let n = 0;
-const send = (record: Record<string, unknown>) => emit("agent-event", { key: KEY, record });
+const send = (record: Record<string, unknown>) => emit("agent-event", { key: activeKey, record });
 const say = async (text: string) => {
   for (const w of text.split(/(?<= )/)) {
     await new Promise((r) => setTimeout(r, 25));
@@ -94,7 +96,14 @@ const tool = async (toolName: string, args: Record<string, unknown>) => {
 async function runAsk(message: string) {
   await send({ type: "pair_started", message });
   await wait(500);
-  if (message.includes("riddle it")) {
+  if (message.includes("Return only valid JSON matching this shape")) {
+    await say(JSON.stringify({
+      sections: [
+        { title: "Keep the basket calculation shallow", summary: "The new loop replaces one waiting call per price with a running total.", focus: "Does the loop preserve the existing empty-list and rounding behavior?", files: ["src/checkout/sum.ts"], suggestions: [{ path: "src/checkout/sum.ts", line: 4, severity: "check", summary: "Check rounding remains per line.", rationale: "The prior helper returned the sum of each price without rounding here.", next_check: "Follow the caller that converts prices into display values." }] },
+        { title: "Cover the larger input", summary: "The test adds a large basket case to exercise the old stack-depth risk.", focus: "Does the test cover the failure size that motivated the change?", files: ["src/checkout/sum.test.ts"], suggestions: [] },
+      ],
+    }));
+  } else if (message.includes("riddle it")) {
     await tool("read", { path: "src/checkout/sum.ts" });
     await say("Which rounding: per line or on the total? The recursive version rounds per line.");
   } else if (message.includes("asked a question")) {
@@ -138,8 +147,29 @@ export function installMock() {
         case "load_index":
           return { folders: [FOLDER], recent: [{ folder: FOLDER, name: note.name }] };
         case "list_notes":
-          return [{ name: note.name, modified_ms: Date.now() }, { name: "auth-refresh", modified_ms: 0 }];
+          return [{ name: note.name, modified_ms: Date.now(), kind: note.sidecar.kind }, { name: "auth-refresh", modified_ms: 0, kind: "note" }];
+        case "create_note":
+          Object.assign(note, {
+            name: a.name,
+            markdown: "",
+            sidecar: {
+              v: 3,
+              proposals: [],
+              approvals: [],
+              threads: [],
+              session: { id: null, interrupted: null },
+              model: null,
+              tell: "",
+              stage: a.kind === "code_review" ? "review" : "think",
+              kind: a.kind ?? "note",
+              review: a.kind === "code_review" ? { base_branch: null, head_branch: null, reviewed_files: [], guide: null } : null,
+            },
+          });
+          activeKey = `${FOLDER}::${a.name}`;
+          persist();
+          return structuredClone(note);
         case "open_note":
+          activeKey = `${FOLDER}::${a.name}`;
           return structuredClone(note);
         case "save_note":
           Object.assign(note, a.note);
@@ -166,6 +196,22 @@ export function installMock() {
           return [{ n: 1, commit: "abc", label: "edit src/checkout/sum.ts" }];
         case "list_files":
           return Object.keys(FILES).sort();
+        case "review_branches":
+          return { current: "feature/checkout-loop", branches: ["main", "feature/checkout-loop"] };
+        case "review_diff":
+          return {
+            base_branch: a.baseBranch,
+            head_branch: a.headBranch,
+            base_commit: "1234567890abcdef1234567890abcdef12345678",
+            head_commit: "abcdef1234567890abcdef1234567890abcdef12",
+            merge_base: "1234567890abcdef1234567890abcdef12345678",
+            total_files: 2,
+            truncated: false,
+            files: [
+              { path: "src/checkout/sum.ts", status: "M", additions: 4, deletions: 2, binary: false, truncated: false, patch: "diff --git a/src/checkout/sum.ts b/src/checkout/sum.ts\n--- a/src/checkout/sum.ts\n+++ b/src/checkout/sum.ts\n@@ -1,3 +1,5 @@\n-export function sumPrices(prices: number[]): number {\n-  return prices.length ? prices[0] + sumPrices(prices.slice(1)) : 0;\n+export function sumPrices(prices: number[]): number {\n+  let total = 0;\n+  for (const price of prices) total += price;\n+  return total;\n }" },
+              { path: "src/checkout/sum.test.ts", status: "M", additions: 8, deletions: 0, binary: false, truncated: false, patch: "diff --git a/src/checkout/sum.test.ts b/src/checkout/sum.test.ts\n--- a/src/checkout/sum.test.ts\n+++ b/src/checkout/sum.test.ts\n@@ -5,3 +5,11 @@\n+test('sums a large basket', () => {\n+  expect(sumPrices(Array(200).fill(1))).toBe(200);\n+});" },
+            ],
+          };
         case "read_file":
           return { path: a.path, text: FILES[a.path] ?? "", truncated: false, binary: false };
         case "plugin:dialog|open":

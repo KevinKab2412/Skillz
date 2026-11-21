@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { folderLabel, type NoteSummary } from "$lib/api";
+  import { folderLabel, type NoteKind, type NoteSummary } from "$lib/api";
   import FileTree, { buildTree } from "./FileTree.svelte";
 
   let {
@@ -19,7 +19,7 @@
     current: { folder: string; name: string } | null;
     onAddFolder: () => void;
     onOpen: (folder: string, name: string) => void;
-    onNew: (folder: string) => void;
+    onNew: (folder: string, kind: NoteKind) => void;
     onSettings: () => void;
     files?: string[];
     openFile?: string | null;
@@ -28,6 +28,7 @@
 
   const tree = $derived(buildTree(files));
   let expanded = $state<Record<string, boolean>>({});
+  let newMenu = $state<string | null>(null);
   // Opening a file from elsewhere unfolds its folders.
   $effect(() => {
     if (!openFile) return;
@@ -42,14 +43,23 @@
     <section>
       <header>
         <span title={folder}>{folderLabel(folder)}</span>
-        <button class="add" title="New note" aria-label={`New note in ${folderLabel(folder)}`} onclick={() => onNew(folder)}>+</button>
+        <div class="add-wrap">
+          <button class="add" title={`Create in ${folderLabel(folder)}`} aria-label={`Create in ${folderLabel(folder)}`} aria-expanded={newMenu === folder} onclick={() => (newMenu = newMenu === folder ? null : folder)}>+</button>
+          {#if newMenu === folder}
+            <div class="new-menu">
+              <button onclick={() => { newMenu = null; onNew(folder, "note"); }}>Note</button>
+              <button onclick={() => { newMenu = null; onNew(folder, "code_review"); }}>Code review</button>
+            </div>
+          {/if}
+        </div>
       </header>
       <ul>
         {#each notesByFolder[folder] ?? [] as n (n.name)}
           <li>
             <button
+              class="note"
               class:active={current?.folder === folder && current?.name === n.name}
-              onclick={() => onOpen(folder, n.name)}>{n.name}</button>
+              onclick={() => onOpen(folder, n.name)}><span>{n.name}</span>{#if n.kind === "code_review"}<span class="kind">Review</span>{/if}</button>
           </li>
         {:else}
           <li class="muted empty">No notes yet</li>
@@ -72,12 +82,18 @@
   .top { height: 38px; }
   section { margin-bottom: 18px; }
   header { display: flex; justify-content: space-between; align-items: center; padding: 0 6px; font-size: 12px; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
+  .add-wrap { position: relative; }
   .add { width: 20px; height: 20px; border-radius: 4px; color: var(--ink-faint); font-size: 16px; line-height: 1; }
   .add:hover { background: var(--rule); color: var(--ink); }
+  .new-menu { position: absolute; z-index: 10; top: 22px; right: 0; width: 150px; padding: 4px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 14%, transparent); }
+  .new-menu button { display: block; width: 100%; padding: 7px 8px; border-radius: 5px; text-align: left; color: var(--ink-soft); font-size: 12px; }
+  .new-menu button:hover { background: var(--sidebar); color: var(--ink); }
   ul { list-style: none; margin: 4px 0 0; padding: 0; }
-  li button { width: 100%; text-align: left; padding: 5px 8px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  li button:hover { background: var(--rule); }
-  li button.active { background: var(--surface); box-shadow: 0 0 0 1px var(--rule); }
+  li .note { display: flex; width: 100%; align-items: center; gap: 6px; text-align: left; padding: 5px 8px; border-radius: 6px; white-space: nowrap; overflow: hidden; }
+  li .note > span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; }
+  li .note:hover { background: var(--rule); }
+  li .note.active { background: var(--surface); box-shadow: 0 0 0 1px var(--rule); }
+  .kind { flex: none; padding: 1px 5px; border-radius: 4px; background: var(--rule); color: var(--ink); font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
   .empty { padding: 5px 8px; font-size: 13px; }
   .files { border-top: 1px solid var(--rule); padding-top: 12px; }
   .open { display: block; margin-top: 4px; padding: 6px 8px; color: var(--ink-soft); }

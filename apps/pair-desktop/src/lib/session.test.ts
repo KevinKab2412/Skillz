@@ -12,7 +12,7 @@ function rig() {
   const note: Note = {
     name: "n",
     markdown: MD,
-    sidecar: { v: 2, threads: [], proposals: [], approvals: [], session: { id: "s", interrupted: null }, model: null, tell: "", stage: "build" },
+    sidecar: { v: 3, threads: [], proposals: [], approvals: [], session: { id: "s", interrupted: null }, model: null, tell: "", stage: "build", kind: "note", review: null },
   };
   let threads: Thread[] = [];
   const sent: string[] = [];

@@ -1,6 +1,33 @@
 import { invoke } from "@tauri-apps/api/core";
 
 export type Stage = "think" | "plan" | "build" | "review";
+export type NoteKind = "note" | "code_review";
+
+export interface ReviewSuggestion {
+  path: string;
+  line?: number | null;
+  severity?: string | null;
+  summary: string;
+  rationale?: string;
+  next_check?: string;
+}
+export interface ReviewSection {
+  id: string;
+  title: string;
+  summary: string;
+  focus: string;
+  files: string[];
+  suggestions: ReviewSuggestion[];
+}
+export interface ReviewGuide { sections: ReviewSection[] }
+export interface ReviewState {
+  base_branch: string | null;
+  head_branch: string | null;
+  base_commit?: string | null;
+  head_commit?: string | null;
+  reviewed_files: string[];
+  guide: ReviewGuide | null;
+}
 
 export interface TextQuote { exact: string; prefix: string; suffix: string }
 export interface Anchor { quote: TextQuote; pos: number }
@@ -41,9 +68,31 @@ export interface Sidecar {
   model: string | null;
   tell: string;
   stage: Stage;
+  kind: NoteKind;
+  review: ReviewState | null;
 }
 export interface Note { name: string; markdown: string; sidecar: Sidecar }
-export interface NoteSummary { name: string; modified_ms: number }
+export interface NoteSummary { name: string; modified_ms: number; kind: NoteKind }
+export interface ReviewBranchList { current: string | null; branches: string[] }
+export interface ReviewFile {
+  path: string;
+  status: string;
+  additions: number;
+  deletions: number;
+  patch: string;
+  binary: boolean;
+  truncated: boolean;
+}
+export interface ReviewDiff {
+  base_branch: string;
+  head_branch: string;
+  base_commit: string;
+  head_commit: string;
+  merge_base: string;
+  total_files: number;
+  truncated: boolean;
+  files: ReviewFile[];
+}
 export interface AppIndex { folders: string[]; recent: { folder: string; name: string }[] }
 
 export const api = {
@@ -51,7 +100,7 @@ export const api = {
   addFolder: (folder: string) => invoke<AppIndex>("add_folder", { folder }),
   removeFolder: (folder: string) => invoke<AppIndex>("remove_folder", { folder }),
   listNotes: (folder: string) => invoke<NoteSummary[]>("list_notes", { folder }),
-  createNote: (folder: string, name: string) => invoke<Note>("create_note", { folder, name }),
+  createNote: (folder: string, name: string, kind: NoteKind = "note") => invoke<Note>("create_note", { folder, name, kind }),
   openNote: (folder: string, name: string) => invoke<Note>("open_note", { folder, name }),
   saveNote: (folder: string, note: Note, expected?: string) => invoke<void>("save_note", { folder, note, expected: expected ?? null }),
   saveSidecar: (folder: string, name: string, sidecar: Sidecar) =>
@@ -60,6 +109,8 @@ export const api = {
   deleteNote: (folder: string, name: string) => invoke<void>("delete_note", { folder, name }),
   listFiles: (folder: string) => invoke<string[]>("list_files", { folder }),
   readFile: (folder: string, path: string) => invoke<FileText>("read_file", { folder, path }),
+  reviewBranches: (folder: string) => invoke<ReviewBranchList>("review_branches", { folder }),
+  reviewDiff: (folder: string, baseBranch: string, headBranch: string) => invoke<ReviewDiff>("review_diff", { folder, baseBranch, headBranch }),
 };
 
 export interface FileText { path: string; text: string; truncated: boolean; binary: boolean }

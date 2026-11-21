@@ -12,7 +12,7 @@
 //! - Anything that points into the note text does so with a text-quote [`Anchor`], never a bare
 //!   offset, so it survives edits made outside pair.
 //!
-//! Versions: 1 = threads, session, model, tell, stage. 2 = adds `proposals` and `approvals`.
+//! Versions: 1 = core note state, 2 = proposals and approvals, 3 = note kind and review state.
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -22,7 +22,65 @@ use std::path::{Path, PathBuf};
 pub const NOTES_DIR: &str = ".pair/notes";
 const EXCLUDE_LINE: &str = ".pair/";
 /// The sidecar version this build writes, and the newest it can read.
-pub const SIDECAR_VERSION: u32 = 2;
+pub const SIDECAR_VERSION: u32 = 3;
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum NoteKind {
+    #[default]
+    Note,
+    CodeReview,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct ReviewState {
+    #[serde(default)]
+    pub base_branch: Option<String>,
+    #[serde(default)]
+    pub head_branch: Option<String>,
+    #[serde(default)]
+    pub base_commit: Option<String>,
+    #[serde(default)]
+    pub head_commit: Option<String>,
+    #[serde(default)]
+    pub reviewed_files: Vec<String>,
+    #[serde(default)]
+    pub guide: Option<ReviewGuide>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct ReviewGuide {
+    #[serde(default)]
+    pub sections: Vec<ReviewSection>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct ReviewSection {
+    pub id: String,
+    pub title: String,
+    #[serde(default)]
+    pub summary: String,
+    #[serde(default)]
+    pub focus: String,
+    #[serde(default)]
+    pub files: Vec<String>,
+    #[serde(default)]
+    pub suggestions: Vec<ReviewSuggestion>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct ReviewSuggestion {
+    pub path: String,
+    #[serde(default)]
+    pub line: Option<u32>,
+    #[serde(default)]
+    pub severity: Option<String>,
+    pub summary: String,
+    #[serde(default)]
+    pub rationale: String,
+    #[serde(default)]
+    pub next_check: String,
+}
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "lowercase")]
@@ -157,6 +215,10 @@ pub struct Sidecar {
     pub proposals: Vec<Proposal>,
     #[serde(default)]
     pub approvals: Vec<Approval>,
+    #[serde(default)]
+    pub kind: NoteKind,
+    #[serde(default)]
+    pub review: Option<ReviewState>,
 }
 
 impl Default for Sidecar {
@@ -166,6 +228,8 @@ impl Default for Sidecar {
             threads: vec![],
             proposals: vec![],
             approvals: vec![],
+            kind: NoteKind::Note,
+            review: None,
             session: Session::default(),
             model: None,
             tell: String::new(),
@@ -185,6 +249,8 @@ pub struct Note {
 pub struct NoteSummary {
     pub name: String,
     pub modified_ms: u64,
+    #[serde(default)]
+    pub kind: NoteKind,
 }
 
 pub fn notes_dir(folder: &Path) -> PathBuf {
@@ -238,13 +304,22 @@ pub fn list(folder: &Path) -> io::Result<Vec<NoteSummary>> {
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_millis() as u64)
             .unwrap_or(0);
-        out.push(NoteSummary { name: name.to_string(), modified_ms });
+        let kind = fs::read_to_string(sidecar_path(folder, name))
+            .ok()
+            .and_then(|json| serde_json::from_str::<Sidecar>(&json).ok())
+            .map(|sidecar| sidecar.kind)
+            .unwrap_or_default();
+        out.push(NoteSummary { name: name.to_string(), modified_ms, kind });
     }
     out.sort_by(|a, b| b.modified_ms.cmp(&a.modified_ms).then(a.name.cmp(&b.name)));
     Ok(out)
 }
 
 pub fn create(folder: &Path, name: &str) -> io::Result<Note> {
+    create_kind(folder, name, NoteKind::Note)
+}
+
+pub fn create_kind(folder: &Path, name: &str, kind: NoteKind) -> io::Result<Note> {
     validate_name(name)?;
     fs::create_dir_all(notes_dir(folder))?;
     ensure_git_exclude(folder)?;
@@ -252,7 +327,13 @@ pub fn create(folder: &Path, name: &str) -> io::Result<Note> {
     if md.exists() {
         return Err(io::Error::new(io::ErrorKind::AlreadyExists, format!("note exists: {name}")));
     }
-    let note = Note { name: name.to_string(), markdown: template(name), sidecar: Sidecar::default() };
+    let mut sidecar = Sidecar::default();
+    sidecar.kind = kind.clone();
+    if kind == NoteKind::CodeReview {
+        sidecar.stage = Stage::Review;
+        sidecar.review = Some(ReviewState::default());
+    }
+    let note = Note { name: name.to_string(), markdown: template(name), sidecar };
     save(folder, &note)?;
     Ok(note)
 }
@@ -422,7 +503,7 @@ mod tests {
         save(d.path(), &note).unwrap();
         assert_eq!(read(d.path(), "n").unwrap(), note);
         let raw = fs::read_to_string(sidecar_path(d.path(), "n")).unwrap();
-        assert!(raw.contains("\"v\": 2"));
+        assert!(raw.contains("\"v\": 3"));
         assert!(raw.contains("\"status\": \"expired\""));
     }
 
@@ -448,17 +529,28 @@ mod tests {
         assert!(note.sidecar.proposals.is_empty() && note.sidecar.approvals.is_empty());
         save(d.path(), &note).unwrap();
         let raw = fs::read_to_string(sidecar_path(d.path(), "old")).unwrap();
-        assert!(raw.contains("\"v\": 2") && raw.contains("\"proposals\": []"));
+        assert!(raw.contains("\"v\": 3") && raw.contains("\"proposals\": []"));
     }
 
     #[test]
     fn newer_sidecar_is_refused() {
         let d = tmp();
         create(d.path(), "new").unwrap();
-        fs::write(sidecar_path(d.path(), "new"), r#"{"v": 3, "threads": [], "somethingNew": [1]}"#).unwrap();
+        fs::write(sidecar_path(d.path(), "new"), r#"{"v": 4, "threads": [], "somethingNew": [1]}"#).unwrap();
         let err = read(d.path(), "new").unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         assert!(err.to_string().contains("newer pair"), "{err}");
+    }
+
+    #[test]
+    fn code_review_notes_start_in_review_and_keep_their_kind() {
+        let d = tmp();
+        let note = create_kind(d.path(), "review-one", NoteKind::CodeReview).unwrap();
+        assert_eq!(note.sidecar.kind, NoteKind::CodeReview);
+        assert_eq!(note.sidecar.stage, Stage::Review);
+        assert_eq!(note.sidecar.review, Some(ReviewState::default()));
+        assert_eq!(list(d.path()).unwrap()[0].kind, NoteKind::CodeReview);
+        assert_eq!(read(d.path(), "review-one").unwrap(), note);
     }
 
     #[test]
