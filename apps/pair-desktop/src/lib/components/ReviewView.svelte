@@ -82,9 +82,16 @@
     try {
       const result = await api.reviewBranches(folder);
       branches = result.branches;
-      base = reviewState().base_branch ?? branches.find((branch) => /(^|\/)main$|(^|\/)master$/.test(branch)) ?? branches[0] ?? "";
-      head = reviewState().head_branch ?? result.current ?? branches.find((branch) => branch !== base) ?? "";
-      if (reviewState().base_branch && reviewState().head_branch) await loadDiff();
+      const saved = reviewState();
+      base = saved.base_branch && branches.includes(saved.base_branch)
+        ? saved.base_branch
+        : branches.find((branch) => /(^|\/)main$|(^|\/)master$/.test(branch)) ?? branches[0] ?? "";
+      head = saved.head_branch && branches.includes(saved.head_branch) && saved.head_branch !== base
+        ? saved.head_branch
+        : result.current && result.current !== base
+          ? result.current
+          : branches.find((branch) => branch !== base) ?? "";
+      if (base && head) await loadDiff();
     } catch (e) {
       error = String(e);
     } finally {
@@ -127,6 +134,7 @@
     } finally {
       loadingDiff = false;
     }
+    if (diff?.files.length && !reviewState().guide) void draftGuide();
   }
 
   async function toggleReviewed(path: string) {
@@ -377,7 +385,7 @@
       <section class="intro">
         <p class="eyebrow">A review you lead</p>
         <h1>Follow the change, one story at a time.</h1>
-        <p class="lede">Choose a branch and its base. Pair can suggest a route through the behavior and flag places to look; you read each diff and decide what holds.</p>
+        <p class="lede">Pair organizes the diff into a behavior-first review sequence. Choose a different base or branch to change the comparison; you read each diff and decide what holds.</p>
         <div class="target">
           <label>Base <select aria-label="Base branch" bind:value={base} disabled={loadingBranches || guideBusy || chatBusy}>
             {#each branches as branch}<option value={branch}>{branch}</option>{/each}
@@ -396,20 +404,22 @@
 
       {#if loadingBranches}
         <div class="empty">Reading local Git branches…</div>
+      {:else if loadingDiff && !diff}
+        <div class="empty">Loading the default branch comparison…</div>
       {:else if !diff}
         <div class="empty">Load a branch comparison to start your review.</div>
       {:else if !diff.files.length}
         <div class="empty">These branches have no committed changes to review.</div>
       {:else}
         <div class="guide-actions">
-          <div><strong>Review guide</strong><p>Pair groups related changes into a behavioral walkthrough. Suggestions stay attached to the section they discuss.</p></div>
-          <button class="btn" onclick={draftGuide} disabled={guideBusy || chatBusy || !diff}>{guideBusy ? "Pair is reading the diff…" : reviewState().guide ? "Refresh guide with Pair" : "Draft guide with Pair"}</button>
+          <div><strong>Review guide</strong><p>Pair groups related changes into behavior sections and attaches suggestions to the files they discuss.</p></div>
+          <button class="btn" onclick={draftGuide} disabled={guideBusy || chatBusy || !diff}>{guideBusy ? "Pair is organizing sections…" : guideError ? "Retry guide" : reviewState().guide ? "Refresh guide" : "Generate guide"}</button>
         </div>
-        {#if !reviewState().guide?.sections?.length}
-          <p class="fallback-note">All changed files are in one starter section until Pair drafts a guide that organizes them by behavior. A generated guide may still use one section when the changes form one coherent story.</p>
+        {#if !reviewState().guide?.sections?.length && !guideBusy}
+          <p class="fallback-note">{guideError ? "Pair could not prepare the section guide. The changed files are still available below; retry when ready." : "Pair is preparing the behavior-first section guide."}</p>
         {/if}
         {#if guideError}<div class="pair-error" role="status">{guideError}{#if guideOutput}<pre>{guideOutput}</pre>{/if}</div>{/if}
-        {#if guideBusy}<div class="pair-working"><span class="dot"></span>Pair is reading the supplied diff. You can keep reviewing while it works.</div>{/if}
+        {#if guideBusy}<div class="pair-working"><span class="dot"></span>Pair is grouping the supplied diff into a review sequence. You can keep reviewing while it works.</div>{/if}
 
         {#each sections() as section, sectionIndex (section.id)}
           {@const files = shownFiles(section)}
