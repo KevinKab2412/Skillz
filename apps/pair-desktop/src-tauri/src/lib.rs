@@ -128,8 +128,8 @@ fn save_sidecar(folder: String, name: String, sidecar: Sidecar) -> Result<(), St
 }
 
 #[tauri::command]
-fn review_branches(folder: String) -> Result<review::BranchList, String> {
-    review::branches(&folder_path(&folder)?)
+fn review_branches(folder: String, include_pr_base: bool) -> Result<review::BranchList, String> {
+    review::branches(&folder_path(&folder)?, include_pr_base)
 }
 
 #[tauri::command]

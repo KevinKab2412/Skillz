@@ -55,6 +55,16 @@
     return state;
   }
   const reviewed = (path: string) => reviewState().reviewed_files.includes(path);
+  const branchForPrBase = (prBase: { branch: string; remote: string | null } | null, available: string[]) => {
+    if (!prBase) return "";
+    if (prBase.remote) {
+      const remoteBranch = `${prBase.remote}/${prBase.branch}`;
+      return available.includes(remoteBranch) ? remoteBranch : "";
+    }
+    if (available.includes(prBase.branch)) return prBase.branch;
+    const remotes = available.filter((branch) => branch.endsWith(`/${prBase.branch}`));
+    return remotes.length === 1 ? remotes[0] : "";
+  };
   const sections = (): ReviewSection[] => {
     if (!diff) return [];
     const guide = reviewState().guide?.sections;
@@ -82,17 +92,30 @@
     loadingBranches = true;
     error = null;
     try {
-      const result = await api.reviewBranches(reviewRepoPath());
+      const result = await api.reviewBranches(reviewRepoPath(), !reviewState().base_branch);
       branches = result.branches;
       const saved = reviewState();
-      base = saved.base_branch && branches.includes(saved.base_branch)
-        ? saved.base_branch
-        : branches.find((branch) => /(^|\/)main$|(^|\/)master$/.test(branch)) ?? branches[0] ?? "";
+      const savedBase = saved.base_branch && branches.includes(saved.base_branch) ? saved.base_branch : "";
+      const prBase = branchForPrBase(result.pr_base, branches);
+      if (savedBase) {
+        base = savedBase;
+      } else if (result.pr_base) {
+        base = prBase;
+        if (!prBase) error = `PR base “${result.pr_base.branch}” is not available unambiguously in this worktree. Fetch it or choose a base branch manually.`;
+      } else {
+        base = branches.find((branch) => /(^|\/)main$|(^|\/)master$/.test(branch)) ?? branches[0] ?? "";
+      }
       head = saved.head_branch && branches.includes(saved.head_branch) && saved.head_branch !== base
         ? saved.head_branch
         : result.current && result.current !== base
           ? result.current
           : branches.find((branch) => branch !== base) ?? "";
+      if (!savedBase && base) {
+        const state = mutableReviewState();
+        state.base_branch = base;
+        state.head_branch = head || null;
+        await saveReview();
+      }
       if (base && head) await loadDiff();
     } catch (e) {
       const message = String(e);
@@ -430,17 +453,19 @@
       <section class="intro">
         <p class="eyebrow">A review you lead</p>
         <h1>Follow the change, one story at a time.</h1>
-        <p class="lede">Pair organizes the diff into a behavior-first review sequence. Choose a different base or branch to change the comparison; you read each diff and decide what holds.</p>
+        <p class="lede">Pair organizes the diff into a behavior-first review sequence. When available, it starts from and saves this worktree’s PR base. You can change the base or branch here; you read each diff and decide what holds.</p>
         <div class="repo-picker">
           <div><span>Repository</span><code title={reviewRepoPath()}>{reviewRepoPath()}</code></div>
           <button class="btn" onclick={chooseRepository} disabled={loadingBranches || loadingDiff || guideBusy || chatBusy}>Choose repository…</button>
         </div>
         <div class="target">
           <label>Base <select aria-label="Base branch" bind:value={base} disabled={loadingBranches || guideBusy || chatBusy}>
+            <option value="">Choose a base…</option>
             {#each branches as branch}<option value={branch}>{branch}</option>{/each}
           </select></label>
           <span class="arrow">←</span>
           <label>Review <select aria-label="Branch to review" bind:value={head} disabled={loadingBranches || guideBusy || chatBusy}>
+            <option value="">Choose a branch…</option>
             {#each branches as branch}<option value={branch}>{branch}</option>{/each}
           </select></label>
           <button class="btn primary" onclick={loadDiff} disabled={loadingBranches || loadingDiff || guideBusy || chatBusy || !base || !head}>{loadingDiff ? "Loading…" : diff ? "Refresh diff" : "Load diff"}</button>

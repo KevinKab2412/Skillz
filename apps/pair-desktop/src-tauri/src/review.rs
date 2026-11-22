@@ -11,9 +11,16 @@ const MAX_FILE_PATCH_BYTES: usize = 96 * 1024;
 const MAX_TOTAL_PATCH_BYTES: usize = 2 * 1024 * 1024;
 
 #[derive(Debug, Serialize, PartialEq)]
+pub struct PullRequestBase {
+    pub branch: String,
+    pub remote: Option<String>,
+}
+
+#[derive(Debug, Serialize, PartialEq)]
 pub struct BranchList {
     pub current: Option<String>,
     pub branches: Vec<String>,
+    pub pr_base: Option<PullRequestBase>,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -96,7 +103,7 @@ fn git_bounded(root: &Path, args: &[&str], limit: usize) -> Result<(String, bool
     Ok((String::from_utf8_lossy(&bytes).into_owned(), truncated))
 }
 
-pub fn branches(root: &Path) -> Result<BranchList, String> {
+pub fn branches(root: &Path, include_pr_base: bool) -> Result<BranchList, String> {
     let output = git(
         root,
         &[
@@ -122,7 +129,52 @@ pub fn branches(root: &Path) -> Result<BranchList, String> {
         .filter(|o| o.status.success())
         .map(text)
         .filter(|s| !s.is_empty());
-    Ok(BranchList { current, branches })
+    let pr_base = if include_pr_base { pull_request_base(root) } else { None };
+    Ok(BranchList { current, branches, pr_base })
+}
+
+fn pull_request_base(root: &Path) -> Option<PullRequestBase> {
+    let output = Command::new("gh")
+        .current_dir(root)
+        .args([
+            "pr",
+            "view",
+            "--json",
+            "baseRefName,baseRepository",
+            "--jq",
+            "[.baseRefName, .baseRepository.nameWithOwner] | @tsv",
+        ])
+        .output()
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    let output = String::from_utf8_lossy(&output.stdout);
+    let (branch, repository) = output.trim().split_once('\t')?;
+    if branch.is_empty() || repository.is_empty() {
+        return None;
+    }
+
+    let remotes = git(root, &["remote", "-v"])
+        .ok()
+        .map(|output| {
+            String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .filter_map(|line| {
+                    let (name, target) = line.split_once('\t')?;
+                    let url = target.split_whitespace().next()?;
+                    let url = url.strip_suffix(".git").unwrap_or(url);
+                    let same_repository = url == repository
+                        || url.ends_with(&format!("/{repository}"))
+                        || url.ends_with(&format!(":{repository}"));
+                    same_repository.then(|| name.to_string())
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    let remote = remotes.first().cloned().filter(|_| remotes.iter().all(|name| name == &remotes[0]));
+
+    Some(PullRequestBase { branch: branch.to_string(), remote })
 }
 
 fn resolve_commit(root: &Path, name: &str) -> Result<String, String> {
@@ -331,7 +383,7 @@ mod tests {
     #[test]
     fn lists_local_branches_and_reads_a_three_dot_review_diff() {
         let dir = repo();
-        let found = branches(dir.path()).unwrap();
+        let found = branches(dir.path(), false).unwrap();
         assert_eq!(found.current.as_deref(), Some("feature/review"));
         assert!(found.branches.contains(&"main".to_string()));
 

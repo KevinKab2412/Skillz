@@ -197,7 +197,7 @@ export function installMock() {
         case "list_files":
           return Object.keys(FILES).sort();
         case "review_branches":
-          return { current: "feature/checkout-loop", branches: ["main", "feature/checkout-loop"] };
+          return { current: "feature/checkout-loop", branches: ["main", "feature/checkout-loop"], pr_base: a.includePrBase ? { branch: "main", remote: null } : null };
         case "review_diff":
           return {
             base_branch: a.baseBranch,

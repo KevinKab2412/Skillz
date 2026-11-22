@@ -87,7 +87,8 @@ export interface Sidecar {
 }
 export interface Note { name: string; markdown: string; sidecar: Sidecar }
 export interface NoteSummary { name: string; modified_ms: number; kind: NoteKind }
-export interface ReviewBranchList { current: string | null; branches: string[] }
+export interface PullRequestBase { branch: string; remote: string | null }
+export interface ReviewBranchList { current: string | null; branches: string[]; pr_base: PullRequestBase | null }
 export interface ReviewFile {
   path: string;
   status: string;
@@ -123,7 +124,7 @@ export const api = {
   deleteNote: (folder: string, name: string) => invoke<void>("delete_note", { folder, name }),
   listFiles: (folder: string) => invoke<string[]>("list_files", { folder }),
   readFile: (folder: string, path: string) => invoke<FileText>("read_file", { folder, path }),
-  reviewBranches: (folder: string) => invoke<ReviewBranchList>("review_branches", { folder }),
+  reviewBranches: (folder: string, includePrBase: boolean) => invoke<ReviewBranchList>("review_branches", { folder, includePrBase }),
   reviewDiff: (folder: string, baseBranch: string, headBranch: string) => invoke<ReviewDiff>("review_diff", { folder, baseBranch, headBranch }),
 };
 
