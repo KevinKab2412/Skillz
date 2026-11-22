@@ -136,22 +136,16 @@ pub fn branches(root: &Path, include_pr_base: bool) -> Result<BranchList, String
 fn pull_request_base(root: &Path) -> Option<PullRequestBase> {
     let output = Command::new("gh")
         .current_dir(root)
-        .args([
-            "pr",
-            "view",
-            "--json",
-            "baseRefName,baseRepository",
-            "--jq",
-            "[.baseRefName, .baseRepository.nameWithOwner] | @tsv",
-        ])
+        .args(["pr", "view", "--json", "baseRefName,url"])
         .output()
         .ok()?;
     if !output.status.success() {
         return None;
     }
-    let output = String::from_utf8_lossy(&output.stdout);
-    let (branch, repository) = output.trim().split_once('\t')?;
-    if branch.is_empty() || repository.is_empty() {
+    let review: serde_json::Value = serde_json::from_slice(&output.stdout).ok()?;
+    let branch = review.get("baseRefName")?.as_str()?.trim();
+    let repository = pull_request_repository(review.get("url")?.as_str()?)?.to_ascii_lowercase();
+    if branch.is_empty() {
         return None;
     }
 
@@ -163,7 +157,7 @@ fn pull_request_base(root: &Path) -> Option<PullRequestBase> {
                 .filter_map(|line| {
                     let (name, target) = line.split_once('\t')?;
                     let url = target.split_whitespace().next()?;
-                    let url = url.strip_suffix(".git").unwrap_or(url);
+                    let url = url.strip_suffix(".git").unwrap_or(url).to_ascii_lowercase();
                     let same_repository = url == repository
                         || url.ends_with(&format!("/{repository}"))
                         || url.ends_with(&format!(":{repository}"));
@@ -175,6 +169,15 @@ fn pull_request_base(root: &Path) -> Option<PullRequestBase> {
     let remote = remotes.first().cloned().filter(|_| remotes.iter().all(|name| name == &remotes[0]));
 
     Some(PullRequestBase { branch: branch.to_string(), remote })
+}
+
+fn pull_request_repository(url: &str) -> Option<String> {
+    let (_, path) = url.split_once("://")?;
+    let (_, path) = path.split_once('/')?;
+    let mut parts = path.split('/');
+    let owner = parts.next()?;
+    let repo = parts.next()?;
+    (parts.next()? == "pull").then(|| format!("{owner}/{repo}"))
 }
 
 fn resolve_commit(root: &Path, name: &str) -> Result<String, String> {
