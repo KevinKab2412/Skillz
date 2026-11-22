@@ -46,6 +46,36 @@ pub struct ReviewState {
     pub reviewed_files: Vec<String>,
     #[serde(default)]
     pub guide: Option<ReviewGuide>,
+    #[serde(default)]
+    pub chat_context: Option<ReviewChatContext>,
+    #[serde(default)]
+    pub chat: Vec<ReviewChatMessage>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct ReviewChatContext {
+    pub path: String,
+    #[serde(default)]
+    pub location: String,
+    #[serde(default)]
+    pub selection: String,
+    #[serde(default)]
+    pub excerpt: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum ReviewChatRole {
+    #[default]
+    User,
+    Assistant,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
+pub struct ReviewChatMessage {
+    pub id: String,
+    pub role: ReviewChatRole,
+    pub text: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -481,6 +511,28 @@ mod tests {
         note.sidecar.tell = "be terse".into();
         save(d.path(), &note).unwrap();
         assert_eq!(read(d.path(), "n").unwrap(), note);
+    }
+
+    #[test]
+    fn sidecar_round_trips_review_chat_context() {
+        let d = tmp();
+        let mut note = create(d.path(), "review").unwrap();
+        note.sidecar.review = Some(ReviewState {
+            chat_context: Some(ReviewChatContext {
+                path: "src/lib.rs".into(),
+                location: "old 12, new 18".into(),
+                selection: "return next_value;".into(),
+                excerpt: "@@ -12 +18 @@\n-return old_value;\n+return next_value;".into(),
+            }),
+            chat: vec![
+                ReviewChatMessage { id: "q1".into(), role: ReviewChatRole::User, text: "Why did this change?".into() },
+                ReviewChatMessage { id: "a1".into(), role: ReviewChatRole::Assistant, text: "The new value comes from the updated policy.".into() },
+            ],
+            ..ReviewState::default()
+        });
+        save(d.path(), &note).unwrap();
+
+        assert_eq!(read(d.path(), "review").unwrap(), note);
     }
 
     #[test]

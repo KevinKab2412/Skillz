@@ -20,6 +20,17 @@ export interface ReviewSection {
   suggestions: ReviewSuggestion[];
 }
 export interface ReviewGuide { sections: ReviewSection[] }
+export interface ReviewChatContext {
+  path: string;
+  location: string;
+  selection: string;
+  excerpt: string;
+}
+export interface ReviewChatMessage {
+  id: string;
+  role: "user" | "assistant";
+  text: string;
+}
 export interface ReviewState {
   base_branch: string | null;
   head_branch: string | null;
@@ -27,6 +38,8 @@ export interface ReviewState {
   head_commit?: string | null;
   reviewed_files: string[];
   guide: ReviewGuide | null;
+  chat_context: ReviewChatContext | null;
+  chat: ReviewChatMessage[];
 }
 
 export interface TextQuote { exact: string; prefix: string; suffix: string }

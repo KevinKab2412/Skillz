@@ -162,7 +162,7 @@ export function installMock() {
               tell: "",
               stage: a.kind === "code_review" ? "review" : "think",
               kind: a.kind ?? "note",
-              review: a.kind === "code_review" ? { base_branch: null, head_branch: null, reviewed_files: [], guide: null } : null,
+              review: a.kind === "code_review" ? { base_branch: null, head_branch: null, reviewed_files: [], guide: null, chat_context: null, chat: [] } : null,
             },
           });
           activeKey = `${FOLDER}::${a.name}`;

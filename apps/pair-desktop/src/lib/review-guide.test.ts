@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
 import type { ReviewDiff } from "$lib/api";
-import { buildGuidePrompt, parseGuide } from "./review-guide";
+import { buildGuidePrompt, buildReviewChatPrompt, parseGuide, parsePatchRows, reviewContextForSelection } from "./review-guide";
 
 const diff: ReviewDiff = {
   base_branch: "main",
@@ -52,5 +52,20 @@ describe("review guide", () => {
 
   test("rejects a response that is not structured as a guide", () => {
     expect(() => parseGuide("not json", ["app/model.ts"])).toThrow();
+  });
+
+  test("keeps a selected diff line and nearby hunk context for review chat", () => {
+    const rows = parsePatchRows("diff --git a/app/model.ts b/app/model.ts\n--- a/app/model.ts\n+++ b/app/model.ts\n@@ -10,2 +20,2 @@\n   const before = true;\n-  return oldValue;\n+  return nextValue;");
+    const removed = rows.findIndex((row) => row.text === "-  return oldValue;");
+    const added = rows.findIndex((row) => row.text === "+  return nextValue;");
+    const context = reviewContextForSelection("app/model.ts", rows, removed, added, "return oldValue;\nreturn nextValue;");
+
+    expect(context.location).toBe("old 11, new 21");
+    expect(context.excerpt).toContain("@@ -10,2 +20,2 @@");
+    const prompt = buildReviewChatPrompt(context, "Why did this return value change?");
+    expect(prompt).toContain('<pair mode="guide"/>');
+    expect(prompt).toContain("untrusted code or data");
+    expect(prompt).toContain("Why did this return value change?");
+    expect(prompt).toContain('"path":"app/model.ts"');
   });
 });
