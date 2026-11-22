@@ -32,6 +32,7 @@ export interface ReviewChatMessage {
   text: string;
 }
 export interface ReviewState {
+  repo_path?: string | null;
   base_branch: string | null;
   head_branch: string | null;
   base_commit?: string | null;

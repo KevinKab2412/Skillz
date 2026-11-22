@@ -12,7 +12,8 @@
 //! - Anything that points into the note text does so with a text-quote [`Anchor`], never a bare
 //!   offset, so it survives edits made outside pair.
 //!
-//! Versions: 1 = core note state, 2 = proposals and approvals, 3 = note kind and review state.
+//! Versions: 1 = core note state, 2 = proposals and approvals, 3 = note kind and review state,
+//! 4 = selected repository path for code reviews.
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -22,7 +23,7 @@ use std::path::{Path, PathBuf};
 pub const NOTES_DIR: &str = ".pair/notes";
 const EXCLUDE_LINE: &str = ".pair/";
 /// The sidecar version this build writes, and the newest it can read.
-pub const SIDECAR_VERSION: u32 = 3;
+pub const SIDECAR_VERSION: u32 = 4;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -34,6 +35,8 @@ pub enum NoteKind {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ReviewState {
+    #[serde(default)]
+    pub repo_path: Option<String>,
     #[serde(default)]
     pub base_branch: Option<String>,
     #[serde(default)]

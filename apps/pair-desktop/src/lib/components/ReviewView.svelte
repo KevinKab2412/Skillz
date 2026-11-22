@@ -1,6 +1,7 @@
 <script lang="ts">
   import { onDestroy, onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
+  import { open } from "@tauri-apps/plugin-dialog";
   import { agent, api, noteKey, type AgentEvent, type Note, type PiStatus, type ReviewChatContext, type ReviewDiff, type ReviewFile, type ReviewSection, type ReviewState, type Settings } from "$lib/api";
   import { buildGuidePrompt, buildReviewChatPrompt, parseGuide, parsePatchRows, reviewContextForSelection, type PatchRow } from "$lib/review-guide";
 
@@ -43,8 +44,9 @@
   let activeChatContext: ReviewChatContext | null = null;
 
   const key = $derived(noteKey(folder, note.name));
-  const emptyReview = (): ReviewState => ({ base_branch: null, head_branch: null, base_commit: null, head_commit: null, reviewed_files: [], guide: null, chat_context: null, chat: [] });
+  const emptyReview = (): ReviewState => ({ repo_path: null, base_branch: null, head_branch: null, base_commit: null, head_commit: null, reviewed_files: [], guide: null, chat_context: null, chat: [] });
   const reviewState = (): ReviewState => note.sidecar.review ?? emptyReview();
+  const reviewRepoPath = () => reviewState().repo_path?.trim() || folder;
   function mutableReviewState(): ReviewState {
     if (!note.sidecar.review) note.sidecar.review = emptyReview();
     const state = note.sidecar.review;
@@ -80,7 +82,7 @@
     loadingBranches = true;
     error = null;
     try {
-      const result = await api.reviewBranches(folder);
+      const result = await api.reviewBranches(reviewRepoPath());
       branches = result.branches;
       const saved = reviewState();
       base = saved.base_branch && branches.includes(saved.base_branch)
@@ -93,7 +95,10 @@
           : branches.find((branch) => branch !== base) ?? "";
       if (base && head) await loadDiff();
     } catch (e) {
-      error = String(e);
+      const message = String(e);
+      error = message.includes("not a git repository")
+        ? "Choose a Git repository for this review. The note can stay in a workspace folder."
+        : message;
     } finally {
       loadingBranches = false;
     }
@@ -108,7 +113,7 @@
     error = null;
     guideError = null;
     try {
-      const next = await api.reviewDiff(folder, base, head);
+      const next = await api.reviewDiff(reviewRepoPath(), base, head);
       const state = mutableReviewState();
       const sameRevision = state.base_commit === next.base_commit && state.head_commit === next.head_commit;
       if (!sameRevision) {
@@ -135,6 +140,43 @@
       loadingDiff = false;
     }
     if (diff?.files.length && !reviewState().guide) void draftGuide();
+  }
+
+  async function chooseRepository() {
+    const selected = await open({
+      directory: true,
+      multiple: false,
+      title: "Choose the repository to review",
+    });
+    if (typeof selected !== "string") return;
+
+    const state = mutableReviewState();
+    if (state.repo_path !== selected) {
+      state.repo_path = selected;
+      state.base_branch = null;
+      state.head_branch = null;
+      state.base_commit = null;
+      state.head_commit = null;
+      state.reviewed_files = [];
+      state.guide = null;
+      state.chat_context = null;
+      state.chat = [];
+      diff = null;
+      branches = [];
+      base = "";
+      head = "";
+      expanded = {};
+      guideOutput = "";
+      guideError = null;
+      chatOutput = "";
+      chatError = null;
+      chatDraft = "";
+      chatOpen = false;
+      activeChatContext = null;
+      selectionOffer = null;
+    }
+    await saveReview();
+    await loadBranches();
   }
 
   async function toggleReviewed(path: string) {
@@ -364,7 +406,7 @@
 <div class="review-view">
   <header class="bar" data-tauri-drag-region>
     <span class="brand"><span class="mark">↗</span> Code review</span>
-    <span class="repo" title={folder}>{folder.split("/").filter(Boolean).at(-1) ?? folder}</span>
+    <span class="repo" title={reviewRepoPath()}>{reviewRepoPath().split("/").filter(Boolean).at(-1) ?? reviewRepoPath()}</span>
     {#if diff}<span class="summary">{diff.total_files} files · <b>+{diff.files.reduce((n, file) => n + file.additions, 0)}</b> <i>−{diff.files.reduce((n, file) => n + file.deletions, 0)}</i></span>{/if}
     <div class="bar-right">
       {#if diff}<span class="progress">{reviewedCount()} / {diff.files.length} reviewed{#if diff.files.length < diff.total_files} · {diff.total_files} total{/if}</span>{/if}
@@ -386,6 +428,10 @@
         <p class="eyebrow">A review you lead</p>
         <h1>Follow the change, one story at a time.</h1>
         <p class="lede">Pair organizes the diff into a behavior-first review sequence. Choose a different base or branch to change the comparison; you read each diff and decide what holds.</p>
+        <div class="repo-picker">
+          <div><span>Repository</span><code title={reviewRepoPath()}>{reviewRepoPath()}</code></div>
+          <button class="btn" onclick={chooseRepository} disabled={loadingBranches || loadingDiff || guideBusy || chatBusy}>Choose repository…</button>
+        </div>
         <div class="target">
           <label>Base <select aria-label="Base branch" bind:value={base} disabled={loadingBranches || guideBusy || chatBusy}>
             {#each branches as branch}<option value={branch}>{branch}</option>{/each}
@@ -556,7 +602,12 @@
   .eyebrow, .section-number { color: var(--ink-faint); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
   h1 { margin: 6px 0 8px; font-family: var(--serif); font-size: clamp(25px, 3vw, 34px); font-weight: 500; letter-spacing: -.025em; }
   .lede { max-width: 710px; margin: 0; color: var(--ink-soft); line-height: 1.55; font-size: 14px; }
-  .target { display: flex; align-items: end; gap: 10px; margin-top: 22px; }
+  .repo-picker { display: flex; align-items: center; justify-content: space-between; gap: 14px; margin-top: 20px; padding: 10px 12px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); }
+  .repo-picker > div { display: grid; min-width: 0; gap: 4px; }
+  .repo-picker > div > span { color: var(--ink-faint); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
+  .repo-picker code { overflow: hidden; color: var(--ink-soft); font-family: var(--mono); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+  .repo-picker .btn { flex: none; }
+  .target { display: flex; align-items: end; gap: 10px; margin-top: 16px; }
   .target label { display: grid; gap: 5px; color: var(--ink-soft); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
   select { min-width: 180px; max-width: 320px; padding: 8px 28px 8px 10px; border: 1px solid var(--rule); border-radius: 7px; background: var(--surface); color: var(--ink); font-size: 13px; text-transform: none; letter-spacing: 0; }
   .arrow { padding-bottom: 7px; color: var(--ink-soft); }
@@ -662,6 +713,7 @@
     .bar-right { gap: 8px; }
     .progress { display: none; }
     .chat-panel { top: 48px; right: 8px; bottom: 8px; width: calc(100% - 16px); }
+    .repo-picker { align-items: stretch; flex-direction: column; }
     .target { align-items: stretch; flex-wrap: wrap; }
     .target label { flex: 1; min-width: 130px; }
     select { min-width: 0; width: 100%; }
