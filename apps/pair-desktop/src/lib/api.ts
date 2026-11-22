@@ -147,8 +147,8 @@ export const noteKey = (folder: string, name: string) => `${folder}::${name}`;
 export const agent = {
   status: () => invoke<PiStatus>("pi_status"),
   models: () => invoke<string[]>("pi_models"),
-  ask: (folder: string, name: string, sessionId: string, model: string | null, message: string) =>
-    invoke<"started" | "queued">("agent_ask", { folder, name, sessionId, model, message }),
+  ask: (folder: string, name: string, sessionId: string, model: string | null, message: string, workingDirectory?: string) =>
+    invoke<"started" | "queued">("agent_ask", { folder, name, sessionId, model, message, workingDirectory: workingDirectory ?? null }),
   stop: (folder: string, name: string) => invoke<void>("agent_stop", { folder, name }),
   send: (folder: string, name: string, record: unknown) => invoke<void>("agent_send", { folder, name, record }),
   close: (folder: string, name: string) => invoke<void>("agent_close", { folder, name }),

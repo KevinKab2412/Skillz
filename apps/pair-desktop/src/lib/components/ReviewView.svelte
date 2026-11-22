@@ -152,6 +152,7 @@
 
     const state = mutableReviewState();
     if (state.repo_path !== selected) {
+      await agent.close(folder, note.name).catch(() => {});
       state.repo_path = selected;
       state.base_branch = null;
       state.head_branch = null;
@@ -161,6 +162,8 @@
       state.guide = null;
       state.chat_context = null;
       state.chat = [];
+      note.sidecar.session.id = null;
+      note.sidecar.session.interrupted = null;
       diff = null;
       branches = [];
       base = "";
@@ -285,7 +288,7 @@
     await saveReview();
     scrollChatToEnd();
     try {
-      await agent.ask(folder, note.name, sessionId, note.sidecar.model ?? settings.default_model, buildReviewChatPrompt(activeChatContext, question));
+      await agent.ask(folder, note.name, sessionId, note.sidecar.model ?? settings.default_model, buildReviewChatPrompt(activeChatContext, question), reviewRepoPath());
     } catch (e) {
       activeRequest = null;
       chatBusy = false;
@@ -307,7 +310,7 @@
     note.sidecar.session.id = sessionId;
     await saveReview();
     try {
-      await agent.ask(folder, note.name, sessionId, note.sidecar.model ?? settings.default_model, buildGuidePrompt(diff));
+      await agent.ask(folder, note.name, sessionId, note.sidecar.model ?? settings.default_model, buildGuidePrompt(diff), reviewRepoPath());
     } catch (e) {
       activeRequest = null;
       guideBusy = false;
