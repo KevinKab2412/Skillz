@@ -44,12 +44,14 @@
 
   const key = $derived(noteKey(folder, note.name));
   const emptyReview = (): ReviewState => ({ base_branch: null, head_branch: null, base_commit: null, head_commit: null, reviewed_files: [], guide: null, chat_context: null, chat: [] });
-  const reviewState = () => {
-    const state = (note.sidecar.review ??= emptyReview());
+  const reviewState = (): ReviewState => note.sidecar.review ?? emptyReview();
+  function mutableReviewState(): ReviewState {
+    if (!note.sidecar.review) note.sidecar.review = emptyReview();
+    const state = note.sidecar.review;
     state.chat ??= [];
     state.chat_context ??= null;
     return state;
-  };
+  }
   const reviewed = (path: string) => reviewState().reviewed_files.includes(path);
   const sections = (): ReviewSection[] => {
     if (!diff) return [];
@@ -70,6 +72,7 @@
   const shortCommit = (commit: string) => commit.slice(0, 8);
 
   async function saveReview() {
+    mutableReviewState();
     await api.saveSidecar(folder, note.name, $state.snapshot(note.sidecar) as Note["sidecar"]).catch((e) => (error = String(e)));
   }
 
@@ -99,7 +102,7 @@
     guideError = null;
     try {
       const next = await api.reviewDiff(folder, base, head);
-      const state = reviewState();
+      const state = mutableReviewState();
       const sameRevision = state.base_commit === next.base_commit && state.head_commit === next.head_commit;
       if (!sameRevision) {
         state.reviewed_files = [];
@@ -127,7 +130,7 @@
   }
 
   async function toggleReviewed(path: string) {
-    const state = reviewState();
+    const state = mutableReviewState();
     state.reviewed_files = reviewed(path) ? state.reviewed_files.filter((item) => item !== path) : [...state.reviewed_files, path];
     await saveReview();
   }
@@ -192,7 +195,7 @@
   async function openChat(context: ReviewChatContext) {
     selectionOffer = null;
     window.getSelection()?.removeAllRanges();
-    reviewState().chat_context = context;
+    mutableReviewState().chat_context = context;
     chatOpen = true;
     chatError = null;
     await saveReview();
@@ -219,7 +222,7 @@
       return;
     }
 
-    const state = reviewState();
+    const state = mutableReviewState();
     state.chat = [...state.chat, { id: crypto.randomUUID(), role: "user", text: question }];
     activeChatContext = $state.snapshot(context) as ReviewChatContext;
     chatDraft = "";
@@ -311,7 +314,7 @@
       if (finishedRequest === "guide") {
         guideBusy = false;
         try {
-          reviewState().guide = parseGuide(guideOutput, diff?.files.map((file) => file.path) ?? []);
+          mutableReviewState().guide = parseGuide(guideOutput, diff?.files.map((file) => file.path) ?? []);
           await saveReview();
         } catch (e) {
           guideError = `Pair's reply could not be read as a guide: ${String(e)}`;
@@ -320,7 +323,8 @@
         chatBusy = false;
         const reply = chatOutput.trim();
         if (reply) {
-          reviewState().chat = [...reviewState().chat, { id: crypto.randomUUID(), role: "assistant", text: reply }];
+          const state = mutableReviewState();
+          state.chat = [...state.chat, { id: crypto.randomUUID(), role: "assistant", text: reply }];
           await saveReview();
         } else {
           chatError = "Pair finished without a text reply. Try asking in a different way.";
@@ -332,6 +336,7 @@
   }
 
   onMount(() => {
+    mutableReviewState();
     loadBranches();
     document.addEventListener("mouseup", captureDiffSelection);
     listen<AgentEvent>("agent-event", ({ payload }) => void onAgentEvent(payload)).then((stop) => {

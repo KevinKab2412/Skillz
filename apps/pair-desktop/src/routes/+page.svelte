@@ -23,11 +23,13 @@
   let filesFolder: string | null = null;
   let openFile = $state<string | null>(null);
   let fileTick = $state(0);
+  let navigationRequest = 0;
 
-  async function loadFiles(folder: string) {
+  async function loadFiles(folder: string, request = navigationRequest) {
     if (filesFolder !== folder) openFile = null;
     filesFolder = folder;
-    files = await api.listFiles(folder).catch(() => []);
+    const nextFiles = await api.listFiles(folder).catch(() => []);
+    if (request === navigationRequest && current?.folder === folder) files = nextFiles;
   }
 
   /** After pair changes files, the tree and the open file are re-read. */
@@ -60,7 +62,9 @@
       await refresh(f).catch(() => {});
     }
     const last = ix.recent[0];
-    if (last && folders.includes(last.folder)) await openNote(last.folder, last.name).catch(() => {});
+    if (last && folders.includes(last.folder) && navigationRequest === 0) {
+      await openNote(last.folder, last.name).catch(() => {});
+    }
   }
 
   async function addFolder() {
@@ -72,12 +76,15 @@
   }
 
   async function openNote(folder: string, name: string) {
+    const request = ++navigationRequest;
     const note = await api.openNote(folder, name);
+    if (request !== navigationRequest) return;
     current = { folder, note };
-    void loadFiles(folder);
+    void loadFiles(folder, request);
   }
 
   async function newNote(folder: string, kind: NoteKind = "note") {
+    const request = ++navigationRequest;
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
     const prefix = kind === "code_review" ? "review" : "note";
@@ -86,8 +93,9 @@
     for (let i = 2; taken.has(name); i++) name = name.replace(/(-\d+)?$/, `-${i}`);
     const note = await api.createNote(folder, name, kind);
     await refresh(folder);
+    if (request !== navigationRequest) return;
     current = { folder, note };
-    void loadFiles(folder);
+    void loadFiles(folder, request);
   }
 
   async function saveSettings(next: Settings) {
@@ -128,8 +136,13 @@
       <div class="split">
       {#key current.folder + "::" + current.note.name}
         {#if current.note.sidecar.kind === "code_review"}
-          <ReviewView folder={current.folder} bind:note={current.note} {settings} {pi}
-            interrupted={interrupted[noteKey(current.folder, current.note.name)] ?? null} />
+          <svelte:boundary>
+            <ReviewView folder={current.folder} bind:note={current.note} {settings} {pi}
+              interrupted={interrupted[noteKey(current.folder, current.note.name)] ?? null} />
+            {#snippet failed(failure)}
+              <div class="error" role="alert">Could not open this code review: {String(failure)}</div>
+            {/snippet}
+          </svelte:boundary>
         {:else}
           <NoteView bind:this={view} folder={current.folder} bind:note={current.note} {settings} {pi} {files} {openFile} onFilesChanged={filesChanged}
             interrupted={interrupted[noteKey(current.folder, current.note.name)] ?? null} />
