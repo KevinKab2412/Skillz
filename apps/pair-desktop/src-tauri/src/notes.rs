@@ -361,6 +361,7 @@ pub fn list(folder: &Path) -> io::Result<Vec<NoteSummary>> {
     Ok(out)
 }
 
+#[cfg(test)]
 pub fn create(folder: &Path, name: &str) -> io::Result<Note> {
     create_kind(folder, name, NoteKind::Note)
 }
