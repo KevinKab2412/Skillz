@@ -92,7 +92,7 @@ async fn open_folder_window(app: AppHandle, state: State<'_, AppState>, folder: 
         encoded
     });
     let title = root.file_name().and_then(|name| name.to_str()).unwrap_or("Project");
-    WebviewWindowBuilder::new(&app, label, WebviewUrl::App(format!("index.html?folder={query}").into()))
+    WebviewWindowBuilder::new(&app, label, WebviewUrl::App(format!("?folder={query}").into()))
         .title(format!("pair — {title}"))
         .inner_size(1280.0, 820.0)
         .min_inner_size(900.0, 600.0)

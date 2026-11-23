@@ -3,9 +3,8 @@
   import FileTree, { buildTree } from "./FileTree.svelte";
 
   let {
-    folders,
-    rootFolder = null,
-    notesByFolder,
+    folder,
+    notes,
     current,
     onAddFolder,
     onOpen,
@@ -17,9 +16,8 @@
     openFile = null,
     onOpenFile = () => {},
   }: {
-    folders: string[];
-    rootFolder?: string | null;
-    notesByFolder: Record<string, NoteSummary[]>;
+    folder: string;
+    notes: NoteSummary[];
     current: { folder: string; name: string } | null;
     onAddFolder: () => void;
     onOpen: (folder: string, name: string) => void;
@@ -50,7 +48,7 @@
     <span class="folder-copy"><strong>Open folder</strong><small>Open in its own window</small></span>
   </button>
   <div class="content">
-    {#each folders as folder (folder)}
+    {#if folder}
       <section>
         <header>
           <span title={folder}>{folderLabel(folder)}</span>
@@ -65,7 +63,7 @@
           </div>
         </header>
         <ul>
-          {#each notesByFolder[folder] ?? [] as n (n.name)}
+          {#each notes as n (n.name)}
             <li class="note-row">
               <button
                 class="note"
@@ -80,13 +78,11 @@
           {/each}
         </ul>
       </section>
-    {/each}
-    {#if rootFolder}
       <section class="files">
         <header><span>Files</span></header>
         <div class="root-path">
           <span>Root directory</span>
-          <code title={rootFolder}>{rootFolder}</code>
+          <code title={folder}>{folder}</code>
         </div>
         {#if files.length}
           <FileTree nodes={tree} open={openFile} {expanded} onOpen={onOpenFile} />
