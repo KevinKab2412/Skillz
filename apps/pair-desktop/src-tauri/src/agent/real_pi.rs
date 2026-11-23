@@ -9,7 +9,7 @@
 use super::provider::{PiProvider, StartSpec};
 use super::*;
 use crate::notes::{self, Stage};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::mpsc;
 
 const WAIT: Duration = Duration::from_secs(240);
@@ -19,6 +19,7 @@ struct Real {
     rx: mpsc::Receiver<NoteEvent>,
     folder: tempfile::TempDir,
     _data: tempfile::TempDir,
+    note_dir: PathBuf,
     key: String,
     spec: StartSpec,
 }
@@ -29,13 +30,14 @@ fn real() -> Real {
     let data = tempfile::tempdir().unwrap();
     let folder = tempfile::tempdir().unwrap();
     let f = folder.path();
+    let note_dir = data.path().join("projects/demo/notes");
     run(f, &["git", "init", "-q", "-b", "main"]);
     std::fs::write(f.join("README.md"), "# demo\n").unwrap();
     run(f, &["git", "add", "."]);
     run(f, &["git", "-c", "user.name=t", "-c", "user.email=t@t", "commit", "-q", "-m", "init"]);
-    let mut note = notes::create(f, "demo").unwrap();
+    let mut note = notes::create(&note_dir, "demo").unwrap();
     note.markdown = "# demo\n\nThe demo README is the only file so far.\n".into();
-    notes::save(f, &note).unwrap();
+    notes::save(&note_dir, &note).unwrap();
 
     let provider = PiProvider { program: pi.into(), prefix_args: vec![], extension: ext, session_dir: data.path().join("sessions") };
     let (tx, rx) = mpsc::channel();
@@ -46,8 +48,8 @@ fn real() -> Real {
     let agents = Agents::new(Box::new(provider), emit, data.path().join("running.json"));
     let folder_s = f.to_string_lossy().to_string();
     let model = std::env::var("PAIR_REAL_MODEL").unwrap_or_else(|_| "openai-codex/gpt-5.6-luna".into());
-    let spec = StartSpec { cwd: f.to_path_buf(), session_id: "0b7f3c1e-5a2d-4c6b-9e8f-1a2b3c4d5e6f".into(), model: Some(model), note: "demo".into() };
-    Real { agents, rx, key: note_key(&folder_s, "demo"), folder, _data: data, spec }
+    let spec = StartSpec { cwd: f.to_path_buf(), session_id: "0b7f3c1e-5a2d-4c6b-9e8f-1a2b3c4d5e6f".into(), model: Some(model), notes_dir: note_dir.clone(), note: "demo".into() };
+    Real { agents, rx, key: note_key(&folder_s, "demo"), folder, _data: data, note_dir, spec }
 }
 
 fn run(dir: &Path, cmd: &[&str]) {
@@ -65,9 +67,9 @@ struct Outcome {
 
 impl Real {
     fn set_stage(&self, stage: Stage) {
-        let mut n = notes::read(self.folder.path(), "demo").unwrap();
+        let mut n = notes::read(&self.note_dir, "demo").unwrap();
         n.sidecar.stage = stage;
-        notes::save_sidecar(self.folder.path(), "demo", &n.sidecar).unwrap();
+        notes::save_sidecar(&self.note_dir, "demo", &n.sidecar).unwrap();
     }
 
     /// Sends one prompt the way the app does and answers each pair request with `decide`,
@@ -156,7 +158,7 @@ fn real_pi_full_round_trip() {
     eprintln!("3. Undo puts the folder back and keeps the note");
     crate::checkpoints::restore(&folder, "demo", cp.expect("no checkpoint").n).unwrap();
     assert_eq!(r.file("hello.txt"), None, "undo left the approved file behind");
-    assert!(notes::read(&folder, "demo").is_ok(), "undo removed the note");
+    assert!(notes::read(&r.note_dir, "demo").is_ok(), "undo removed the note");
 
     eprintln!("4. Think stage: writes are refused without a card");
     r.set_stage(Stage::Think);

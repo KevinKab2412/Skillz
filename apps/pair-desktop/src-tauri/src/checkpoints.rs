@@ -197,23 +197,30 @@ mod tests {
     fn notes_are_never_rolled_back_and_subfolders_restore_correctly() {
         let d = repo();
         let sub = d.path().join("app");
-        fs::create_dir_all(sub.join(".pair/notes")).unwrap();
-        fs::write(sub.join(".pair/notes/n.md"), "old note").unwrap();
+        fs::create_dir_all(&sub).unwrap();
+        let data = tempfile::tempdir().unwrap();
+        let note_dir = crate::notes::project_notes_dir(data.path(), &sub).unwrap();
+        let mut note = crate::notes::create(&note_dir, "n").unwrap();
+        note.markdown = "old note".into();
+        crate::notes::save(&note_dir, &note).unwrap();
         create(&sub, "n", "edit").unwrap();
-        fs::write(sub.join(".pair/notes/n.md"), "new note").unwrap();
-        fs::write(sub.join(".pair/notes/m.md"), "another").unwrap();
+        note.markdown = "new note".into();
+        crate::notes::save(&note_dir, &note).unwrap();
+        crate::notes::create(&note_dir, "m").unwrap();
         fs::write(sub.join("made.txt"), "x").unwrap();
         restore(&sub, "n", 1).unwrap();
         assert!(!sub.join("made.txt").exists(), "file created in a subfolder is removed");
-        assert_eq!(fs::read_to_string(sub.join(".pair/notes/n.md")).unwrap(), "new note");
-        assert!(sub.join(".pair/notes/m.md").exists());
+        assert_eq!(crate::notes::read(&note_dir, "n").unwrap().markdown, "new note");
+        assert!(note_dir.join("m.md").exists());
     }
 
     #[test]
-    fn works_once_pair_has_ignored_its_notes_folder() {
+    fn central_notes_stay_outside_the_checkpoint_tree() {
         let d = repo();
         let p = d.path();
-        crate::notes::create(p, "n").unwrap(); // adds `/.pair/` to .git/info/exclude
+        let data = tempfile::tempdir().unwrap();
+        let note_dir = crate::notes::project_notes_dir(data.path(), p).unwrap();
+        crate::notes::create(&note_dir, "n").unwrap();
         fs::write(p.join("a.txt"), "two\n").unwrap();
         let cp = create(p, "n", "edit").unwrap();
         fs::write(p.join("a.txt"), "three\n").unwrap();
@@ -221,7 +228,7 @@ mod tests {
         restore(p, "n", cp.n).unwrap();
         assert_eq!(fs::read_to_string(p.join("a.txt")).unwrap(), "two\n");
         assert!(!p.join("made.txt").exists());
-        assert!(crate::notes::read(p, "n").is_ok());
+        assert!(crate::notes::read(&note_dir, "n").is_ok());
         let tree = git(p, None, &["ls-tree", "-r", "--name-only", &cp.commit]).unwrap();
         assert!(!tree.contains(".pair"), "notes leaked into the undo point: {tree}");
     }

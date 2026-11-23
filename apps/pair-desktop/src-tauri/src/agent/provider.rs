@@ -24,7 +24,9 @@ pub struct StartSpec {
     pub cwd: PathBuf,
     pub session_id: String,
     pub model: Option<String>,
-    /// The note's name; the extension reads its stage from the sidecar.
+    /// The project's central Pair notes directory.
+    pub notes_dir: PathBuf,
+    /// The extension reads this note's stage from its sidecar.
     pub note: String,
 }
 
@@ -74,6 +76,7 @@ impl Provider for PiProvider {
             .args(self.args(spec))
             .current_dir(&spec.cwd)
             .env("PAIR_DESKTOP", "1")
+            .env("PAIR_NOTES_DIR", &spec.notes_dir)
             .env("PAIR_NOTE", &spec.note)
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())

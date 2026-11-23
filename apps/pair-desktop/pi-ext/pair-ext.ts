@@ -18,6 +18,7 @@ import { decide, readHeader, type Mode, type Stage } from "./policy";
 type Answer = { decision: "accept" | "decline"; reason?: string; command?: string; note?: string };
 
 const NOTE = process.env.PAIR_NOTE ?? "";
+const NOTES_DIR = process.env.PAIR_NOTES_DIR ?? "";
 let mode: Mode = "act";
 let diagramFailures = 0;
 
@@ -25,7 +26,8 @@ let diagramFailures = 0;
 function currentStage(cwd: string): Stage {
   if (!NOTE) return "build";
   try {
-    const side = JSON.parse(readFileSync(join(cwd, ".pair", "notes", `${NOTE}.pair.json`), "utf8"));
+    const sidecar = NOTES_DIR ? join(NOTES_DIR, `${NOTE}.pair.json`) : join(cwd, ".pair", "notes", `${NOTE}.pair.json`);
+    const side = JSON.parse(readFileSync(sidecar, "utf8"));
     return (["think", "plan", "build", "review"] as const).includes(side.stage) ? side.stage : "think";
   } catch {
     return "think";

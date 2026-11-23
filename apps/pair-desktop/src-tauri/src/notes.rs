@@ -1,4 +1,4 @@
-//! Notes on disk: `<folder>/.pair/notes/<name>.md` plus a `<name>.pair.json` sidecar.
+//! Notes on disk in Pair's app data, keyed by the canonical project path.
 //!
 //! The markdown file is the source of truth for the text. The sidecar holds everything the
 //! app needs around it: margin threads, the agent's pending proposals and approval requests,
@@ -17,12 +17,14 @@
 //! 6 = pending comparison refresh after base correction.
 
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fs;
 use std::io;
 use std::path::{Path, PathBuf};
+use std::sync::Mutex;
 
-pub const NOTES_DIR: &str = ".pair/notes";
-const EXCLUDE_LINE: &str = ".pair/";
+const LEGACY_NOTES_DIR: &str = ".pair/notes";
+static MIGRATION_LOCK: Mutex<()> = Mutex::new(());
 /// The sidecar version this build writes, and the newest it can read.
 pub const SIDECAR_VERSION: u32 = 6;
 
@@ -308,8 +310,120 @@ pub struct NoteSummary {
     pub kind: NoteKind,
 }
 
-pub fn notes_dir(folder: &Path) -> PathBuf {
-    folder.join(NOTES_DIR)
+/// Resolves the central note directory for a project and migrates its old repo-local notes.
+pub fn project_notes_dir(app_data: &Path, folder: &Path) -> io::Result<PathBuf> {
+    let folder = folder.canonicalize()?;
+    let key = project_key(&folder);
+    let dir = app_data.join("projects").join(key).join("notes");
+    let _migration = MIGRATION_LOCK.lock().map_err(|error| io::Error::other(error.to_string()))?;
+    migrate_legacy_notes(&folder.join(LEGACY_NOTES_DIR), &dir)?;
+    Ok(dir)
+}
+
+fn project_key(folder: &Path) -> String {
+    // FNV-1a 128 keeps project storage paths deterministic across app updates without another
+    // runtime dependency. The full canonical path is the input, so same-named projects stay apart.
+    stable_key(folder.to_string_lossy().as_bytes())
+}
+
+fn stable_key(value: &[u8]) -> String {
+    let mut hash = 0x6c62272e07bb014262b821756295c58d_u128;
+    for byte in value {
+        hash ^= u128::from(*byte);
+        hash = hash.wrapping_mul(0x0000000001000000000000000000013b_u128);
+    }
+    format!("{hash:032x}")
+}
+
+fn migrate_legacy_notes(legacy: &Path, central: &Path) -> io::Result<()> {
+    if !legacy.is_dir() {
+        return Ok(());
+    }
+
+    fs::create_dir_all(central)?;
+    let recovery = central.parent().unwrap_or(central).join("legacy-conflicts");
+    let mut notes = BTreeMap::<String, Vec<PathBuf>>::new();
+    for entry in fs::read_dir(legacy)? {
+        let entry = entry?;
+        if !entry.file_type()?.is_file() {
+            continue;
+        }
+        let source = entry.path();
+        let Some(file) = entry.file_name().to_str().map(str::to_owned) else {
+            continue;
+        };
+        let Some(name) = file.strip_suffix(".md").or_else(|| file.strip_suffix(".pair.json")) else { continue };
+        notes.entry(name.to_owned()).or_default().push(source);
+    }
+
+    for (name, mut sources) in notes {
+        sources.sort_by(|a, b| a.file_name().cmp(&b.file_name()));
+        let mut has_conflict = false;
+        for source in &sources {
+            let file = source.file_name().expect("legacy note file name");
+            match fs::read(central.join(file)) {
+                Ok(existing) if existing != fs::read(source)? => has_conflict = true,
+                Ok(_) => {}
+                Err(error) if error.kind() == io::ErrorKind::NotFound => {}
+                Err(error) => return Err(error),
+            }
+        }
+
+        let destination_dir = if has_conflict {
+            // Keep a conflicting legacy note as one recoverable pair, outside the active notes
+            // list. This also prevents a later deletion from importing it back as a new note.
+            let backup = recovery.join(conflict_key(&name, &sources)?);
+            fs::create_dir_all(&backup)?;
+            write_atomic(&backup.join("name.txt"), name.as_bytes())?;
+            backup
+        } else {
+            central.to_path_buf()
+        };
+        copy_verified(&sources, &destination_dir)?;
+
+        for source in sources {
+            let file = source.file_name().expect("legacy note file name");
+            let destination = destination_dir.join(file);
+            if fs::read(&destination)? == fs::read(&source)? {
+                fs::remove_file(source)?;
+            }
+        }
+    }
+
+    let _ = fs::remove_dir(legacy);
+    if let Some(parent) = legacy.parent() {
+        let _ = fs::remove_dir(parent);
+    }
+    Ok(())
+}
+
+fn conflict_key(name: &str, sources: &[PathBuf]) -> io::Result<String> {
+    let mut key = name.as_bytes().to_vec();
+    for source in sources {
+        key.extend_from_slice(source.file_name().expect("legacy note file name").to_string_lossy().as_bytes());
+        key.extend_from_slice(&fs::read(source)?);
+    }
+    Ok(stable_key(&key))
+}
+
+fn copy_verified(sources: &[PathBuf], destination: &Path) -> io::Result<()> {
+    for source in sources {
+        let file = source.file_name().expect("legacy note file name");
+        let bytes = fs::read(source)?;
+        let path = destination.join(file);
+        match fs::read(&path) {
+            Ok(existing) if existing == bytes => {}
+            Ok(_) => return Err(io::Error::new(io::ErrorKind::AlreadyExists, format!("conflicting note backup {}", path.display()))),
+            Err(error) if error.kind() == io::ErrorKind::NotFound => {
+                write_atomic(&path, &bytes)?;
+                if fs::read(&path)? != bytes {
+                    return Err(io::Error::other(format!("could not verify migrated note {}", source.display())));
+                }
+            }
+            Err(error) => return Err(error),
+        }
+    }
+    Ok(())
 }
 
 /// A note name is a single path segment: no separators, no leading dot, not empty.
@@ -326,12 +440,12 @@ pub fn validate_name(name: &str) -> io::Result<()> {
     Ok(())
 }
 
-fn md_path(folder: &Path, name: &str) -> PathBuf {
-    notes_dir(folder).join(format!("{name}.md"))
+fn md_path(dir: &Path, name: &str) -> PathBuf {
+    dir.join(format!("{name}.md"))
 }
 
-fn sidecar_path(folder: &Path, name: &str) -> PathBuf {
-    notes_dir(folder).join(format!("{name}.pair.json"))
+fn sidecar_path(dir: &Path, name: &str) -> PathBuf {
+    dir.join(format!("{name}.pair.json"))
 }
 
 /// A new note starts blank: the page is Kevin's to fill.
@@ -339,8 +453,7 @@ pub fn template(_title: &str) -> String {
     String::new()
 }
 
-pub fn list(folder: &Path) -> io::Result<Vec<NoteSummary>> {
-    let dir = notes_dir(folder);
+pub fn list(dir: &Path) -> io::Result<Vec<NoteSummary>> {
     if !dir.exists() {
         return Ok(vec![]);
     }
@@ -359,7 +472,7 @@ pub fn list(folder: &Path) -> io::Result<Vec<NoteSummary>> {
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_millis() as u64)
             .unwrap_or(0);
-        let kind = fs::read_to_string(sidecar_path(folder, name))
+        let kind = fs::read_to_string(sidecar_path(dir, name))
             .ok()
             .and_then(|json| serde_json::from_str::<Sidecar>(&json).ok())
             .map(|sidecar| sidecar.kind)
@@ -371,15 +484,14 @@ pub fn list(folder: &Path) -> io::Result<Vec<NoteSummary>> {
 }
 
 #[cfg(test)]
-pub fn create(folder: &Path, name: &str) -> io::Result<Note> {
-    create_kind(folder, name, NoteKind::Note)
+pub fn create(dir: &Path, name: &str) -> io::Result<Note> {
+    create_kind(dir, name, NoteKind::Note)
 }
 
-pub fn create_kind(folder: &Path, name: &str, kind: NoteKind) -> io::Result<Note> {
+pub fn create_kind(dir: &Path, name: &str, kind: NoteKind) -> io::Result<Note> {
     validate_name(name)?;
-    fs::create_dir_all(notes_dir(folder))?;
-    ensure_git_exclude(folder)?;
-    let md = md_path(folder, name);
+    fs::create_dir_all(dir)?;
+    let md = md_path(dir, name);
     if md.exists() {
         return Err(io::Error::new(io::ErrorKind::AlreadyExists, format!("note exists: {name}")));
     }
@@ -390,14 +502,14 @@ pub fn create_kind(folder: &Path, name: &str, kind: NoteKind) -> io::Result<Note
         sidecar.review = Some(ReviewState::default());
     }
     let note = Note { name: name.to_string(), markdown: template(name), sidecar };
-    save(folder, &note)?;
+    save(dir, &note)?;
     Ok(note)
 }
 
-pub fn read(folder: &Path, name: &str) -> io::Result<Note> {
+pub fn read(dir: &Path, name: &str) -> io::Result<Note> {
     validate_name(name)?;
-    let markdown = fs::read_to_string(md_path(folder, name))?;
-    let sidecar = match fs::read_to_string(sidecar_path(folder, name)) {
+    let markdown = fs::read_to_string(md_path(dir, name))?;
+    let sidecar = match fs::read_to_string(sidecar_path(dir, name)) {
         Ok(s) => parse_sidecar(&s)?,
         Err(e) if e.kind() == io::ErrorKind::NotFound => Sidecar::default(),
         Err(e) => return Err(e),
@@ -419,18 +531,18 @@ fn parse_sidecar(json: &str) -> io::Result<Sidecar> {
 }
 
 /// Writes both files atomically (temp file + rename) so a crash never leaves half a note.
-pub fn save(folder: &Path, note: &Note) -> io::Result<()> {
+pub fn save(dir: &Path, note: &Note) -> io::Result<()> {
     validate_name(&note.name)?;
-    fs::create_dir_all(notes_dir(folder))?;
-    write_atomic(&md_path(folder, &note.name), note.markdown.as_bytes())?;
+    fs::create_dir_all(dir)?;
+    write_atomic(&md_path(dir, &note.name), note.markdown.as_bytes())?;
     let json = serde_json::to_vec_pretty(&note.sidecar).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-    write_atomic(&sidecar_path(folder, &note.name), &json)
+    write_atomic(&sidecar_path(dir, &note.name), &json)
 }
 
 /// Removes a note's markdown and sidecar.
-pub fn delete(folder: &Path, name: &str) -> io::Result<()> {
+pub fn delete(dir: &Path, name: &str) -> io::Result<()> {
     validate_name(name)?;
-    for p in [md_path(folder, name), sidecar_path(folder, name)] {
+    for p in [md_path(dir, name), sidecar_path(dir, name)] {
         match fs::remove_file(p) {
             Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
             _ => {}
@@ -439,10 +551,11 @@ pub fn delete(folder: &Path, name: &str) -> io::Result<()> {
     Ok(())
 }
 
-pub fn save_sidecar(folder: &Path, name: &str, sidecar: &Sidecar) -> io::Result<()> {
+pub fn save_sidecar(dir: &Path, name: &str, sidecar: &Sidecar) -> io::Result<()> {
     validate_name(name)?;
     let json = serde_json::to_vec_pretty(sidecar).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-    write_atomic(&sidecar_path(folder, name), &json)
+    fs::create_dir_all(dir)?;
+    write_atomic(&sidecar_path(dir, name), &json)
 }
 
 fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
@@ -452,45 +565,6 @@ fn write_atomic(path: &Path, bytes: &[u8]) -> io::Result<()> {
     ));
     fs::write(&tmp, bytes)?;
     fs::rename(&tmp, path)
-}
-
-/// Adds `.pair/` to the repository's local exclude file once, so notes stay out of git without
-/// touching the project's tracked `.gitignore`. Asks git where that file is, so worktrees (where
-/// `.git` is a file) and subfolders of a repository work too. No-op outside a git repository.
-pub fn ensure_git_exclude(folder: &Path) -> io::Result<()> {
-    let out = match std::process::Command::new("git")
-        .current_dir(folder)
-        .args(["rev-parse", "--path-format=absolute", "--git-path", "info/exclude"])
-        .output()
-    {
-        Ok(o) if o.status.success() => o,
-        _ => return Ok(()),
-    };
-    let exclude = PathBuf::from(String::from_utf8_lossy(&out.stdout).trim());
-    // The pattern is relative to the repository root, so name the folder's own .pair.
-    let top = std::process::Command::new("git")
-        .current_dir(folder)
-        .args(["rev-parse", "--show-prefix"])
-        .output()
-        .ok()
-        .map(|o| String::from_utf8_lossy(&o.stdout).trim().to_string())
-        .unwrap_or_default();
-    let line = format!("/{top}.pair/");
-    let current = fs::read_to_string(&exclude).unwrap_or_default();
-    if current.lines().any(|l| l.trim() == line || l.trim() == EXCLUDE_LINE) {
-        return Ok(());
-    }
-    if let Some(dir) = exclude.parent() {
-        fs::create_dir_all(dir)?;
-    }
-    let mut next = current;
-    if !next.is_empty() && !next.ends_with('\n') {
-        next.push('\n');
-    }
-    next.push_str("# pair desktop notes (local only)\n");
-    next.push_str(&line);
-    next.push('\n');
-    fs::write(exclude, next)
 }
 
 #[cfg(test)]
@@ -644,7 +718,7 @@ mod tests {
     #[test]
     fn missing_sidecar_reads_as_default() {
         let d = tmp();
-        fs::create_dir_all(notes_dir(d.path())).unwrap();
+        fs::create_dir_all(d.path()).unwrap();
         fs::write(md_path(d.path(), "plain"), "hello").unwrap();
         let n = read(d.path(), "plain").unwrap();
         assert_eq!(n.sidecar, Sidecar::default());
@@ -667,38 +741,47 @@ mod tests {
     }
 
     #[test]
-    fn git_exclude_added_once_and_only_in_git_repos() {
-        let d = tmp();
-        create(d.path(), "no-git").unwrap();
-        assert!(!d.path().join(".git").exists());
+    fn central_notes_do_not_add_files_or_ignore_rules_to_the_project() {
+        let project = tmp();
+        let data = tmp();
+        git(project.path(), &["init", "-q"]);
+        fs::write(project.path().join(".git/info/exclude"), "*.log\n").unwrap();
 
-        let g = tmp();
-        git(g.path(), &["init", "-q"]);
-        fs::write(g.path().join(".git/info/exclude"), "*.log").unwrap();
-        create(g.path(), "a").unwrap();
-        create(g.path(), "b").unwrap();
-        let ex = fs::read_to_string(g.path().join(".git/info/exclude")).unwrap();
-        assert!(ex.starts_with("*.log\n"));
-        assert_eq!(ex.matches(".pair/").count(), 1);
-        assert_eq!(git(g.path(), &["status", "--porcelain", "--untracked-files=all"]), "");
+        let dir = project_notes_dir(data.path(), project.path()).unwrap();
+        create(&dir, "n").unwrap();
+
+        assert!(!project.path().join(".pair").exists());
+        assert_eq!(fs::read_to_string(project.path().join(".git/info/exclude")).unwrap(), "*.log\n");
+        assert_eq!(git(project.path(), &["status", "--porcelain", "--untracked-files=all"]), "");
     }
 
     #[test]
-    fn git_exclude_works_in_subfolders_and_worktrees() {
-        let g = tmp();
-        git(g.path(), &["init", "-q", "-b", "main"]);
-        fs::write(g.path().join("x"), "1").unwrap();
-        git(g.path(), &["add", "."]);
-        git(g.path(), &["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "i"]);
-        let sub = g.path().join("app");
-        fs::create_dir_all(&sub).unwrap();
-        create(&sub, "n").unwrap();
-        assert_eq!(git(g.path(), &["status", "--porcelain", "--untracked-files=all"]), "");
+    fn migrates_legacy_notes_from_project_subfolders_and_worktrees() {
+        let repo = tmp();
+        let data = tmp();
+        git(repo.path(), &["init", "-q", "-b", "main"]);
+        fs::write(repo.path().join("x"), "1").unwrap();
+        git(repo.path(), &["add", "."]);
+        git(repo.path(), &["-c", "user.name=t", "-c", "user.email=t@t", "commit", "-qm", "i"]);
 
-        let wt = g.path().join("wt");
-        git(g.path(), &["worktree", "add", "-q", "-b", "w", wt.to_str().unwrap()]);
-        assert!(wt.join(".git").is_file());
-        create(&wt, "m").unwrap();
-        assert_eq!(git(&wt, &["status", "--porcelain", "--untracked-files=all"]), "");
+        let sub = repo.path().join("app");
+        let legacy = sub.join(LEGACY_NOTES_DIR);
+        fs::create_dir_all(&legacy).unwrap();
+        fs::write(legacy.join("n.md"), "subfolder note").unwrap();
+        fs::write(legacy.join("n.pair.json"), "{\"v\": 6}").unwrap();
+        let sub_notes = project_notes_dir(data.path(), &sub).unwrap();
+        assert_eq!(fs::read_to_string(sub_notes.join("n.md")).unwrap(), "subfolder note");
+        assert!(sub_notes.join("n.pair.json").exists());
+        assert!(!legacy.exists());
+
+        let worktree = repo.path().join("wt");
+        git(repo.path(), &["worktree", "add", "-q", "-b", "w", worktree.to_str().unwrap()]);
+        assert!(worktree.join(".git").is_file());
+        let legacy = worktree.join(LEGACY_NOTES_DIR);
+        fs::create_dir_all(&legacy).unwrap();
+        fs::write(legacy.join("m.md"), "worktree note").unwrap();
+        let worktree_notes = project_notes_dir(data.path(), &worktree).unwrap();
+        assert_eq!(fs::read_to_string(worktree_notes.join("m.md")).unwrap(), "worktree note");
+        assert!(!legacy.exists());
     }
 }

@@ -136,9 +136,12 @@ pub fn agent_ask(
     message: String,
     working_directory: Option<String>,
 ) -> Result<AskOutcome, String> {
+    let data = app.path().app_data_dir().map_err(|e| e.to_string())?;
+    let project = PathBuf::from(&folder);
+    let notes_dir = crate::notes::project_notes_dir(&data, &project).map_err(|e| e.to_string())?;
     let a = agents(&app, &state)?;
     let cwd = working_directory.map(PathBuf::from).unwrap_or_else(|| folder.clone().into());
-    let spec = StartSpec { cwd, session_id, model, note: name.clone() };
+    let spec = StartSpec { cwd, session_id, model, notes_dir, note: name.clone() };
     let mut guard = a.lock().map_err(|e| e.to_string())?;
     guard.ask(&note_key(&folder, &name), spec, message)
 }

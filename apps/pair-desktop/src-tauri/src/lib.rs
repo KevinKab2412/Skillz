@@ -37,6 +37,10 @@ fn app_data(app: &AppHandle) -> Result<PathBuf, String> {
     app.path().app_data_dir().map_err(err)
 }
 
+fn project_notes(app: &AppHandle, folder: &Path) -> Result<PathBuf, String> {
+    notes::project_notes_dir(&app_data(app)?, folder).map_err(err)
+}
+
 fn folder_path(folder: &str) -> Result<PathBuf, String> {
     let p = PathBuf::from(folder);
     if !p.is_absolute() || !p.is_dir() {
@@ -113,20 +117,23 @@ fn remove_folder(app: AppHandle, folder: String) -> Result<AppIndex, String> {
 }
 
 #[tauri::command]
-fn list_notes(folder: String) -> Result<Vec<NoteSummary>, String> {
-    notes::list(&folder_path(&folder)?).map_err(err)
+fn list_notes(app: AppHandle, folder: String) -> Result<Vec<NoteSummary>, String> {
+    let dir = project_notes(&app, &folder_path(&folder)?)?;
+    notes::list(&dir).map_err(err)
 }
 
 #[tauri::command]
 fn create_note(app: AppHandle, folder: String, name: String, kind: Option<NoteKind>) -> Result<Note, String> {
-    let note = notes::create_kind(&folder_path(&folder)?, &name, kind.unwrap_or_default()).map_err(err)?;
+    let dir = project_notes(&app, &folder_path(&folder)?)?;
+    let note = notes::create_kind(&dir, &name, kind.unwrap_or_default()).map_err(err)?;
     touch(&app, &folder, &name)?;
     Ok(note)
 }
 
 #[tauri::command]
 fn open_note(app: AppHandle, folder: String, name: String) -> Result<Note, String> {
-    let note = notes::read(&folder_path(&folder)?, &name).map_err(err)?;
+    let dir = project_notes(&app, &folder_path(&folder)?)?;
+    let note = notes::read(&dir, &name).map_err(err)?;
     touch(&app, &folder, &name)?;
     Ok(note)
 }
@@ -134,22 +141,24 @@ fn open_note(app: AppHandle, folder: String, name: String) -> Result<Note, Strin
 /// Saves the note unless the file changed on disk since `expected` was read or written; then it
 /// returns "changed on disk" so the app reloads instead of overwriting an outside edit.
 #[tauri::command]
-fn save_note(folder: String, note: Note, expected: Option<String>) -> Result<(), String> {
+fn save_note(app: AppHandle, folder: String, note: Note, expected: Option<String>) -> Result<(), String> {
     let root = folder_path(&folder)?;
+    let dir = project_notes(&app, &root)?;
     if let Some(exp) = expected
-        && let Ok(disk) = notes::read(&root, &note.name)
+        && let Ok(disk) = notes::read(&dir, &note.name)
         && disk.markdown != exp
     {
         return Err("changed on disk".into());
     }
-    notes::save(&root, &note).map_err(err)
+    notes::save(&dir, &note).map_err(err)
 }
 
 /// Deletes a note and its undo points. Project files are not touched.
 #[tauri::command]
 fn delete_note(app: AppHandle, folder: String, name: String) -> Result<(), String> {
     let root = folder_path(&folder)?;
-    notes::delete(&root, &name).map_err(err)?;
+    let dir = project_notes(&app, &root)?;
+    notes::delete(&dir, &name).map_err(err)?;
     let _ = checkpoints::prune(&root, &name);
     let path = index_path(&app_data(&app)?);
     let mut ix = AppIndex::load(&path);
@@ -168,8 +177,9 @@ fn export_text(path: String, contents: String) -> Result<(), String> {
 }
 
 #[tauri::command]
-fn save_sidecar(folder: String, name: String, sidecar: Sidecar) -> Result<(), String> {
-    notes::save_sidecar(&folder_path(&folder)?, &name, &sidecar).map_err(err)
+fn save_sidecar(app: AppHandle, folder: String, name: String, sidecar: Sidecar) -> Result<(), String> {
+    let dir = project_notes(&app, &folder_path(&folder)?)?;
+    notes::save_sidecar(&dir, &name, &sidecar).map_err(err)
 }
 
 #[tauri::command]
@@ -182,12 +192,12 @@ fn review_diff(folder: String, base_branch: String, head_branch: String) -> Resu
     review::diff(&folder_path(&folder)?, &base_branch, &head_branch)
 }
 
-/// Watches `<folder>/.pair/notes` and emits `note-changed` for each touched note. The UI
+/// Watches the project's central Pair note directory and emits `note-changed` for each touched note. The UI
 /// compares the new text with what it last saved, so the app's own writes are ignored there.
 #[tauri::command]
 fn watch_folder(app: AppHandle, state: State<AppState>, folder: String) -> Result<(), String> {
     let root = folder_path(&folder)?;
-    let dir = notes::notes_dir(&root);
+    let dir = project_notes(&app, &root)?;
     std::fs::create_dir_all(&dir).map_err(err)?;
     let mut watchers = state.watchers.lock().map_err(err)?;
     if watchers.contains_key(&folder) {
@@ -271,8 +281,8 @@ mod tests {
 
     #[test]
     fn note_name_maps_both_files_and_ignores_temp_files() {
-        assert_eq!(note_name(Path::new("/x/.pair/notes/a.md")).as_deref(), Some("a"));
-        assert_eq!(note_name(Path::new("/x/.pair/notes/a.pair.json")).as_deref(), Some("a"));
-        assert_eq!(note_name(Path::new("/x/.pair/notes/a.md.tmp")), None);
+        assert_eq!(note_name(Path::new("/app-data/projects/123/notes/a.md")).as_deref(), Some("a"));
+        assert_eq!(note_name(Path::new("/app-data/projects/123/notes/a.pair.json")).as_deref(), Some("a"));
+        assert_eq!(note_name(Path::new("/app-data/projects/123/notes/a.md.tmp")), None);
     }
 }
