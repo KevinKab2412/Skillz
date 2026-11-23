@@ -45,6 +45,8 @@
   let expandedPreviousPrompts = $state<Record<string, boolean>>({});
   let unlisten: (() => void) | null = null;
   let disposed = false;
+  let deleting = false;
+  let reviewSaving: Promise<void> = Promise.resolve();
   let activeRequest: "guide" | "chat" | null = null;
   let activeChatContext: ReviewChatContext | null = null;
 
@@ -90,8 +92,21 @@
   const shortCommit = (commit: string) => commit.slice(0, 8);
 
   async function saveReview() {
+    if (deleting) return;
     mutableReviewState();
-    await api.saveSidecar(folder, note.name, $state.snapshot(note.sidecar) as Note["sidecar"]).catch((e) => (error = String(e)));
+    const sidecar = $state.snapshot(note.sidecar) as Note["sidecar"];
+    reviewSaving = reviewSaving.then(async () => {
+      if (deleting) return;
+      await api.saveSidecar(folder, note.name, sidecar).catch((e) => { error = String(e); });
+    });
+    await reviewSaving;
+  }
+
+  /** Stop review writes and agent requests before the note is removed from disk. */
+  export async function prepareForDeletion() {
+    deleting = true;
+    if (activeRequest) await agent.close(folder, note.name).catch(() => {});
+    await reviewSaving;
   }
 
   async function loadBranches() {
@@ -359,6 +374,7 @@
 
   async function sendChat(event?: SubmitEvent) {
     event?.preventDefault();
+    if (deleting) return;
     const question = chatDraft.trim();
     const context = reviewState().chat_context;
     if (!question || !context || guideBusy || chatBusy) return;
@@ -378,6 +394,7 @@
     const sessionId = note.sidecar.session.id ?? crypto.randomUUID();
     note.sidecar.session.id = sessionId;
     await saveReview();
+    if (deleting) return;
     scrollChatToEnd();
     try {
       await agent.ask(folder, note.name, sessionId, note.sidecar.model ?? settings.default_model, buildReviewChatPrompt(activeChatContext, question), reviewRepoPath());
@@ -389,7 +406,7 @@
   }
 
   async function draftGuide() {
-    if (!diff || guideBusy || chatBusy) return;
+    if (deleting || !diff || guideBusy || chatBusy) return;
     if (!pi?.path) {
       guideError = "Pair cannot find Pi. Set its path in Settings before asking for a guide.";
       return;
@@ -401,6 +418,7 @@
     const sessionId = note.sidecar.session.id ?? crypto.randomUUID();
     note.sidecar.session.id = sessionId;
     await saveReview();
+    if (deleting) return;
     try {
       await agent.ask(folder, note.name, sessionId, note.sidecar.model ?? settings.default_model, buildGuidePrompt(diff), reviewRepoPath());
     } catch (e) {
@@ -418,7 +436,7 @@
   }
 
   async function onAgentEvent(event: AgentEvent) {
-    if (event.key !== key) return;
+    if (deleting || event.key !== key) return;
     const record = event.record;
     if (record.type === "pair_started" && activeRequest === "guide") {
       guideOutput = "";
@@ -494,7 +512,7 @@
     disposed = true;
     document.removeEventListener("mouseup", captureDiffSelection);
     unlisten?.();
-    if (activeRequest) void agent.close(folder, note.name).catch(() => {});
+    if (activeRequest && !deleting) void agent.close(folder, note.name).catch(() => {});
   });
 </script>
 

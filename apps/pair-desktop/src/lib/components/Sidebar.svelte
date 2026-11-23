@@ -8,6 +8,7 @@
     current,
     onAddFolder,
     onOpen,
+    onDelete,
     onNew,
     onSettings,
     files = [],
@@ -19,6 +20,7 @@
     current: { folder: string; name: string } | null;
     onAddFolder: () => void;
     onOpen: (folder: string, name: string) => void;
+    onDelete: (folder: string, name: string) => void;
     onNew: (folder: string, kind: NoteKind) => void;
     onSettings: () => void;
     files?: string[];
@@ -55,11 +57,14 @@
       </header>
       <ul>
         {#each notesByFolder[folder] ?? [] as n (n.name)}
-          <li>
+          <li class="note-row">
             <button
               class="note"
               class:active={current?.folder === folder && current?.name === n.name}
               onclick={() => onOpen(folder, n.name)}><span>{n.name}</span>{#if n.kind === "code_review"}<span class="kind">Review</span>{/if}</button>
+            <button class="delete-note" title="Delete note" aria-label={`Delete ${n.name}`} onclick={(event) => { event.stopPropagation(); onDelete(folder, n.name); }}>
+              <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6 4.5v-1h4v1m-5.5 0 .6 8h5.8l.6-8M6.5 6.5v4m3-4v4" /></svg>
+            </button>
           </li>
         {:else}
           <li class="muted empty">No notes yet</li>
@@ -89,10 +94,16 @@
   .new-menu button { display: block; width: 100%; padding: 7px 8px; border-radius: 5px; text-align: left; color: var(--ink-soft); font-size: 12px; }
   .new-menu button:hover { background: var(--sidebar); color: var(--ink); }
   ul { list-style: none; margin: 4px 0 0; padding: 0; }
-  li .note { display: flex; width: 100%; align-items: center; gap: 6px; text-align: left; padding: 5px 8px; border-radius: 6px; white-space: nowrap; overflow: hidden; }
+  .note-row { display: flex; align-items: center; gap: 2px; border-radius: 6px; }
+  li .note { display: flex; flex: 1; min-width: 0; align-items: center; gap: 6px; text-align: left; padding: 5px 8px; border-radius: 6px; white-space: nowrap; overflow: hidden; }
   li .note > span:first-child { flex: 1; overflow: hidden; text-overflow: ellipsis; }
   li .note:hover { background: var(--rule); }
   li .note.active { background: var(--surface); box-shadow: 0 0 0 1px var(--rule); }
+  .delete-note { display: grid; flex: none; width: 24px; height: 24px; place-items: center; border-radius: 5px; color: var(--ink-faint); opacity: 0; pointer-events: none; }
+  .delete-note svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-linejoin: round; stroke-width: 1.4; }
+  .note-row:hover .delete-note, .note-row:focus-within .delete-note, .delete-note:focus-visible { opacity: 1; pointer-events: auto; }
+  .delete-note:hover { color: var(--bad); background: var(--bad-soft); }
+  @media (hover: none) { .delete-note { opacity: 1; pointer-events: auto; } }
   .kind { flex: none; padding: 1px 5px; border-radius: 4px; background: var(--rule); color: var(--ink); font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
   .empty { padding: 5px 8px; font-size: 13px; }
   .files { border-top: 1px solid var(--rule); padding-top: 12px; }

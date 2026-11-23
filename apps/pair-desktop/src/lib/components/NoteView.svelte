@@ -69,6 +69,8 @@
   let justMyWords = $state(false);
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
   let pauseTimer: ReturnType<typeof setTimeout> | undefined;
+  let deleting = false;
+  let sidecarSaving: Promise<void> = Promise.resolve();
   let lastSaved = note.markdown;
   const seen = new Set<string>();
 
@@ -138,9 +140,14 @@
     Object.assign(note.sidecar, session.saved());
   }
 
-  async function saveSidecar() {
+  async function saveSidecar(): Promise<void> {
+    if (deleting) return;
     syncPending();
-    await api.saveSidecar(folder, note.name, $state.snapshot(note.sidecar) as Note["sidecar"]).catch((e) => (notice = String(e)));
+    const sidecar = $state.snapshot(note.sidecar) as Note["sidecar"];
+    sidecarSaving = sidecarSaving.then(async () => {
+      await api.saveSidecar(folder, note.name, sidecar).catch((e) => { notice = String(e); });
+    });
+    await sidecarSaving;
   }
 
   function scheduleSave() {
@@ -154,6 +161,7 @@
   /** Saves are serialised, and refused when the file changed on disk since we last wrote it. */
   function save(): Promise<void> {
     clearTimeout(saveTimer);
+    if (deleting) return saving;
     saving = saving.then(async () => {
       const e = ed();
       if (!e) return;
@@ -176,6 +184,16 @@
       }
     });
     return saving;
+  }
+
+  /** Finish outstanding writes before the parent removes this note from disk. */
+  export async function prepareForDeletion() {
+    clearTimeout(saveTimer);
+    const finalSave = save();
+    deleting = true;
+    await finalSave;
+    await sidecarSaving;
+    await agent.close(folder, note.name).catch(() => {});
   }
 
   /** Called by the page when the file changed on disk. */
@@ -424,19 +442,21 @@
   onDestroy(() => {
     clearTimeout(pauseTimer);
     clearTimeout(saveTimer);
-    // Read the editor now, before it is destroyed; write after any save already in flight.
-    const e = ed();
-    if (e) {
-      const markdown = markdownOf(e);
-      if (markdown !== lastSaved) {
-        note.sidecar.threads = refreshQuotes(e, note.sidecar.threads);
-        syncPending();
-        const snapshot = { ...($state.snapshot(note) as Note), markdown };
-        const expected = lastSaved;
-        void saving.then(() => api.saveNote(folder, snapshot, expected)).catch(() => {});
+    if (!deleting) {
+      // Read the editor now, before it is destroyed; write after any save already in flight.
+      const e = ed();
+      if (e) {
+        const markdown = markdownOf(e);
+        if (markdown !== lastSaved) {
+          note.sidecar.threads = refreshQuotes(e, note.sidecar.threads);
+          syncPending();
+          const snapshot = { ...($state.snapshot(note) as Note), markdown };
+          const expected = lastSaved;
+          void saving.then(() => api.saveNote(folder, snapshot, expected)).catch(() => {});
+        }
       }
+      void agent.close(folder, note.name).catch(() => {});
     }
-    void agent.close(folder, note.name).catch(() => {});
     for (const h of hosts.values()) void unmount(h.inst);
     hosts.clear();
     $editor?.destroy();
