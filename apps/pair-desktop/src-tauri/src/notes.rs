@@ -120,12 +120,21 @@ pub struct ReviewSuggestion {
     #[serde(default)]
     pub line: Option<u32>,
     #[serde(default)]
+    pub side: Option<ReviewLineSide>,
+    #[serde(default)]
     pub severity: Option<String>,
     pub summary: String,
     #[serde(default)]
     pub rationale: String,
     #[serde(default)]
     pub next_check: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "lowercase")]
+pub enum ReviewLineSide {
+    Old,
+    New,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

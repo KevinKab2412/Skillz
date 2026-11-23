@@ -2,11 +2,14 @@ import { invoke } from "@tauri-apps/api/core";
 
 export type Stage = "think" | "plan" | "build" | "review";
 export type NoteKind = "note" | "code_review";
+export type ReviewSuggestionSeverity = "blocker" | "should_fix" | "nit";
+export type LegacyReviewPromptKind = "check" | "question";
 
 export interface ReviewSuggestion {
   path: string;
   line?: number | null;
-  severity?: string | null;
+  side?: "old" | "new" | null;
+  severity?: ReviewSuggestionSeverity | LegacyReviewPromptKind | null;
   summary: string;
   rationale?: string;
   next_check?: string;

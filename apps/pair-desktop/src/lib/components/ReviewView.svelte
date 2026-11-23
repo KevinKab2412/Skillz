@@ -41,6 +41,8 @@
   let hideReviewed = $state(false);
   let expanded = $state<Record<string, boolean>>({});
   let collapsedSuggestions = $state<Record<string, boolean>>({});
+  let expandedNits = $state<Record<string, boolean>>({});
+  let expandedPreviousPrompts = $state<Record<string, boolean>>({});
   let unlisten: (() => void) | null = null;
   let disposed = false;
   let activeRequest: "guide" | "chat" | null = null;
@@ -266,9 +268,25 @@
     collapsedSuggestions[sectionId] = !collapsedSuggestions[sectionId];
   }
 
-  function goToSuggestion(path: string) {
+  function toggleNits(sectionId: string) {
+    expandedNits[sectionId] = !expandedNits[sectionId];
+  }
+
+  function togglePreviousPrompts(sectionId: string) {
+    expandedPreviousPrompts[sectionId] = !expandedPreviousPrompts[sectionId];
+  }
+
+  function goToSuggestion(path: string, line?: number | null, side?: "old" | "new" | null) {
+    hideReviewed = false;
+    const file = diff?.files.find((item) => item.path === path);
+    const rows = file ? parsePatchRows(file.patch) : [];
+    const rowIndex = line && side ? rows.findIndex((row) => (side === "old" ? row.oldLine : row.newLine) === line) : -1;
     expanded[path] = true;
-    requestAnimationFrame(() => document.getElementById(`review-file-${encodeURIComponent(path)}`)?.scrollIntoView({ behavior: "smooth", block: "center" }));
+    requestAnimationFrame(() => {
+      const fileElement = document.getElementById(`review-file-${encodeURIComponent(path)}`);
+      const lineElement = rowIndex >= 0 ? fileElement?.querySelector<HTMLElement>(`[data-row-index="${rowIndex}"]`) : null;
+      (lineElement ?? fileElement)?.scrollIntoView({ behavior: "smooth", block: "center" });
+    });
   }
 
   function rowForNode(node: Node | null): HTMLElement | null {
@@ -441,7 +459,7 @@
       if (finishedRequest === "guide") {
         guideBusy = false;
         try {
-          mutableReviewState().guide = parseGuide(guideOutput, diff?.files.map((file) => file.path) ?? []);
+          mutableReviewState().guide = parseGuide(guideOutput, diff?.files ?? []);
           await saveReview();
         } catch (e) {
           guideError = `Pair's reply could not be read as a guide: ${String(e)}`;
@@ -548,6 +566,11 @@
 
         {#each sections() as section, sectionIndex (section.id)}
           {@const files = shownFiles(section)}
+          {@const blockers = section.suggestions.filter((suggestion) => suggestion.severity === "blocker")}
+          {@const shouldFixes = section.suggestions.filter((suggestion) => suggestion.severity === "should_fix")}
+          {@const findings = [...blockers, ...shouldFixes]}
+          {@const nits = section.suggestions.filter((suggestion) => suggestion.severity === "nit")}
+          {@const previousPrompts = section.suggestions.filter((suggestion) => suggestion.severity === "check" || suggestion.severity === "question")}
           <section class="guide-section">
             <div class="guide-copy">
               <div class="section-number">{String(sectionIndex + 1).padStart(2, "0")} / {String(sections().length).padStart(2, "0")}</div>
@@ -561,19 +584,62 @@
                     <span class="chevron">{collapsedSuggestions[section.id] ? "▸" : "▾"}</span>
                     <span class="spark">✳</span>
                     <strong>Pair’s suggestions</strong>
-                    <span class="suggestion-count">{section.suggestions.length} · verify in the diff</span>
+                    <span class="suggestion-count">{findings.length} candidates · {nits.length} nits{previousPrompts.length ? ` · ${previousPrompts.length} older prompts` : ""}</span>
                   </button>
                   {#if !collapsedSuggestions[section.id]}
-                    <div class="suggestion-list">
-                      {#each section.suggestions as suggestion, i (`${suggestion.path}:${suggestion.line ?? ""}:${i}`)}
-                        <button class="suggestion" onclick={() => goToSuggestion(suggestion.path)}>
-                          <span class="suggestion-meta">{suggestion.severity?.replaceAll("_", " ") ?? "check"} · {suggestion.path}{suggestion.line ? `:${suggestion.line}` : ""}</span>
-                          <strong>{suggestion.summary}</strong>
-                          {#if suggestion.rationale}<span>{suggestion.rationale}</span>{/if}
-                          {#if suggestion.next_check}<span class="next-check">Look for: {suggestion.next_check}</span>{/if}
-                        </button>
-                      {/each}
-                    </div>
+                    <div class="suggestion-group-title">Blockers and should-fixes</div>
+                    {#if findings.length}
+                      <div class="suggestion-list">
+                        {#each findings as suggestion, i (`${suggestion.path}:${suggestion.line ?? ""}:${i}`)}
+                          <button class="suggestion" onclick={() => goToSuggestion(suggestion.path, suggestion.line, suggestion.side)}>
+                            <span class="suggestion-meta" class:severity-blocker={suggestion.severity === "blocker"} class:severity-should-fix={suggestion.severity === "should_fix"}>{suggestion.severity?.replaceAll("_", " ") ?? "review"} · {suggestion.path}{suggestion.line ? ` · ${suggestion.side ?? "line"} ${suggestion.line}` : ""}</span>
+                            <strong>{suggestion.summary}</strong>
+                            {#if suggestion.rationale}<span>{suggestion.rationale}</span>{/if}
+                            {#if suggestion.next_check}<span class="next-check">Action: {suggestion.next_check}</span>{/if}
+                          </button>
+                        {/each}
+                      </div>
+                    {:else}
+                      <p class="suggestion-empty">No blocker or should-fix candidates in this diff section.</p>
+                    {/if}
+                    {#if nits.length}
+                      <button class="suggestion-subtoggle" type="button" aria-expanded={!!expandedNits[section.id]} onclick={() => toggleNits(section.id)}>
+                        <span class="chevron">{expandedNits[section.id] ? "▾" : "▸"}</span>
+                        <strong>Nits</strong>
+                        <span class="suggestion-count">{nits.length} · low priority</span>
+                      </button>
+                      {#if expandedNits[section.id]}
+                        <div class="suggestion-list">
+                          {#each nits as suggestion, i (`${suggestion.path}:${suggestion.line ?? ""}:nit:${i}`)}
+                            <button class="suggestion" onclick={() => goToSuggestion(suggestion.path, suggestion.line, suggestion.side)}>
+                              <span class="suggestion-meta severity-nit">nit · {suggestion.path}{suggestion.line ? ` · ${suggestion.side ?? "line"} ${suggestion.line}` : ""}</span>
+                              <strong>{suggestion.summary}</strong>
+                              {#if suggestion.rationale}<span>{suggestion.rationale}</span>{/if}
+                              {#if suggestion.next_check}<span class="next-check">Optional: {suggestion.next_check}</span>{/if}
+                            </button>
+                          {/each}
+                        </div>
+                      {/if}
+                    {/if}
+                    {#if previousPrompts.length}
+                      <button class="suggestion-subtoggle" type="button" aria-expanded={!!expandedPreviousPrompts[section.id]} onclick={() => togglePreviousPrompts(section.id)}>
+                        <span class="chevron">{expandedPreviousPrompts[section.id] ? "▾" : "▸"}</span>
+                        <strong>Prompts from an earlier guide</strong>
+                        <span class="suggestion-count">{previousPrompts.length}</span>
+                      </button>
+                      {#if expandedPreviousPrompts[section.id]}
+                        <div class="suggestion-list">
+                          {#each previousPrompts as suggestion, i (`${suggestion.path}:${suggestion.line ?? ""}:prompt:${i}`)}
+                            <button class="suggestion" onclick={() => goToSuggestion(suggestion.path, suggestion.line, suggestion.side)}>
+                              <span class="suggestion-meta">{suggestion.severity} · {suggestion.path}{suggestion.line ? ` · ${suggestion.side ?? "line"} ${suggestion.line}` : ""}</span>
+                              <strong>{suggestion.summary}</strong>
+                              {#if suggestion.rationale}<span>{suggestion.rationale}</span>{/if}
+                              {#if suggestion.next_check}<span class="next-check">Look for: {suggestion.next_check}</span>{/if}
+                            </button>
+                          {/each}
+                        </div>
+                      {/if}
+                    {/if}
                   {/if}
                 </div>
               {/if}
@@ -620,7 +686,7 @@
             </div>
           </section>
         {/each}
-        <p class="closing">Pair's suggestions are a starting point. Check every claim against the diff and your own understanding.</p>
+        <p class="closing">Pair's suggestions are candidates from the supplied diff excerpts, not a full merge review. Check each one against PR goals and repository context.</p>
       {/if}
     </div>
   </div>
@@ -730,12 +796,20 @@
   .suggestion-toggle strong { font-weight: 600; }
   .spark { color: var(--accent); }
   .suggestion-count { margin-left: auto; color: var(--ink-faint); font-size: 10px; }
+  .suggestion-group-title { padding: 8px 10px 0; color: var(--ink-faint); font-size: 10px; text-transform: uppercase; letter-spacing: .05em; }
+  .suggestion-empty { margin: 0; padding: 10px; color: var(--ink-faint); font-size: 11px; }
+  .suggestion-subtoggle { display: flex; align-items: center; width: 100%; gap: 6px; padding: 8px 10px; border-top: 1px solid var(--rule); color: var(--ink-soft); text-align: left; font-size: 11px; }
+  .suggestion-subtoggle:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  .suggestion-subtoggle strong { font-weight: 550; }
   .suggestion-list { border-top: 1px solid var(--rule); }
   .suggestion { display: grid; width: 100%; gap: 5px; padding: 10px; text-align: left; color: var(--ink-soft); border-bottom: 1px solid var(--rule); font-size: 12px; line-height: 1.45; }
   .suggestion:last-child { border-bottom: 0; }
   .suggestion:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
   .suggestion strong { color: var(--ink); font-weight: 550; }
   .suggestion-meta { color: var(--accent); font-family: var(--mono); font-size: 10px; }
+  .suggestion-meta.severity-blocker { color: var(--bad); }
+  .suggestion-meta.severity-should-fix { color: var(--accent); }
+  .suggestion-meta.severity-nit { color: var(--ink-faint); }
   .next-check { color: var(--ink-faint); }
   .section-files { display: grid; gap: 5px; margin-top: 18px; }
   .file-row { display: flex; align-items: center; min-width: 0; gap: 8px; padding: 7px 8px; border: 1px solid color-mix(in srgb, var(--rule) 75%, transparent); border-radius: 7px; background: var(--surface); font-size: 11px; }
