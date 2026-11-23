@@ -11,14 +11,16 @@ use index::{index_path, AppIndex};
 use notes::{Note, NoteKind, NoteSummary, Sidecar};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
-use std::collections::HashMap;
+use std::collections::{hash_map::DefaultHasher, HashMap};
+use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder};
 
 #[derive(Default)]
 struct AppState {
     watchers: Mutex<HashMap<String, RecommendedWatcher>>,
+    window_creation: Mutex<()>,
 }
 
 #[derive(Clone, Serialize)]
@@ -56,6 +58,49 @@ fn add_folder(app: AppHandle, folder: String) -> Result<AppIndex, String> {
     ix.add_folder(&folder);
     ix.save(&path).map_err(err)?;
     Ok(ix)
+}
+
+/// Opens a project in its own window, focusing its existing window when it is already open.
+#[tauri::command]
+async fn open_folder_window(app: AppHandle, state: State<'_, AppState>, folder: String) -> Result<(), String> {
+    let root = folder_path(&folder)?.canonicalize().map_err(err)?;
+    let folder = root.to_string_lossy().into_owned();
+    let _window_creation = state.window_creation.lock().map_err(err)?;
+    let path = index_path(&app_data(&app)?);
+    let mut ix = AppIndex::load(&path);
+    ix.add_folder(&folder);
+    ix.save(&path).map_err(err)?;
+
+    let mut hasher = DefaultHasher::new();
+    folder.hash(&mut hasher);
+    let label = format!("project-{:016x}", hasher.finish());
+    if let Some(window) = app.get_webview_window(&label) {
+        window.show().map_err(err)?;
+        window.set_focus().map_err(err)?;
+        return Ok(());
+    }
+
+    let query = folder.bytes().fold(String::new(), |mut encoded, byte| {
+        if byte.is_ascii_alphanumeric() || b"-_.~".contains(&byte) {
+            encoded.push(byte as char);
+        } else {
+            let hex = b"0123456789ABCDEF";
+            encoded.push('%');
+            encoded.push(hex[(byte >> 4) as usize] as char);
+            encoded.push(hex[(byte & 0x0f) as usize] as char);
+        }
+        encoded
+    });
+    let title = root.file_name().and_then(|name| name.to_str()).unwrap_or("Project");
+    WebviewWindowBuilder::new(&app, label, WebviewUrl::App(format!("index.html?folder={query}").into()))
+        .title(format!("pair — {title}"))
+        .inner_size(1280.0, 820.0)
+        .min_inner_size(900.0, 600.0)
+        .title_bar_style(tauri::TitleBarStyle::Overlay)
+        .hidden_title(true)
+        .build()
+        .map_err(err)?;
+    Ok(())
 }
 
 #[tauri::command]
@@ -188,6 +233,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             load_index,
             add_folder,
+            open_folder_window,
             remove_folder,
             list_notes,
             create_note,

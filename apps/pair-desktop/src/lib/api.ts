@@ -125,6 +125,7 @@ export interface AppIndex { folders: string[]; recent: { folder: string; name: s
 export const api = {
   loadIndex: () => invoke<AppIndex>("load_index"),
   addFolder: (folder: string) => invoke<AppIndex>("add_folder", { folder }),
+  openFolderWindow: (folder: string) => invoke<void>("open_folder_window", { folder }),
   removeFolder: (folder: string) => invoke<AppIndex>("remove_folder", { folder }),
   listNotes: (folder: string) => invoke<NoteSummary[]>("list_notes", { folder }),
   createNote: (folder: string, name: string, kind: NoteKind = "note") => invoke<Note>("create_note", { folder, name, kind }),

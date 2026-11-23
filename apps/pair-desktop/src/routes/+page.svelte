@@ -2,6 +2,7 @@
   import "../app.css";
   import { onMount, tick } from "svelte";
   import { listen } from "@tauri-apps/api/event";
+  import { getCurrentWindow } from "@tauri-apps/api/window";
   import { open } from "@tauri-apps/plugin-dialog";
   import Sidebar from "$lib/components/Sidebar.svelte";
   import NoteView from "$lib/components/NoteView.svelte";
@@ -18,6 +19,8 @@
   let pi = $state<PiStatus | null>(null);
   let interrupted = $state<Record<string, string>>({});
   let showSettings = $state(false);
+  let projectFolder = $state<string | null>(null);
+  let isLauncher = true;
   let view = $state<NoteView>();
   let reviewView = $state<ReviewView>();
   let files = $state<string[]>([]);
@@ -31,12 +34,12 @@
     if (filesFolder !== folder) openFile = null;
     filesFolder = folder;
     const nextFiles = await api.listFiles(folder).catch(() => []);
-    if (request === navigationRequest && current?.folder === folder) files = nextFiles;
+    if (request === navigationRequest && projectFolder === folder) files = nextFiles;
   }
 
   /** After pair changes files, the tree and the open file are re-read. */
   function filesChanged() {
-    if (current) void loadFiles(current.folder);
+    if (projectFolder) void loadFiles(projectFolder);
     fileTick++;
   }
 
@@ -54,27 +57,55 @@
   }
 
   async function boot() {
+    const folder = new URLSearchParams(window.location.search).get("folder");
+    isLauncher = !folder;
     settings = await settingsApi.get();
     interrupted = await agent.interrupted().catch(() => ({}));
     agent.status().then((s) => (pi = s)).catch(() => {});
     const ix = await api.loadIndex();
-    folders = ix.folders;
-    for (const f of folders) {
-      await api.watchFolder(f).catch(() => {});
-      await refresh(f).catch(() => {});
+    if (folder) {
+      await api.addFolder(folder);
+      folders = [folder];
+      projectFolder = folder;
+      await api.watchFolder(folder);
+      await refresh(folder);
+      void loadFiles(folder);
+      const last = ix.recent.find((recent) => recent.folder === folder);
+      if (last) await openNote(last.folder, last.name);
+      return;
     }
-    const last = ix.recent[0];
-    if (last && folders.includes(last.folder) && navigationRequest === 0) {
-      await openNote(last.folder, last.name).catch(() => {});
+
+    const lastFolder = ix.recent[0]?.folder ?? ix.folders[0];
+    if (lastFolder && "__TAURI_INTERNALS__" in window) {
+      await api.openFolderWindow(lastFolder);
+      await getCurrentWindow().close();
+      return;
+    }
+    if (lastFolder) {
+      folders = [lastFolder];
+      projectFolder = lastFolder;
+      await api.watchFolder(lastFolder).catch(() => {});
+      await refresh(lastFolder).catch(() => {});
+      void loadFiles(lastFolder);
+      const last = ix.recent.find((recent) => recent.folder === lastFolder);
+      if (last) await openNote(last.folder, last.name).catch(() => {});
     }
   }
 
   async function addFolder() {
     const picked = await open({ directory: true, multiple: false, title: "Open a project folder" });
     if (typeof picked !== "string") return;
-    folders = (await api.addFolder(picked)).folders;
+    if ("__TAURI_INTERNALS__" in window) {
+      await api.openFolderWindow(picked);
+      if (isLauncher) await getCurrentWindow().close();
+      return;
+    }
+    await api.addFolder(picked);
+    folders = [picked];
+    projectFolder = picked;
     await api.watchFolder(picked);
     await refresh(picked);
+    void loadFiles(picked);
   }
 
   async function openNote(folder: string, name: string) {
@@ -124,9 +155,6 @@
         current = null;
         view = undefined;
         reviewView = undefined;
-        files = [];
-        filesFolder = null;
-        openFile = null;
         await tick();
       }
 
@@ -135,11 +163,10 @@
 
       if (selected) {
         const ix = await api.loadIndex();
-        const next = ix.recent.find((recent) => folders.includes(recent.folder));
-        const fallback = folders.flatMap((project) => (notesByFolder[project] ?? []).map((note) => ({ folder: project, name: note.name })))
-          .find((note) => !(note.folder === folder && note.name === name));
+        const next = ix.recent.find((recent) => recent.folder === folder);
+        const fallback = (notesByFolder[folder] ?? []).find((note) => note.name !== name);
         const target = next ?? fallback;
-        if (target) await openNote(target.folder, target.name);
+        if (target) await openNote(folder, target.name);
       }
     } catch (e) {
       error = String(e);
@@ -172,6 +199,7 @@
 <div class="app">
   <Sidebar
     {folders}
+    rootFolder={projectFolder}
     {notesByFolder}
     current={current ? { folder: current.folder, name: current.note.name } : null}
     onAddFolder={addFolder}
@@ -179,6 +207,7 @@
     onDelete={(f, n) => deleteNote(f, n)}
     onNew={(f, kind) => newNote(f, kind).catch((e) => (error = String(e)))}
     onSettings={() => (showSettings = true)}
+    settingsOpen={showSettings}
     {files}
     {openFile}
     onOpenFile={(p) => (openFile = p)} />
@@ -207,7 +236,6 @@
       <div class="bar" data-tauri-drag-region></div>
       <div class="empty">
         <p class="muted">{folders.length ? "Pick a note or start a new one." : "Open a project folder to start."}</p>
-        {#if !folders.length}<button class="btn primary" onclick={addFolder}>Open folder…</button>{/if}
       </div>
     {/if}
   </main>
