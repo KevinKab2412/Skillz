@@ -134,9 +134,11 @@ pub fn agent_ask(
     session_id: String,
     model: Option<String>,
     message: String,
+    working_directory: Option<String>,
 ) -> Result<AskOutcome, String> {
     let a = agents(&app, &state)?;
-    let spec = StartSpec { cwd: folder.clone().into(), session_id, model, note: name.clone() };
+    let cwd = working_directory.map(PathBuf::from).unwrap_or_else(|| folder.clone().into());
+    let spec = StartSpec { cwd, session_id, model, note: name.clone() };
     let mut guard = a.lock().map_err(|e| e.to_string())?;
     guard.ask(&note_key(&folder, &name), spec, message)
 }

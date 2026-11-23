@@ -4,10 +4,11 @@ mod checkpoints;
 mod files;
 mod index;
 mod notes;
+mod review;
 mod settings;
 
 use index::{index_path, AppIndex};
-use notes::{Note, NoteSummary, Sidecar};
+use notes::{Note, NoteKind, NoteSummary, Sidecar};
 use notify::{RecommendedWatcher, RecursiveMode, Watcher};
 use serde::Serialize;
 use std::collections::HashMap;
@@ -72,8 +73,8 @@ fn list_notes(folder: String) -> Result<Vec<NoteSummary>, String> {
 }
 
 #[tauri::command]
-fn create_note(app: AppHandle, folder: String, name: String) -> Result<Note, String> {
-    let note = notes::create(&folder_path(&folder)?, &name).map_err(err)?;
+fn create_note(app: AppHandle, folder: String, name: String, kind: Option<NoteKind>) -> Result<Note, String> {
+    let note = notes::create_kind(&folder_path(&folder)?, &name, kind.unwrap_or_default()).map_err(err)?;
     touch(&app, &folder, &name)?;
     Ok(note)
 }
@@ -124,6 +125,16 @@ fn export_text(path: String, contents: String) -> Result<(), String> {
 #[tauri::command]
 fn save_sidecar(folder: String, name: String, sidecar: Sidecar) -> Result<(), String> {
     notes::save_sidecar(&folder_path(&folder)?, &name, &sidecar).map_err(err)
+}
+
+#[tauri::command]
+fn review_branches(folder: String, include_pr_base: bool) -> Result<review::BranchList, String> {
+    review::branches(&folder_path(&folder)?, include_pr_base)
+}
+
+#[tauri::command]
+fn review_diff(folder: String, base_branch: String, head_branch: String) -> Result<review::ReviewDiff, String> {
+    review::diff(&folder_path(&folder)?, &base_branch, &head_branch)
 }
 
 /// Watches `<folder>/.pair/notes` and emits `note-changed` for each touched note. The UI
@@ -183,6 +194,8 @@ pub fn run() {
             open_note,
             save_note,
             save_sidecar,
+            review_branches,
+            review_diff,
             delete_note,
             export_text,
             watch_folder,

@@ -7,7 +7,8 @@
   import NoteView from "$lib/components/NoteView.svelte";
   import SettingsSheet from "$lib/components/SettingsSheet.svelte";
   import FilePane from "$lib/components/FilePane.svelte";
-  import { agent, api, noteKey, settingsApi, type Note, type NoteSummary, type PiStatus, type Settings } from "$lib/api";
+  import ReviewView from "$lib/components/ReviewView.svelte";
+  import { agent, api, noteKey, settingsApi, type Note, type NoteKind, type NoteSummary, type PiStatus, type Settings } from "$lib/api";
 
   let folders = $state<string[]>([]);
   let notesByFolder = $state<Record<string, NoteSummary[]>>({});
@@ -22,11 +23,13 @@
   let filesFolder: string | null = null;
   let openFile = $state<string | null>(null);
   let fileTick = $state(0);
+  let navigationRequest = 0;
 
-  async function loadFiles(folder: string) {
+  async function loadFiles(folder: string, request = navigationRequest) {
     if (filesFolder !== folder) openFile = null;
     filesFolder = folder;
-    files = await api.listFiles(folder).catch(() => []);
+    const nextFiles = await api.listFiles(folder).catch(() => []);
+    if (request === navigationRequest && current?.folder === folder) files = nextFiles;
   }
 
   /** After pair changes files, the tree and the open file are re-read. */
@@ -59,7 +62,9 @@
       await refresh(f).catch(() => {});
     }
     const last = ix.recent[0];
-    if (last && folders.includes(last.folder)) await openNote(last.folder, last.name).catch(() => {});
+    if (last && folders.includes(last.folder) && navigationRequest === 0) {
+      await openNote(last.folder, last.name).catch(() => {});
+    }
   }
 
   async function addFolder() {
@@ -71,21 +76,26 @@
   }
 
   async function openNote(folder: string, name: string) {
+    const request = ++navigationRequest;
     const note = await api.openNote(folder, name);
+    if (request !== navigationRequest) return;
     current = { folder, note };
-    void loadFiles(folder);
+    void loadFiles(folder, request);
   }
 
-  async function newNote(folder: string) {
+  async function newNote(folder: string, kind: NoteKind = "note") {
+    const request = ++navigationRequest;
     const d = new Date();
     const pad = (n: number) => String(n).padStart(2, "0");
-    let name = `note-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
+    const prefix = kind === "code_review" ? "review" : "note";
+    let name = `${prefix}-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
     const taken = new Set((notesByFolder[folder] ?? []).map((n) => n.name));
     for (let i = 2; taken.has(name); i++) name = name.replace(/(-\d+)?$/, `-${i}`);
-    const note = await api.createNote(folder, name);
+    const note = await api.createNote(folder, name, kind);
     await refresh(folder);
+    if (request !== navigationRequest) return;
     current = { folder, note };
-    void loadFiles(folder);
+    void loadFiles(folder, request);
   }
 
   async function saveSettings(next: Settings) {
@@ -114,7 +124,7 @@
     current={current ? { folder: current.folder, name: current.note.name } : null}
     onAddFolder={addFolder}
     onOpen={(f, n) => openNote(f, n).catch((e) => (error = String(e)))}
-    onNew={(f) => newNote(f).catch((e) => (error = String(e)))}
+    onNew={(f, kind) => newNote(f, kind).catch((e) => (error = String(e)))}
     onSettings={() => (showSettings = true)}
     {files}
     {openFile}
@@ -125,8 +135,18 @@
     {#if current && settings}
       <div class="split">
       {#key current.folder + "::" + current.note.name}
-        <NoteView bind:this={view} folder={current.folder} bind:note={current.note} {settings} {pi} {files} {openFile} onFilesChanged={filesChanged}
-          interrupted={interrupted[noteKey(current.folder, current.note.name)] ?? null} />
+        {#if current.note.sidecar.kind === "code_review"}
+          <svelte:boundary>
+            <ReviewView folder={current.folder} bind:note={current.note} {settings} {pi}
+              interrupted={interrupted[noteKey(current.folder, current.note.name)] ?? null} />
+            {#snippet failed(failure)}
+              <div class="error" role="alert">Could not open this code review: {String(failure)}</div>
+            {/snippet}
+          </svelte:boundary>
+        {:else}
+          <NoteView bind:this={view} folder={current.folder} bind:note={current.note} {settings} {pi} {files} {openFile} onFilesChanged={filesChanged}
+            interrupted={interrupted[noteKey(current.folder, current.note.name)] ?? null} />
+        {/if}
       {/key}
       {#if openFile}<FilePane folder={current.folder} path={openFile} tick={fileTick} onClose={() => (openFile = null)} />{/if}
       </div>

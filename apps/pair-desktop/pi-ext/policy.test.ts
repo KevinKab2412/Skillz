@@ -58,6 +58,17 @@ describe("thread mode (Thinks-with-you, Riddle, Ask)", () => {
   });
 });
 
+describe("guide mode (code review)", () => {
+  test("allows reads inside the repo and blocks all other actions", () => {
+    expect(d("read", { path: "src/a.ts" }, "review", "guide")).toEqual({ action: "pass" });
+    expect(d("grep", { pattern: "x" }, "review", "guide")).toEqual({ action: "pass" });
+    expect(d("read", { path: "../private.txt" }, "review", "guide").action).toBe("block");
+    for (const tool of ["edit", "write", "bash", "add_thread", "suggest_stage", "review_verdict", "mcp__x__y"]) {
+      expect(d(tool, {}, "review", "guide").action).toBe("block");
+    }
+  });
+});
+
 describe("note tools by stage", () => {
   test("note edits in Plan and Build only", () => {
     expect(d("suggest_note_edit", {}, "plan")).toEqual({ action: "pass" });
@@ -85,6 +96,7 @@ test("inside() handles prefixes and relative escapes", () => {
 
 test("readHeader strips the mode header", () => {
   expect(readHeader('<pair mode="thread"/>\nhello')).toEqual({ mode: "thread", text: "hello" });
+  expect(readHeader('<pair mode="guide"/>\nhello')).toEqual({ mode: "guide", text: "hello" });
   expect(readHeader("plain")).toEqual({ mode: null, text: "plain" });
 });
 

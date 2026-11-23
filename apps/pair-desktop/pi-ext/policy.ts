@@ -8,8 +8,8 @@ import { basename, dirname, isAbsolute, join, relative, resolve, sep } from "nod
 import { fileURLToPath } from "node:url";
 
 export type Stage = "think" | "plan" | "build" | "review";
-/** `thread`: may only read and leave margin threads (Thinks-with-you, Riddle, Ask). `act`: may propose. */
-export type Mode = "thread" | "act";
+/** `thread`: read and leave margin threads. `guide`: read this repo only. `act`: may propose. */
+export type Mode = "thread" | "guide" | "act";
 
 export type ProposalKind = "file_edit" | "command" | "read_outside" | "tool";
 
@@ -86,6 +86,13 @@ export function decide(args: { toolName: string; input: Record<string, unknown>;
   const { toolName, input, cwd, stage, mode } = args;
   const path = typeof input.path === "string" ? input.path : ".";
 
+  if (mode === "guide") {
+    if (READ_TOOLS.has(toolName)) {
+      return inside(cwd, path) ? { action: "pass" } : { action: "block", reason: "A review guide may only read files inside the selected repository." };
+    }
+    return { action: "block", reason: "A review guide may only read files inside the selected repository. It cannot edit, run commands, change stages, add threads, or record a verdict." };
+  }
+
   if (READ_TOOLS.has(toolName)) {
     return inside(cwd, path) ? { action: "pass" } : { action: "propose", kind: "read_outside" };
   }
@@ -123,7 +130,7 @@ export function decide(args: { toolName: string; input: Record<string, unknown>;
 }
 
 /** Prompt header the app puts in front of each ask; the extension strips it. */
-export const HEADER = /^<pair mode="(thread|act)"\s*\/>\n?/;
+export const HEADER = /^<pair mode="(thread|guide|act)"\s*\/>\n?/;
 
 export function readHeader(text: string): { mode: Mode | null; text: string } {
   const m = HEADER.exec(text);
