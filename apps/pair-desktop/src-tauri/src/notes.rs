@@ -13,7 +13,8 @@
 //!   offset, so it survives edits made outside pair.
 //!
 //! Versions: 1 = core note state, 2 = proposals and approvals, 3 = note kind and review state,
-//! 4 = selected repository path for code reviews.
+//! 4 = selected repository path, 5 = code review base selection source,
+//! 6 = pending comparison refresh after base correction.
 
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -23,7 +24,7 @@ use std::path::{Path, PathBuf};
 pub const NOTES_DIR: &str = ".pair/notes";
 const EXCLUDE_LINE: &str = ".pair/";
 /// The sidecar version this build writes, and the newest it can read.
-pub const SIDECAR_VERSION: u32 = 4;
+pub const SIDECAR_VERSION: u32 = 6;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -37,6 +38,10 @@ pub enum NoteKind {
 pub struct ReviewState {
     #[serde(default)]
     pub repo_path: Option<String>,
+    #[serde(default)]
+    pub base_source: Option<ReviewBaseSource>,
+    #[serde(default)]
+    pub base_refresh_required: Option<bool>,
     #[serde(default)]
     pub base_branch: Option<String>,
     #[serde(default)]
@@ -53,6 +58,14 @@ pub struct ReviewState {
     pub chat_context: Option<ReviewChatContext>,
     #[serde(default)]
     pub chat: Vec<ReviewChatMessage>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum ReviewBaseSource {
+    PullRequest,
+    Fallback,
+    Manual,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]

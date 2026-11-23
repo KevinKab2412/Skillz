@@ -17,10 +17,19 @@ pub struct PullRequestBase {
 }
 
 #[derive(Debug, Serialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum PullRequestBaseStatus {
+    Found,
+    NotFound,
+    Unavailable,
+}
+
+#[derive(Debug, Serialize, PartialEq)]
 pub struct BranchList {
     pub current: Option<String>,
     pub branches: Vec<String>,
     pub pr_base: Option<PullRequestBase>,
+    pub pr_base_status: Option<PullRequestBaseStatus>,
 }
 
 #[derive(Debug, Serialize, PartialEq)]
@@ -129,24 +138,57 @@ pub fn branches(root: &Path, include_pr_base: bool) -> Result<BranchList, String
         .filter(|o| o.status.success())
         .map(text)
         .filter(|s| !s.is_empty());
-    let pr_base = if include_pr_base { pull_request_base(root) } else { None };
-    Ok(BranchList { current, branches, pr_base })
+    let (pr_base, pr_base_status) = if include_pr_base {
+        match pull_request_base(root) {
+            PrBaseLookup::Found(base) => (Some(base), Some(PullRequestBaseStatus::Found)),
+            PrBaseLookup::NotFound => (None, Some(PullRequestBaseStatus::NotFound)),
+            PrBaseLookup::Unavailable => (None, Some(PullRequestBaseStatus::Unavailable)),
+        }
+    } else {
+        (None, None)
+    };
+    Ok(BranchList { current, branches, pr_base, pr_base_status })
 }
 
-fn pull_request_base(root: &Path) -> Option<PullRequestBase> {
-    let output = Command::new("gh")
+enum PrBaseLookup {
+    Found(PullRequestBase),
+    NotFound,
+    Unavailable,
+}
+
+fn pull_request_base(root: &Path) -> PrBaseLookup {
+    let output = match Command::new("gh")
         .current_dir(root)
         .args(["pr", "view", "--json", "baseRefName,url"])
         .output()
-        .ok()?;
+    {
+        Ok(output) => output,
+        Err(_) => return PrBaseLookup::Unavailable,
+    };
     if !output.status.success() {
-        return None;
+        let error = String::from_utf8_lossy(&output.stderr).to_ascii_lowercase();
+        return if error.contains("no pull requests found") || error.contains("no pull request found") {
+            PrBaseLookup::NotFound
+        } else {
+            PrBaseLookup::Unavailable
+        };
     }
-    let review: serde_json::Value = serde_json::from_slice(&output.stdout).ok()?;
-    let branch = review.get("baseRefName")?.as_str()?.trim();
-    let repository = pull_request_repository(review.get("url")?.as_str()?)?.to_ascii_lowercase();
+    let Some(review) = serde_json::from_slice::<serde_json::Value>(&output.stdout).ok() else {
+        return PrBaseLookup::Unavailable;
+    };
+    let Some(branch) = review.get("baseRefName").and_then(serde_json::Value::as_str).map(str::trim) else {
+        return PrBaseLookup::Unavailable;
+    };
+    let Some(repository) = review
+        .get("url")
+        .and_then(serde_json::Value::as_str)
+        .and_then(pull_request_repository)
+        .map(|repository| repository.to_ascii_lowercase())
+    else {
+        return PrBaseLookup::Unavailable;
+    };
     if branch.is_empty() {
-        return None;
+        return PrBaseLookup::Unavailable;
     }
 
     let remotes = git(root, &["remote", "-v"])
@@ -168,7 +210,7 @@ fn pull_request_base(root: &Path) -> Option<PullRequestBase> {
         .unwrap_or_default();
     let remote = remotes.first().cloned().filter(|_| remotes.iter().all(|name| name == &remotes[0]));
 
-    Some(PullRequestBase { branch: branch.to_string(), remote })
+    PrBaseLookup::Found(PullRequestBase { branch: branch.to_string(), remote })
 }
 
 fn pull_request_repository(url: &str) -> Option<String> {

@@ -17,7 +17,7 @@ Prices are summed recursively in sum.ts, so the stack depth grows with the baske
 Replace the recursive helper with a loop and keep the rounding rules identical.
 `,
   sidecar: {
-    v: 3,
+    v: 6,
     proposals: [],
     approvals: [],
     threads: [
@@ -153,7 +153,7 @@ export function installMock() {
             name: a.name,
             markdown: "",
             sidecar: {
-              v: 3,
+              v: 6,
               proposals: [],
               approvals: [],
               threads: [],
@@ -162,7 +162,7 @@ export function installMock() {
               tell: "",
               stage: a.kind === "code_review" ? "review" : "think",
               kind: a.kind ?? "note",
-              review: a.kind === "code_review" ? { base_branch: null, head_branch: null, reviewed_files: [], guide: null, chat_context: null, chat: [] } : null,
+              review: a.kind === "code_review" ? { repo_path: null, base_source: null, base_refresh_required: null, base_branch: null, head_branch: null, reviewed_files: [], guide: null, chat_context: null, chat: [] } : null,
             },
           });
           activeKey = `${FOLDER}::${a.name}`;
@@ -197,7 +197,12 @@ export function installMock() {
         case "list_files":
           return Object.keys(FILES).sort();
         case "review_branches":
-          return { current: "feature/checkout-loop", branches: ["main", "feature/checkout-loop"], pr_base: a.includePrBase ? { branch: "main", remote: null } : null };
+          return {
+            current: "feature/checkout-loop",
+            branches: ["main", "feature/checkout-loop"],
+            pr_base: a.includePrBase ? { branch: "main", remote: null } : null,
+            pr_base_status: a.includePrBase ? "found" : null,
+          };
         case "review_diff":
           return {
             base_branch: a.baseBranch,

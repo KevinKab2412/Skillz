@@ -2,7 +2,7 @@
   import { onDestroy, onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
   import { open } from "@tauri-apps/plugin-dialog";
-  import { agent, api, noteKey, type AgentEvent, type Note, type PiStatus, type ReviewChatContext, type ReviewDiff, type ReviewFile, type ReviewSection, type ReviewState, type Settings } from "$lib/api";
+  import { agent, api, noteKey, type AgentEvent, type Note, type PiStatus, type ReviewBaseSource, type ReviewChatContext, type ReviewDiff, type ReviewFile, type ReviewSection, type ReviewState, type Settings } from "$lib/api";
   import { buildGuidePrompt, buildReviewChatPrompt, parseGuide, parsePatchRows, reviewContextForSelection, type PatchRow } from "$lib/review-guide";
 
   let {
@@ -36,6 +36,8 @@
   let selectionOffer = $state<{ context: ReviewChatContext; left: number; top: number } | null>(null);
   let chatScroller: HTMLDivElement | undefined = $state();
   let error = $state<string | null>(null);
+  let baseUpdated = $state(false);
+  let baseChangedByUser = $state(false);
   let hideReviewed = $state(false);
   let expanded = $state<Record<string, boolean>>({});
   let unlisten: (() => void) | null = null;
@@ -44,7 +46,7 @@
   let activeChatContext: ReviewChatContext | null = null;
 
   const key = $derived(noteKey(folder, note.name));
-  const emptyReview = (): ReviewState => ({ repo_path: null, base_branch: null, head_branch: null, base_commit: null, head_commit: null, reviewed_files: [], guide: null, chat_context: null, chat: [] });
+  const emptyReview = (): ReviewState => ({ repo_path: null, base_source: null, base_refresh_required: null, base_branch: null, head_branch: null, base_commit: null, head_commit: null, reviewed_files: [], guide: null, chat_context: null, chat: [] });
   const reviewState = (): ReviewState => note.sidecar.review ?? emptyReview();
   const reviewRepoPath = () => reviewState().repo_path?.trim() || folder;
   function mutableReviewState(): ReviewState {
@@ -55,6 +57,7 @@
     return state;
   }
   const reviewed = (path: string) => reviewState().reviewed_files.includes(path);
+  const isDefaultBase = (branch: string) => /(^|\/)(main|master)$/.test(branch);
   const branchForPrBase = (prBase: { branch: string; remote: string | null } | null, available: string[]) => {
     if (!prBase) return "";
     if (prBase.remote) {
@@ -91,32 +94,67 @@
   async function loadBranches() {
     loadingBranches = true;
     error = null;
+    baseUpdated = false;
     try {
-      const result = await api.reviewBranches(reviewRepoPath(), !reviewState().base_branch);
-      branches = result.branches;
       const saved = reviewState();
+      const result = await api.reviewBranches(reviewRepoPath(), !saved.base_source);
+      branches = result.branches;
       const savedBase = saved.base_branch && branches.includes(saved.base_branch) ? saved.base_branch : "";
       const prBase = branchForPrBase(result.pr_base, branches);
-      if (savedBase) {
+      const fallbackBase = branches.find((branch) => /(^|\/)main$|(^|\/)master$/.test(branch)) ?? branches[0] ?? "";
+      let nextBaseSource: ReviewBaseSource | null = saved.base_source ?? null;
+      let deferDiff = saved.base_refresh_required === true || (saved.base_source === "pull_request" && saved.base_refresh_required == null);
+      if (deferDiff) baseUpdated = true;
+
+      if (saved.base_source) {
         base = savedBase;
-      } else if (result.pr_base) {
-        base = prBase;
-        if (!prBase) error = `PR base “${result.pr_base.branch}” is not available unambiguously in this worktree. Fetch it or choose a base branch manually.`;
+        if (!savedBase) error = `Saved base branch “${saved.base_branch}” is not available in this worktree. Choose another base branch.`;
+      } else if (result.pr_base_status === "found" && result.pr_base) {
+        if (!savedBase || isDefaultBase(savedBase)) {
+          base = prBase;
+          if (prBase) {
+            nextBaseSource = "pull_request";
+            deferDiff = !!savedBase && savedBase !== prBase;
+            baseUpdated = deferDiff;
+          } else {
+            error = `PR base “${result.pr_base.branch}” is not available unambiguously in this worktree. Fetch it or choose a base branch manually.`;
+          }
+        } else {
+          base = savedBase;
+          nextBaseSource = "manual";
+        }
+      } else if (result.pr_base_status === "not_found") {
+        base = savedBase || fallbackBase;
+        nextBaseSource = savedBase && !isDefaultBase(savedBase) ? "manual" : "fallback";
       } else {
-        base = branches.find((branch) => /(^|\/)main$|(^|\/)master$/.test(branch)) ?? branches[0] ?? "";
+        base = savedBase || fallbackBase;
       }
       head = saved.head_branch && branches.includes(saved.head_branch) && saved.head_branch !== base
         ? saved.head_branch
         : result.current && result.current !== base
           ? result.current
           : branches.find((branch) => branch !== base) ?? "";
-      if (!savedBase && base) {
+      if (base && (saved.base_branch !== base || saved.head_branch !== (head || null) || saved.base_source !== nextBaseSource)) {
         const state = mutableReviewState();
         state.base_branch = base;
         state.head_branch = head || null;
+        state.base_source = nextBaseSource;
+        if (deferDiff) state.base_refresh_required = true;
+        else if (result.pr_base_status === "not_found" || nextBaseSource) state.base_refresh_required = false;
+        await saveReview();
+      } else if (base && deferDiff && saved.base_refresh_required !== true) {
+        mutableReviewState().base_refresh_required = true;
         await saveReview();
       }
-      if (base && head) await loadDiff();
+      if (!base) {
+        diff = null;
+        expanded = {};
+      } else if (deferDiff) {
+        diff = null;
+        expanded = {};
+      } else if (base && head) {
+        await loadDiff();
+      }
     } catch (e) {
       const message = String(e);
       error = message.includes("not a git repository")
@@ -138,6 +176,10 @@
     try {
       const next = await api.reviewDiff(reviewRepoPath(), base, head);
       const state = mutableReviewState();
+      if (baseChangedByUser) state.base_source = "manual";
+      baseChangedByUser = false;
+      baseUpdated = false;
+      state.base_refresh_required = false;
       const sameRevision = state.base_commit === next.base_commit && state.head_commit === next.head_commit;
       if (!sameRevision) {
         state.reviewed_files = [];
@@ -177,6 +219,8 @@
     if (state.repo_path !== selected) {
       await agent.close(folder, note.name).catch(() => {});
       state.repo_path = selected;
+      state.base_source = null;
+      state.base_refresh_required = null;
       state.base_branch = null;
       state.head_branch = null;
       state.base_commit = null;
@@ -191,6 +235,8 @@
       branches = [];
       base = "";
       head = "";
+      baseChangedByUser = false;
+      baseUpdated = false;
       expanded = {};
       guideOutput = "";
       guideError = null;
@@ -459,7 +505,7 @@
           <button class="btn" onclick={chooseRepository} disabled={loadingBranches || loadingDiff || guideBusy || chatBusy}>Choose repository…</button>
         </div>
         <div class="target">
-          <label>Base <select aria-label="Base branch" bind:value={base} disabled={loadingBranches || guideBusy || chatBusy}>
+          <label>Base <select aria-label="Base branch" bind:value={base} onchange={() => (baseChangedByUser = true)} disabled={loadingBranches || guideBusy || chatBusy}>
             <option value="">Choose a base…</option>
             {#each branches as branch}<option value={branch}>{branch}</option>{/each}
           </select></label>
@@ -481,7 +527,7 @@
       {:else if loadingDiff && !diff}
         <div class="empty">Loading the default branch comparison…</div>
       {:else if !diff}
-        <div class="empty">Load a branch comparison to start your review.</div>
+        <div class="empty">{baseUpdated ? `The PR base was updated to ${base}. Load the comparison to continue.` : "Load a branch comparison to start your review."}</div>
       {:else if !diff.files.length}
         <div class="empty">These branches have no committed changes to review.</div>
       {:else}

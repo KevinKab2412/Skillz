@@ -31,8 +31,11 @@ export interface ReviewChatMessage {
   role: "user" | "assistant";
   text: string;
 }
+export type ReviewBaseSource = "pull_request" | "fallback" | "manual";
 export interface ReviewState {
   repo_path?: string | null;
+  base_source?: ReviewBaseSource | null;
+  base_refresh_required?: boolean | null;
   base_branch: string | null;
   head_branch: string | null;
   base_commit?: string | null;
@@ -88,7 +91,13 @@ export interface Sidecar {
 export interface Note { name: string; markdown: string; sidecar: Sidecar }
 export interface NoteSummary { name: string; modified_ms: number; kind: NoteKind }
 export interface PullRequestBase { branch: string; remote: string | null }
-export interface ReviewBranchList { current: string | null; branches: string[]; pr_base: PullRequestBase | null }
+export type PullRequestBaseStatus = "found" | "not_found" | "unavailable";
+export interface ReviewBranchList {
+  current: string | null;
+  branches: string[];
+  pr_base: PullRequestBase | null;
+  pr_base_status: PullRequestBaseStatus | null;
+}
 export interface ReviewFile {
   path: string;
   status: string;
