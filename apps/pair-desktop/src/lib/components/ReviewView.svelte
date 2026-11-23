@@ -40,6 +40,7 @@
   let baseChangedByUser = $state(false);
   let hideReviewed = $state(false);
   let expanded = $state<Record<string, boolean>>({});
+  let collapsedSuggestions = $state<Record<string, boolean>>({});
   let unlisten: (() => void) | null = null;
   let disposed = false;
   let activeRequest: "guide" | "chat" | null = null;
@@ -259,6 +260,10 @@
 
   function toggleDiff(path: string) {
     expanded[path] = !expanded[path];
+  }
+
+  function toggleSuggestions(sectionId: string) {
+    collapsedSuggestions[sectionId] = !collapsedSuggestions[sectionId];
   }
 
   function goToSuggestion(path: string) {
@@ -552,15 +557,24 @@
 
               {#if section.suggestions.length}
                 <div class="suggestions">
-                  <div class="suggestion-label"><span class="spark">✳</span> Pair's suggestions <span>verify in the diff</span></div>
-                  {#each section.suggestions as suggestion, i (`${suggestion.path}:${suggestion.line ?? ""}:${i}`)}
-                    <button class="suggestion" onclick={() => goToSuggestion(suggestion.path)}>
-                      <span class="suggestion-meta">{suggestion.severity?.replaceAll("_", " ") ?? "check"} · {suggestion.path}{suggestion.line ? `:${suggestion.line}` : ""}</span>
-                      <strong>{suggestion.summary}</strong>
-                      {#if suggestion.rationale}<span>{suggestion.rationale}</span>{/if}
-                      {#if suggestion.next_check}<span class="next-check">Look for: {suggestion.next_check}</span>{/if}
-                    </button>
-                  {/each}
+                  <button class="suggestion-toggle" type="button" aria-expanded={!collapsedSuggestions[section.id]} onclick={() => toggleSuggestions(section.id)}>
+                    <span class="chevron">{collapsedSuggestions[section.id] ? "▸" : "▾"}</span>
+                    <span class="spark">✳</span>
+                    <strong>Pair’s suggestions</strong>
+                    <span class="suggestion-count">{section.suggestions.length} · verify in the diff</span>
+                  </button>
+                  {#if !collapsedSuggestions[section.id]}
+                    <div class="suggestion-list">
+                      {#each section.suggestions as suggestion, i (`${suggestion.path}:${suggestion.line ?? ""}:${i}`)}
+                        <button class="suggestion" onclick={() => goToSuggestion(suggestion.path)}>
+                          <span class="suggestion-meta">{suggestion.severity?.replaceAll("_", " ") ?? "check"} · {suggestion.path}{suggestion.line ? `:${suggestion.line}` : ""}</span>
+                          <strong>{suggestion.summary}</strong>
+                          {#if suggestion.rationale}<span>{suggestion.rationale}</span>{/if}
+                          {#if suggestion.next_check}<span class="next-check">Look for: {suggestion.next_check}</span>{/if}
+                        </button>
+                      {/each}
+                    </div>
+                  {/if}
                 </div>
               {/if}
 
@@ -711,9 +725,12 @@
   .focus { display: grid; gap: 4px; margin: 0 0 18px; padding-left: 10px; border-left: 2px solid var(--line); color: var(--ink); font-family: var(--serif); font-size: 14px; line-height: 1.45; }
   .focus span { color: var(--ink-soft); font-family: var(--sans); font-size: 10px; text-transform: uppercase; letter-spacing: .06em; }
   .suggestions { margin: 18px 0; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--rule)); border-radius: 8px; overflow: hidden; background: color-mix(in srgb, var(--mark) 35%, var(--surface)); }
-  .suggestion-label { display: flex; align-items: center; gap: 6px; padding: 8px 10px; border-bottom: 1px solid var(--rule); color: var(--ink); font-size: 11px; font-weight: 600; }
+  .suggestion-toggle { display: flex; align-items: center; width: 100%; gap: 6px; padding: 8px 10px; color: var(--ink); text-align: left; font-size: 11px; }
+  .suggestion-toggle:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
+  .suggestion-toggle strong { font-weight: 600; }
   .spark { color: var(--accent); }
-  .suggestion-label span:last-child { margin-left: auto; color: var(--ink-faint); font-size: 10px; font-weight: 400; }
+  .suggestion-count { margin-left: auto; color: var(--ink-faint); font-size: 10px; }
+  .suggestion-list { border-top: 1px solid var(--rule); }
   .suggestion { display: grid; width: 100%; gap: 5px; padding: 10px; text-align: left; color: var(--ink-soft); border-bottom: 1px solid var(--rule); font-size: 12px; line-height: 1.45; }
   .suggestion:last-child { border-bottom: 0; }
   .suggestion:hover { background: color-mix(in srgb, var(--accent) 7%, transparent); }
