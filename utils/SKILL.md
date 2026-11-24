@@ -2,11 +2,12 @@
 name: utils
 description: >
   Prepare standup updates, read and search local Meetily meeting transcripts, draft meeting
-  follow-up tickets, and run evidence-led coding retrospectives. Use for "write today's standup",
-  "summarise my last meeting", "what did Jason ask me to do", "draft tickets from my recent
-  meeting notes", "retro on this session/week's PRs", or /utils. Recognise Meetly as Meetily.
+  follow-up tickets, run evidence-led coding retrospectives, and sweep git worktrees. Use for
+  "write today's standup", "summarise my last meeting", "what did Jason ask me to do", "draft
+  tickets from my recent meeting notes", "retro on this session/week's PRs", "are all my worktrees
+  pushed", "sweep/clean up my worktrees", or /utils. Recognise Meetly as Meetily.
   Combine meeting evidence with standups or follow-ups when requested, even without a skill name.
-argument-hint: "[standup | meeting | tickets | retro] [request]"
+argument-hint: "[standup | meeting | tickets | retro | worktrees] [request]"
 ---
 
 # Utils
@@ -23,8 +24,9 @@ to that module. Other skills may read these modules directly without running thi
 | Find, read, search, or summarise a recorded meeting, call, 1:1, or sync | [Meetily](references/meetily/SKILL.md) |
 | Tickets or action items from meeting notes | Meetily first, then the follow-up steps below |
 | Improve the agent environment after a coding session or PRs | [Retro](references/retro/SKILL.md) |
+| Check worktrees are pushed, save their work, or prune finished ones | [Worktree sweep](references/worktree-sweep/SKILL.md) |
 
-A bare `/utils` asks: "What do you need: a standup, meeting notes, follow-up tickets, or a coding retro?"
+A bare `/utils` asks: "What do you need: a standup, meeting notes, follow-up tickets, a coding retro, or a worktree sweep?"
 When the request is clear, execute it directly without showing a menu. A standup update uses Standup;
 a request about what was said in a standup meeting uses Meetily. Clarify only when the distinction
 or scope materially changes the work.

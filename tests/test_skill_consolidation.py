@@ -114,6 +114,8 @@ class WiringTests(unittest.TestCase):
         script = ROOT / 'utils/references/meetily/scripts/meetily.py'
         self.assertTrue(script.is_file())
         self.assertTrue((ROOT / 'utils/references/standup/schema.sql').is_file())
+        self.assertIn('(references/worktree-sweep/SKILL.md)', router)
+        self.assertTrue((ROOT / 'utils/references/worktree-sweep/scripts/sweep.py').is_file())
 
     def test_standup_storage_is_centralized_in_documents(self):
         router = (ROOT / 'utils/SKILL.md').read_text()
@@ -205,6 +207,7 @@ class WiringTests(unittest.TestCase):
                 'utils/references/meetily/SKILL.md',
                 'utils/references/standup/SKILL.md',
                 'utils/references/retro/SKILL.md',
+                'utils/references/worktree-sweep/SKILL.md',
                 'cook/references/research/SKILL.md',
                 'cook/references/auto.md',
                 'cook/references/grill/SKILL.md',
