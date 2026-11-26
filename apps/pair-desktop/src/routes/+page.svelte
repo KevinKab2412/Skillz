@@ -101,7 +101,7 @@
       booted = true;
       return;
     }
-    recentFolders = [...new Set([...ix.recent.map((recent) => recent.folder), ...ix.folders])];
+    recentFolders = [...new Set([...(ix.recent_folders ?? []), ...ix.recent.map((recent) => recent.folder), ...ix.folders])];
     booted = true;
   }
 
@@ -147,7 +147,7 @@
     folderLauncher?.showModal();
     try {
       const [ix, preferences] = await Promise.all([api.loadIndex(), settingsApi.get()]);
-      recentFolders = [...new Set([...ix.recent.map((recent) => recent.folder), ...ix.folders])];
+      recentFolders = [...new Set([...(ix.recent_folders ?? []), ...ix.recent.map((recent) => recent.folder), ...ix.folders])];
       if (settings) settings = { ...settings, worktree_root: preferences.worktree_root };
     } catch (e) {
       folderError = String(e);

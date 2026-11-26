@@ -137,7 +137,7 @@ export interface ReviewDiff {
   truncated: boolean;
   files: ReviewFile[];
 }
-export interface AppIndex { folders: string[]; recent: { folder: string; name: string }[] }
+export interface AppIndex { folders: string[]; recent_folders?: string[]; recent: { folder: string; name: string }[] }
 
 export const api = {
   loadIndex: () => invoke<AppIndex>("load_index"),

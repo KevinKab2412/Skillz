@@ -26,7 +26,10 @@
   let preparing = $state(false);
   let choosing = $state(false);
   let branchError = $state<string | null>(null);
-  const filtered = $derived(recentFolders.filter((folder) => `${folderLabel(folder)} ${folder}`.toLowerCase().includes(query.trim().toLowerCase())));
+  const search = $derived(query.trim().toLowerCase());
+  const filtered = $derived(recentFolders
+    .filter((folder) => `${folderLabel(folder)} ${folder}`.toLowerCase().includes(search))
+    .slice(0, 4));
 
   async function chooseRoot() {
     choosing = true;
@@ -93,7 +96,7 @@
     {#if error}<p class="error" role="alert">{error}</p>{/if}
 
     {#if recentFolders.length}
-      <div class="recent-heading"><h2>Recent directories</h2><span>{recentFolders.length}</span></div>
+      <div class="recent-heading"><h2>Recent directories</h2><span>{filtered.length}</span></div>
       <div class="search">
         <svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="m13 13 4 4"/></svg>
         <input type="search" bind:value={query} placeholder="Find a directory" aria-label="Find a recent directory" />

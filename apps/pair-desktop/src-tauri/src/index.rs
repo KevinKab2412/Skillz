@@ -6,6 +6,7 @@ use std::io;
 use std::path::{Path, PathBuf};
 
 const MAX_RECENT: usize = 20;
+const MAX_RECENT_FOLDERS: usize = 4;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct RecentNote {
@@ -17,6 +18,8 @@ pub struct RecentNote {
 pub struct AppIndex {
     #[serde(default)]
     pub folders: Vec<String>,
+    #[serde(default)]
+    pub recent_folders: Vec<String>,
     #[serde(default)]
     pub recent: Vec<RecentNote>,
 }
@@ -41,10 +44,14 @@ impl AppIndex {
         if !self.folders.iter().any(|f| f == folder) {
             self.folders.push(folder.to_string());
         }
+        self.recent_folders.retain(|recent| recent != folder);
+        self.recent_folders.insert(0, folder.to_string());
+        self.recent_folders.truncate(MAX_RECENT_FOLDERS);
     }
 
     pub fn remove_folder(&mut self, folder: &str) {
         self.folders.retain(|f| f != folder);
+        self.recent_folders.retain(|f| f != folder);
         self.recent.retain(|r| r.folder != folder);
     }
 
@@ -64,6 +71,16 @@ pub fn index_path(app_data: &Path) -> PathBuf {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn reopening_a_folder_updates_the_latest_four_even_without_notes() {
+        let mut ix = AppIndex::default();
+        for folder in ["/a", "/b", "/c", "/d", "/e", "/b"] {
+            ix.add_folder(folder);
+        }
+        assert_eq!(ix.recent_folders, ["/b", "/e", "/d", "/c"]);
+        assert_eq!(ix.folders.len(), 5);
+    }
 
     #[test]
     fn touch_dedupes_orders_and_caps() {
