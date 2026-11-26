@@ -81,10 +81,10 @@
       </section>
       <section class="files">
         <header><span>Files</span></header>
-        <div class="root-path">
-          <span>Root directory</span>
-          <code title={folder}>{folder}</code>
-        </div>
+        <details class="root-path">
+          <summary>Root directory</summary>
+          <code>{folder}</code>
+        </details>
         {#if files.length}
           <FileTree nodes={tree} open={openFile} {expanded} onOpen={onOpenFile} />
         {:else}
@@ -135,9 +135,10 @@
   .kind { flex: none; padding: 1px 5px; border-radius: 4px; background: var(--rule); color: var(--ink); font-size: 9px; text-transform: uppercase; letter-spacing: .04em; }
   .empty { padding: 5px 8px; font-size: 13px; }
   .files { border-top: 1px solid var(--rule); padding-top: 12px; }
-  .root-path { display: grid; gap: 4px; margin: 9px 6px 8px; padding: 7px; border: 1px solid var(--rule); border-radius: 7px; background: var(--surface); }
-  .root-path > span { color: var(--ink-faint); font-size: 9px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
-  .root-path code { color: var(--ink-soft); font-size: 10px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
+  .root-path { margin: 9px 6px 8px; border: 1px solid var(--rule); border-radius: 7px; background: var(--surface); }
+  .root-path summary { padding: 7px; color: var(--ink-soft); cursor: pointer; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; }
+  .root-path summary:hover { color: var(--ink); }
+  .root-path code { display: block; padding: 0 7px 7px; color: var(--ink-soft); font-size: 10px; line-height: 1.4; white-space: normal; overflow-wrap: anywhere; }
   .footer { flex: none; margin-top: 8px; padding-top: 9px; border-top: 1px solid var(--rule); }
   .settings { display: flex; width: 100%; min-height: 36px; align-items: center; gap: 9px; padding: 5px 7px; border: 1px solid transparent; border-radius: 8px; text-align: left; color: var(--ink-soft); font-size: 12px; }
   .settings:hover, .settings:focus-visible, .settings.active { border-color: var(--rule); background: var(--surface); color: var(--ink); }
