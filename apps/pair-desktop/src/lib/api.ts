@@ -137,6 +137,7 @@ export const api = {
   loadIndex: () => invoke<AppIndex>("load_index"),
   addFolder: (folder: string) => invoke<AppIndex>("add_folder", { folder }),
   openFolderWindow: (folder: string) => invoke<void>("open_folder_window", { folder }),
+  prepareWorktree: (branch: string) => invoke<string>("prepare_worktree", { branch }),
   removeFolder: (folder: string) => invoke<AppIndex>("remove_folder", { folder }),
   listNotes: (folder: string) => invoke<NoteSummary[]>("list_notes", { folder }),
   createNote: (folder: string, name: string, kind: NoteKind = "note") => invoke<Note>("create_note", { folder, name, kind }),
@@ -166,6 +167,7 @@ export interface Settings {
   accent: string;
   pi_path: string | null;
   default_model: string | null;
+  worktree_root?: string | null;
 }
 export interface Checkpoint { n: number; commit: string; label: string }
 export interface AgentEvent { key: string; record: Record<string, any> }

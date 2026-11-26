@@ -20,6 +20,7 @@ pub struct Settings {
     /// Absolute path to `pi`; empty means "ask the login shell".
     pub pi_path: Option<String>,
     pub default_model: Option<String>,
+    pub worktree_root: Option<String>,
 }
 
 impl Default for Settings {
@@ -32,6 +33,7 @@ impl Default for Settings {
             accent: "#d2553a".into(),
             pi_path: None,
             default_model: None,
+            worktree_root: None,
         }
     }
 }

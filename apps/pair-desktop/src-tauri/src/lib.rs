@@ -7,6 +7,7 @@ mod note_titles;
 mod notes;
 mod review;
 mod settings;
+mod worktrees;
 
 use index::{index_path, AppIndex};
 use notes::{Note, NoteKind, NoteSummary, Sidecar};
@@ -22,6 +23,7 @@ use tauri::{AppHandle, Emitter, Manager, State, WebviewUrl, WebviewWindowBuilder
 struct AppState {
     watchers: Mutex<HashMap<String, RecommendedWatcher>>,
     window_creation: Mutex<()>,
+    worktree_setup: tokio::sync::Mutex<()>,
 }
 
 #[derive(Clone, Serialize)]
@@ -63,6 +65,13 @@ fn add_folder(app: AppHandle, folder: String) -> Result<AppIndex, String> {
     ix.add_folder(&folder);
     ix.save(&path).map_err(err)?;
     Ok(ix)
+}
+
+#[tauri::command]
+async fn prepare_worktree(app: AppHandle, state: State<'_, AppState>, branch: String) -> Result<String, String> {
+    let _setup = state.worktree_setup.try_lock().map_err(|_| "Pair is already setting up a branch.")?;
+    let root = settings::load(&app).worktree_root.ok_or("Choose the V1 folder that contains the clone script.")?;
+    worktrees::prepare(&folder_path(&root)?, branch.trim()).await
 }
 
 /// Opens a project in its own window, focusing its existing window when it is already open.
@@ -276,6 +285,7 @@ pub fn run() {
             load_index,
             add_folder,
             open_folder_window,
+            prepare_worktree,
             remove_folder,
             list_notes,
             create_note,

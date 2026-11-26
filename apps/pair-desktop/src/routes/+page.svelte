@@ -116,6 +116,23 @@
     booted = true;
   }
 
+  async function chooseWorktreeRoot() {
+    const picked = await open({
+      directory: true,
+      multiple: false,
+      title: "Choose the V1 folder containing clone",
+      defaultPath: settings?.worktree_root ?? undefined,
+    });
+    if (typeof picked !== "string") return;
+    const next = { ...await settingsApi.get(), worktree_root: picked };
+    await settingsApi.set(next);
+    settings = next;
+  }
+
+  async function openBranch(branch: string) {
+    await openProject(await api.prepareWorktree(branch));
+  }
+
   async function addFolder() {
     const picked = await open({ directory: true, multiple: false, title: "Open a project folder" });
     if (typeof picked === "string") await openProject(picked);
@@ -214,6 +231,9 @@
   <Launcher
     {recentFolders}
     {error}
+    worktreeRoot={settings?.worktree_root}
+    onChooseWorktreeRoot={chooseWorktreeRoot}
+    onOpenBranch={openBranch}
     onOpenFolder={() => addFolder().catch((e) => (error = String(e)))}
     onOpenRecent={(folder) => openProject(folder).catch((e) => (error = String(e)))} />
 {:else}

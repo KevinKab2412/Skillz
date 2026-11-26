@@ -4,17 +4,53 @@
   let {
     recentFolders,
     error = null,
+    worktreeRoot,
+    onChooseWorktreeRoot,
+    onOpenBranch,
     onOpenFolder,
     onOpenRecent,
   }: {
     recentFolders: string[];
     error?: string | null;
+    worktreeRoot?: string | null;
+    onChooseWorktreeRoot: () => Promise<void>;
+    onOpenBranch: (branch: string) => Promise<void>;
     onOpenFolder: () => void;
     onOpenRecent: (folder: string) => void;
   } = $props();
 
   let query = $state("");
+  let branch = $state("");
+  let preparing = $state(false);
+  let choosing = $state(false);
+  let branchError = $state<string | null>(null);
   const filtered = $derived(recentFolders.filter((folder) => `${folderLabel(folder)} ${folder}`.toLowerCase().includes(query.trim().toLowerCase())));
+
+  async function chooseRoot() {
+    choosing = true;
+    branchError = null;
+    try {
+      await onChooseWorktreeRoot();
+    } catch (failure) {
+      branchError = String(failure);
+    } finally {
+      choosing = false;
+    }
+  }
+
+  async function openBranch(event: SubmitEvent) {
+    event.preventDefault();
+    if (!worktreeRoot || !branch.trim() || preparing || choosing) return;
+    preparing = true;
+    branchError = null;
+    try {
+      await onOpenBranch(branch.trim());
+    } catch (failure) {
+      branchError = String(failure);
+    } finally {
+      preparing = false;
+    }
+  }
 </script>
 
 <main class="launcher">
@@ -27,10 +63,27 @@
     <h1 id="launcher-title">Choose a directory</h1>
     <p class="intro">Each directory opens in its own window with its own notes and files.</p>
 
-    <button class="choose" onclick={onOpenFolder}>
+    <button class="choose" onclick={onOpenFolder} disabled={preparing || choosing}>
       <span class="choose-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 4v12M4 10h12" /></svg></span>
       <span>Open a directory…</span>
     </button>
+
+    <details class="branch-setup">
+      <summary>Open a branch…</summary>
+      <form onsubmit={openBranch}>
+        <div class="branch-root">
+          {#if worktreeRoot}<code title={worktreeRoot}>{worktreeRoot}</code>{/if}
+          <button type="button" class="branch-button" disabled={preparing || choosing} onclick={chooseRoot}>{worktreeRoot ? "Change V1 folder…" : "Choose V1 folder…"}</button>
+        </div>
+        <label for="worktree-branch">Branch name</label>
+        <div class="branch-input">
+          <input id="worktree-branch" type="text" placeholder="feature/my-change" bind:value={branch} disabled={preparing} spellcheck={false} />
+          <button type="submit" class="branch-button" disabled={!worktreeRoot || !branch.trim() || preparing || choosing}>Open branch</button>
+        </div>
+        {#if preparing}<p class="branch-status" role="status">Preparing the worktree and dependencies…</p>{/if}
+        {#if branchError}<p class="error branch-error" role="alert">{branchError}</p>{/if}
+      </form>
+    </details>
 
     {#if error}<p class="error" role="alert">{error}</p>{/if}
 
@@ -44,7 +97,7 @@
       <ul class="recent-list">
         {#each filtered as folder (folder)}
           <li>
-            <button class="recent" title={`Open ${folder}`} onclick={() => onOpenRecent(folder)}>
+            <button class="recent" title={`Open ${folder}`} onclick={() => onOpenRecent(folder)} disabled={preparing || choosing}>
               <span class="folder-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M2.5 5.5h5l1.7 1.8h8.3v8.2H2.5z"/><path d="M2.5 5.5v-1h5l1.7 1.8"/></svg></span>
               <span class="folder-copy"><strong>{folderLabel(folder)}</strong><code>{folder}</code></span>
               <svg class="open-icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M6 14 14 6M7 6h7v7"/></svg>
@@ -71,6 +124,20 @@
   .intro { margin: 0 0 20px; color: var(--ink-soft); font-size: 13px; line-height: 1.5; }
   .choose { display: flex; width: 100%; height: 44px; align-items: center; justify-content: center; gap: 9px; border: 1px solid var(--ink); border-radius: 8px; background: var(--ink); color: var(--bg); font-size: 13px; font-weight: 550; }
   .choose:hover { opacity: .88; }
+  .branch-setup { margin-top: 10px; border: 1px solid var(--rule); border-radius: 8px; }
+  .branch-setup summary { padding: 10px 12px; cursor: pointer; font-size: 13px; color: var(--ink-soft); }
+  .branch-setup summary:hover { color: var(--ink); }
+  .branch-setup form { display: grid; gap: 7px; padding: 0 12px 12px; }
+  .branch-setup label { font-size: 11px; color: var(--ink-soft); }
+  .branch-root, .branch-input { display: flex; align-items: center; gap: 8px; }
+  .branch-root { flex-wrap: wrap; margin-bottom: 4px; }
+  .branch-root code { min-width: 0; overflow-wrap: anywhere; color: var(--ink-faint); font: 11px var(--mono); }
+  .branch-input input { flex: 1; min-width: 0; padding: 7px 8px; border: 1px solid var(--rule); border-radius: 6px; background: var(--bg); color: var(--ink); font: 12px var(--mono); }
+  .branch-button { flex: none; padding: 7px 8px; border: 1px solid var(--rule); border-radius: 6px; color: var(--ink-soft); font-size: 11px; }
+  .branch-button:hover:not(:disabled) { border-color: var(--line); color: var(--ink); }
+  .branch-status { margin: 0; color: var(--ink-soft); font-size: 12px; }
+  .branch-error { white-space: pre-wrap; }
+  button:disabled { opacity: .5; cursor: default; }
   .choose-icon { display: grid; width: 20px; height: 20px; place-items: center; }
   .choose-icon svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-linecap: round; stroke-width: 1.7; }
   .recent-heading { display: flex; align-items: center; justify-content: space-between; margin: 22px 1px 9px; }
