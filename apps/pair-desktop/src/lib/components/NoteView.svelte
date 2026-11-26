@@ -3,7 +3,7 @@
   import type { Readable } from "svelte/store";
   import { createEditor, EditorContent, type Editor } from "svelte-tiptap";
   import { listen } from "@tauri-apps/api/event";
-  import { agent, api, noteKey, type AgentEvent, type Checkpoint, type Note, type PiStatus, type Settings, type Stage, type Thread } from "$lib/api";
+  import { agent, api, noteKey, noteLabel, type AgentEvent, type Checkpoint, type Note, type PiStatus, type Settings, type Stage, type Thread } from "$lib/api";
   import type { CodeReference } from "$lib/code-references";
   import { STAGES } from "$lib/prompts";
   import { NoteSession } from "$lib/session.svelte";
@@ -27,6 +27,8 @@
   import type { AskKind } from "$lib/prompts";
   import { exportMarkdown, exportPdf } from "$lib/export";
   import { focusOnMount } from "$lib/focus";
+  import { noteSelectionContext } from "$lib/review-guide";
+  import SelectionChat from "./SelectionChat.svelte";
 
   let {
     folder,
@@ -62,6 +64,10 @@
   /** Threads whose passage is gone; they are listed at the end of the note. */
   let detachedIds = $state<string[]>([]);
   let menu = $state<{ x: number; y: number; asking: boolean; question: string } | null>(null);
+  let chatOpen = $state(false);
+  let chatBusy = $state(false);
+  let chatError = $state<string | null>(null);
+  let chatDraft = $state("");
   let models = $state<string[]>([]);
   let checkpoints = $state<Checkpoint[] | null>(null);
   // Per-note copies that start from the app settings and the restart check.
@@ -75,6 +81,7 @@
   let saveTimer: ReturnType<typeof setTimeout> | undefined;
   let pauseTimer: ReturnType<typeof setTimeout> | undefined;
   let deleting = false;
+  let disposed = false;
   let sidecarSaving: Promise<void> = Promise.resolve();
   let lastSaved = note.markdown;
   const seen = new Set<string>();
@@ -146,14 +153,17 @@
     Object.assign(note.sidecar, session.saved());
   }
 
+  function queueNoteWrite(write: () => Promise<void>) {
+    const next = sidecarSaving.then(write);
+    sidecarSaving = next.catch(() => {});
+    return next;
+  }
+
   async function saveSidecar(): Promise<void> {
     if (deleting) return;
     syncPending();
     const sidecar = $state.snapshot(note.sidecar) as Note["sidecar"];
-    sidecarSaving = sidecarSaving.then(async () => {
-      await api.saveSidecar(folder, note.name, sidecar).catch((e) => { notice = String(e); });
-    });
-    await sidecarSaving;
+    await queueNoteWrite(() => api.saveSidecar(folder, note.name, sidecar)).catch((e) => { notice = String(e); });
   }
 
   function scheduleSave() {
@@ -180,7 +190,8 @@
       // Mark this text as ours before writing, so the watcher's echo is not taken for an outside edit.
       writing = markdown;
       try {
-        await api.saveNote(folder, $state.snapshot(note) as Note, expected);
+        const snapshot = $state.snapshot(note) as Note;
+        await queueNoteWrite(() => api.saveNote(folder, snapshot, expected));
         lastSaved = markdown;
         if (!deleting) onSaved(folder, note);
       } catch (err) {
@@ -259,7 +270,53 @@
     const end = e.view.coordsAtPos(to);
     const box = scroller.getBoundingClientRect();
     const mid = (start.left + end.left) / 2 - box.left;
-    menu = { x: Math.max(170, Math.min(mid, box.width - 170)), y: start.top - box.top + scroller.scrollTop - 44, asking: false, question: "" };
+    const halfMenu = Math.min(230, box.width / 2);
+    menu = { x: Math.max(halfMenu, Math.min(mid, box.width - halfMenu)), y: start.top - box.top + scroller.scrollTop - 44, asking: false, question: "" };
+  }
+
+  function openSelectionChat() {
+    const e = ed();
+    if (!e || chatBusy) return;
+    const { text, quote } = selectionQuote(e);
+    if (!text.trim()) return;
+    const label = noteLabel({ name: note.name, title: note.sidecar.title });
+    note.sidecar.selection_chat = {
+      context: noteSelectionContext(label, "Highlighted note text", text, quote.prefix + quote.exact + quote.suffix),
+      messages: note.sidecar.selection_chat?.messages ?? [],
+    };
+    menuSuppressed = true;
+    menu = null;
+    window.getSelection()?.removeAllRanges();
+    chatError = null;
+    chatOpen = true;
+    void saveSidecar();
+  }
+
+  async function sendSelectionQuestion() {
+    const question = chatDraft.trim();
+    const chat = note.sidecar.selection_chat;
+    if (!question || !chat || chatBusy || deleting) return;
+    if (!pi?.path) {
+      chatError = "Pair cannot find Pi. Set its path in Settings before starting a chat.";
+      return;
+    }
+
+    chat.messages.push({ id: crypto.randomUUID(), role: "user", text: question });
+    chatDraft = "";
+    chatBusy = true;
+    chatError = null;
+    await saveSidecar();
+    if (deleting || disposed) return;
+    await session.askSidebar(chat.context, question, (text, error) => {
+      chatBusy = false;
+      if (deleting || disposed) return;
+      if (text) {
+        note.sidecar.selection_chat?.messages.push({ id: crypto.randomUUID(), role: "assistant", text });
+        void saveSidecar();
+      } else {
+        chatError = error ?? "Pair finished without a text reply. Try asking in a different way.";
+      }
+    });
   }
 
   /** A new thread on the current selection; pair's answer, status and cards appear in it. */
@@ -447,6 +504,7 @@
   });
 
   onDestroy(() => {
+    disposed = true;
     clearTimeout(pauseTimer);
     clearTimeout(saveTimer);
     if (!deleting) {
@@ -459,7 +517,7 @@
           syncPending();
           const snapshot = { ...($state.snapshot(note) as Note), markdown };
           const expected = lastSaved;
-          void saving.then(() => api.saveNote(folder, snapshot, expected)).then(() => onSaved(folder, snapshot)).catch(() => {});
+          void saving.then(() => queueNoteWrite(() => api.saveNote(folder, snapshot, expected))).then(() => onSaved(folder, snapshot)).catch(() => {});
         }
       }
       void agent.close(folder, note.name).catch(() => {});
@@ -505,6 +563,7 @@
         </select>
         <button class="quiet" onclick={openUndo}>Undo…</button>
         <button class="quiet" onclick={() => (exporting = true)}>Export</button>
+        {#if note.sidecar.selection_chat}<button class="quiet" onclick={() => (chatOpen = true)}>Ask Pair</button>{/if}
       </div>
     </header>
 
@@ -514,12 +573,19 @@
       <p class="banner">Pi {pi.version} is installed; pair was tested with {pi.expected}. It will still run.</p>
     {/if}
     {#if interruptedMsg}
-      <p class="banner">The app closed while pair was working on this note. <button class="btn" onclick={() => { session.ask("retry", { request: interruptedMsg! }); interruptedMsg = null; }}>Retry</button> <button class="btn" onclick={() => (interruptedMsg = null)}>Dismiss</button></p>
+      <p class="banner">The app closed while pair was working on this note.
+        {#if interruptedMsg.startsWith('<pair mode="guide"/>')}
+          <button class="btn" onclick={() => { chatOpen = true; interruptedMsg = null; }}>Open chat</button>
+        {:else}
+          <button class="btn" onclick={() => { session.ask("retry", { request: interruptedMsg! }); interruptedMsg = null; }}>Retry</button>
+        {/if}
+        <button class="btn" onclick={() => (interruptedMsg = null)}>Dismiss</button>
+      </p>
     {/if}
     {#if session.crash}
       <div class="banner bad">
         pair's agent stopped unexpectedly{session.crash.code !== null ? ` (exit ${session.crash.code})` : ""}.
-        <button class="btn" onclick={() => session.retryLast()}>Restart</button>
+        {#if session.canRetry}<button class="btn" onclick={() => session.retryLast()}>Restart</button>{/if}
         {#if session.crash.stderr}<pre>{session.crash.stderr}</pre>{/if}
       </div>
     {/if}
@@ -572,6 +638,7 @@
           {:else}
             <button onmousedown={(e) => e.preventDefault()} onclick={() => action("riddle")}>Riddle this</button>
             <button onmousedown={(e) => e.preventDefault()} onclick={() => action("ask")}>Ask</button>
+            <button onmousedown={(e) => e.preventDefault()} onclick={openSelectionChat} disabled={chatBusy}>Ask in sidebar</button>
             <button onmousedown={(e) => e.preventDefault()} onclick={() => action("visualize")}>Visualize</button>
             <button onmousedown={(e) => e.preventDefault()} onclick={() => action("doit")}>Do it</button>
           {/if}
@@ -579,6 +646,11 @@
       {/if}
     </div>
   </div>
+
+  {#if chatOpen && note.sidecar.selection_chat}
+    <SelectionChat label="Note" context={note.sidecar.selection_chat.context} messages={note.sidecar.selection_chat.messages}
+      output={session.sidebarOutput} busy={chatBusy} error={chatError} bind:draft={chatDraft} onSend={sendSelectionQuestion} onClose={() => (chatOpen = false)} />
+  {/if}
 
   {#if exporting}
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
@@ -614,7 +686,7 @@
 </div>
 
 <style>
-  .note-view { flex: 1; display: flex; min-width: 0; min-height: 0; }
+  .note-view { position: relative; flex: 1; display: flex; min-width: 0; min-height: 0; }
   .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
   .bar { height: 44px; flex: none; display: flex; align-items: center; gap: 18px; padding: 0 18px 0 22px; font-size: 13px; color: var(--ink-faint); overflow: hidden; container-type: inline-size; }
   .who { display: inline-flex; align-items: center; gap: 8px; color: var(--ink); white-space: nowrap; min-width: 0; flex: 0 1 auto; overflow: hidden; }
@@ -649,10 +721,10 @@
   .loose { display: grid; grid-template-columns: 7px 1fr; column-gap: 12px; font-family: var(--serif); color: var(--agent-ink); }
   .loose .dot { margin-top: 0.62em; }
   .loose p { margin: 0 0 10px; white-space: pre-wrap; }
-  .menu { position: absolute; transform: translateX(-50%); display: flex; gap: 2px; padding: 4px; background: var(--ink); color: var(--bg); border-radius: 999px; z-index: 20; box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 20%, transparent); }
+  .menu { position: absolute; transform: translateX(-50%); display: flex; flex-wrap: wrap; justify-content: center; width: max-content; max-width: calc(100% - 12px); gap: 2px; padding: 4px; background: var(--ink); color: var(--bg); border-radius: 16px; z-index: 20; box-shadow: 0 6px 18px color-mix(in srgb, var(--ink) 20%, transparent); }
   .menu button { padding: 4px 12px; border-radius: 999px; font-size: 13px; white-space: nowrap; }
   .menu button:hover { background: color-mix(in srgb, var(--bg) 18%, transparent); }
-  .menu input { width: 260px; border: 0; border-radius: 999px; padding: 4px 10px; background: var(--bg); color: var(--ink); outline: none; }
+  .menu input { width: 260px; max-width: 100%; border: 0; border-radius: 999px; padding: 4px 10px; background: var(--bg); color: var(--ink); outline: none; }
   .overlay { position: fixed; inset: 0; background: color-mix(in srgb, var(--ink) 30%, transparent); display: grid; place-items: center; z-index: 40; }
   .sheet { width: min(520px, 92vw); max-height: 80vh; overflow: auto; background: var(--surface); border-radius: 12px; padding: 18px 20px; }
   .sheet h3 { margin: 0 0 4px; }

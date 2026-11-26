@@ -22,6 +22,9 @@
   let pi = $state<PiStatus | null>(null);
   let interrupted = $state<Record<string, string>>({});
   let showSettings = $state(false);
+  let folderLauncher = $state<HTMLDialogElement>();
+  let folderError = $state<string | null>(null);
+  let preparingWorktree = $state(false);
   let projectFolder = $state<string | null>(null);
   let isLauncher = true;
   let view = $state<NoteView>();
@@ -106,6 +109,7 @@
     if ("__TAURI_INTERNALS__" in window) {
       await api.openFolderWindow(folder);
       if (isLauncher) await getCurrentWindow().close();
+      else folderLauncher?.close();
       return;
     }
     await api.addFolder(folder);
@@ -130,7 +134,24 @@
   }
 
   async function openBranch(branch: string) {
-    await openProject(await api.prepareWorktree(branch));
+    preparingWorktree = true;
+    try {
+      await openProject(await api.prepareWorktree(branch));
+    } finally {
+      preparingWorktree = false;
+    }
+  }
+
+  async function showFolderLauncher() {
+    folderError = null;
+    folderLauncher?.showModal();
+    try {
+      const [ix, preferences] = await Promise.all([api.loadIndex(), settingsApi.get()]);
+      recentFolders = [...new Set([...ix.recent.map((recent) => recent.folder), ...ix.folders])];
+      if (settings) settings = { ...settings, worktree_root: preferences.worktree_root };
+    } catch (e) {
+      folderError = String(e);
+    }
   }
 
   async function addFolder() {
@@ -242,7 +263,7 @@
       folder={projectFolder}
       notes={notesByFolder[projectFolder] ?? []}
       current={current ? { folder: current.folder, name: current.note.name } : null}
-      onAddFolder={() => addFolder().catch((e) => (error = String(e)))}
+      onAddFolder={showFolderLauncher}
       onOpen={(f, n) => openNote(f, n).catch((e) => (error = String(e)))}
       onDelete={(f, n) => deleteNote(f, n)}
       onNew={(f, kind) => newNote(f, kind).catch((e) => (error = String(e)))}
@@ -283,6 +304,14 @@
       {/if}
     </main>
   </div>
+  <dialog class="folder-launcher" aria-label="Open new folder" bind:this={folderLauncher}
+    oncancel={(event) => { if (preparingWorktree) event.preventDefault(); }}>
+    <Launcher {recentFolders} error={folderError} worktreeRoot={settings?.worktree_root}
+      onChooseWorktreeRoot={chooseWorktreeRoot} onOpenBranch={openBranch}
+      onOpenFolder={() => addFolder().catch((e) => (folderError = String(e)))}
+      onOpenRecent={(folder) => openProject(folder).catch((e) => (folderError = String(e)))}
+      onClose={() => folderLauncher?.close()} />
+  </dialog>
 {/if}
 
 {#if projectFolder && showSettings && settings}
@@ -298,4 +327,6 @@
   .bar { height: 44px; flex: none; border-bottom: 1px solid var(--rule); }
   .empty { flex: 1; display: grid; place-content: center; text-align: center; gap: 12px; }
   .error { margin: 8px 20px; padding: 8px 12px; border-radius: 6px; background: var(--bad-soft); color: var(--bad); }
+  .folder-launcher { width: min(520px, calc(100vw - 36px)); max-height: calc(100vh - 36px); padding: 0; border: 0; border-radius: 14px; background: var(--surface); box-shadow: 0 18px 55px #0005; }
+  .folder-launcher::backdrop { background: #0005; }
 </style>

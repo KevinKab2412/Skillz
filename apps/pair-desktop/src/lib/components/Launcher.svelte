@@ -9,6 +9,7 @@
     onOpenBranch,
     onOpenFolder,
     onOpenRecent,
+    onClose,
   }: {
     recentFolders: string[];
     error?: string | null;
@@ -17,6 +18,7 @@
     onOpenBranch: (branch: string) => Promise<void>;
     onOpenFolder: () => void;
     onOpenRecent: (folder: string) => void;
+    onClose?: () => void;
   } = $props();
 
   let query = $state("");
@@ -53,14 +55,17 @@
   }
 </script>
 
-<main class="launcher">
-  <header class="topbar" data-tauri-drag-region>
-    <span class="brand-mark" aria-hidden="true">↗</span>
-    <span class="brand">pair</span>
-  </header>
-  <section class="picker" aria-labelledby="launcher-title">
+<div class="launcher" class:embedded={!!onClose}>
+  {#if !onClose}
+    <header class="topbar" data-tauri-drag-region>
+      <span class="brand-mark" aria-hidden="true">↗</span>
+      <span class="brand">pair</span>
+    </header>
+  {/if}
+  <section class="picker" aria-label="Choose a directory">
+    {#if onClose}<button type="button" class="launcher-close" aria-label="Close folder launcher" onclick={onClose} disabled={preparing || choosing}>×</button>{/if}
     <div class="eyebrow">PROJECTS</div>
-    <h1 id="launcher-title">Choose a directory</h1>
+    <h1>Choose a directory</h1>
     <p class="intro">Each directory opens in its own window with its own notes and files.</p>
 
     <button class="choose" onclick={onOpenFolder} disabled={preparing || choosing}>
@@ -109,11 +114,15 @@
       </ul>
     {/if}
   </section>
-  <footer>One project per window</footer>
-</main>
+  {#if !onClose}<footer>One project per window</footer>{/if}
+</div>
 
 <style>
   .launcher { min-height: 100vh; background: var(--bg); color: var(--ink); }
+  .launcher.embedded { min-height: 0; }
+  .embedded .picker { position: relative; width: 100%; margin: 0; box-sizing: border-box; box-shadow: none; }
+  .launcher-close { position: absolute; right: 15px; top: 13px; width: 28px; height: 28px; border-radius: 6px; color: var(--ink-soft); font-size: 21px; }
+  .launcher-close:hover { background: var(--sidebar); color: var(--ink); }
   /* The native window buttons sit over the left edge of the launcher. */
   .topbar { display: flex; height: 44px; align-items: center; gap: 8px; padding: 0 22px 0 88px; border-bottom: 1px solid var(--rule); color: var(--ink-soft); }
   .brand-mark { display: grid; width: 22px; height: 22px; place-items: center; border-radius: 6px; background: var(--ink); color: var(--bg); font-size: 14px; }

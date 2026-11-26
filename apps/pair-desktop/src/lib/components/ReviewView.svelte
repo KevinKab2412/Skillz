@@ -1,9 +1,10 @@
 <script lang="ts">
+  import SelectionChat from "./SelectionChat.svelte";
   import { onDestroy, onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
   import { open } from "@tauri-apps/plugin-dialog";
   import { agent, api, noteKey, type AgentEvent, type Note, type PiStatus, type ReviewBaseSource, type ReviewChatContext, type ReviewDiff, type ReviewFile, type ReviewSection, type ReviewState, type Settings } from "$lib/api";
-  import { buildGuidePrompt, buildReviewChatPrompt, parseGuide, parsePatchRows, reviewContextForSelection, type PatchRow } from "$lib/review-guide";
+  import { buildGuidePrompt, buildReviewChatPrompt, noteSelectionContext, parseGuide, parsePatchRows, reviewContextForSelection, type PatchRow } from "$lib/review-guide";
 
   let {
     folder,
@@ -36,7 +37,7 @@
   let chatError = $state<string | null>(null);
   let chatDraft = $state("");
   let selectionOffer = $state<{ context: ReviewChatContext; left: number; top: number } | null>(null);
-  let chatScroller: HTMLDivElement | undefined = $state();
+  let contentRoot = $state<HTMLDivElement>();
   let error = $state<string | null>(null);
   let baseUpdated = $state(false);
   let baseChangedByUser = $state(false);
@@ -50,7 +51,6 @@
   let deleting = false;
   let reviewSaving: Promise<void> = Promise.resolve();
   let activeRequest: "guide" | "chat" | null = null;
-  let activeChatContext: ReviewChatContext | null = null;
 
   const key = $derived(noteKey(folder, note.name));
   const emptyReview = (): ReviewState => ({ repo_path: null, base_source: null, base_refresh_required: null, base_branch: null, head_branch: null, base_commit: null, head_commit: null, reviewed_files: [], guide: null, chat_context: null, chat: [] });
@@ -270,7 +270,6 @@
       chatError = null;
       chatDraft = "";
       chatOpen = false;
-      activeChatContext = null;
       selectionOffer = null;
     }
     await saveReview();
@@ -339,7 +338,10 @@
       selectionOffer = null;
       return;
     }
-    const context = reviewContextForSelection(file.path, rows, startIndex, endIndex, text);
+    offerChat(selection, reviewContextForSelection(file.path, rows, startIndex, endIndex, text));
+  }
+
+  function offerChat(selection: Selection, context: ReviewChatContext) {
     const rect = selection.getRangeAt(0).getBoundingClientRect();
     selectionOffer = {
       context,
@@ -348,16 +350,23 @@
     };
   }
 
-  function captureDiffSelection() {
+  function captureSelection() {
+    selectionOffer = null;
+    if (guideBusy || chatBusy) return;
     const selection = window.getSelection();
+    if (!selection || selection.isCollapsed || !selection.rangeCount) return;
     const anchor = selection?.anchorNode instanceof Element ? selection.anchorNode : selection?.anchorNode?.parentElement;
+    if (!anchor || !contentRoot?.contains(anchor)) return;
     const pre = anchor?.closest<HTMLElement>("pre.patch");
-    if (!pre) {
-      selectionOffer = null;
+    if (pre) {
+      const file = diff?.files.find((item) => item.path === pre.dataset.reviewFile);
+      if (file) selectDiffText(selection, pre, file, parsePatchRows(file.patch));
       return;
     }
-    const file = diff?.files.find((item) => item.path === pre.dataset.reviewFile);
-    if (file) selectDiffText(selection, pre, file, parsePatchRows(file.patch));
+    const block = anchor.closest<HTMLElement>("[data-review-text]");
+    const text = selection.toString().trim();
+    if (!text || !block?.contains(selection.focusNode)) return;
+    offerChat(selection, noteSelectionContext(block.dataset.reviewText ?? "Review note", "Highlighted review text", text, block.innerText));
   }
 
   async function openChat(context: ReviewChatContext) {
@@ -367,21 +376,13 @@
     chatOpen = true;
     chatError = null;
     await saveReview();
-    scrollChatToEnd();
   }
 
   function openChatFromSelection() {
     if (selectionOffer) void openChat(selectionOffer.context);
   }
 
-  function scrollChatToEnd() {
-    requestAnimationFrame(() => {
-      if (chatScroller) chatScroller.scrollTop = chatScroller.scrollHeight;
-    });
-  }
-
-  async function sendChat(event?: SubmitEvent) {
-    event?.preventDefault();
+  async function sendChat() {
     if (deleting) return;
     const question = chatDraft.trim();
     const context = reviewState().chat_context;
@@ -393,7 +394,7 @@
 
     const state = mutableReviewState();
     state.chat = [...state.chat, { id: crypto.randomUUID(), role: "user", text: question }];
-    activeChatContext = $state.snapshot(context) as ReviewChatContext;
+    const message = buildReviewChatPrompt(context, question);
     chatDraft = "";
     chatOutput = "";
     chatError = null;
@@ -403,9 +404,8 @@
     note.sidecar.session.id = sessionId;
     await saveReview();
     if (deleting) return;
-    scrollChatToEnd();
     try {
-      await agent.ask(folder, note.name, sessionId, note.sidecar.model ?? settings.default_model, buildReviewChatPrompt(activeChatContext, question), reviewRepoPath());
+      await agent.ask(folder, note.name, sessionId, note.sidecar.model ?? settings.default_model, message, reviewRepoPath());
     } catch (e) {
       activeRequest = null;
       chatBusy = false;
@@ -440,13 +440,6 @@
     }
   }
 
-  function handleChatKeydown(event: KeyboardEvent) {
-    if (event.key === "Enter" && !event.shiftKey) {
-      event.preventDefault();
-      void sendChat();
-    }
-  }
-
   async function onAgentEvent(event: AgentEvent) {
     if (deleting || event.key !== key) return;
     const record = event.record;
@@ -458,10 +451,7 @@
       const message = record.assistantMessageEvent;
       if (message?.type === "text_delta") {
         if (activeRequest === "guide") guideOutput += String(message.delta ?? "");
-        else {
-          chatOutput += String(message.delta ?? "");
-          scrollChatToEnd();
-        }
+        else chatOutput += String(message.delta ?? "");
       }
     } else if (record.type === "pair_error" && activeRequest) {
       const failedRequest = activeRequest;
@@ -497,6 +487,7 @@
       } else {
         chatBusy = false;
         const reply = chatOutput.trim();
+        chatOutput = "";
         if (reply) {
           const state = mutableReviewState();
           state.chat = [...state.chat, { id: crypto.randomUUID(), role: "assistant", text: reply }];
@@ -504,8 +495,6 @@
         } else {
           chatError = "Pair finished without a text reply. Try asking in a different way.";
         }
-        activeChatContext = null;
-        scrollChatToEnd();
       }
     }
   }
@@ -513,7 +502,8 @@
   onMount(() => {
     mutableReviewState();
     loadBranches();
-    document.addEventListener("mouseup", captureDiffSelection);
+    document.addEventListener("mouseup", captureSelection);
+    document.addEventListener("keyup", captureSelection);
     listen<AgentEvent>("agent-event", ({ payload }) => void onAgentEvent(payload)).then((stop) => {
       if (disposed) stop();
       else unlisten = stop;
@@ -522,7 +512,8 @@
 
   onDestroy(() => {
     disposed = true;
-    document.removeEventListener("mouseup", captureDiffSelection);
+    document.removeEventListener("mouseup", captureSelection);
+    document.removeEventListener("keyup", captureSelection);
     unlisten?.();
     if (activeRequest && !deleting) void agent.close(folder, note.name).catch(() => {});
   });
@@ -538,7 +529,7 @@
       {#if reviewState().chat_context}
         <button class="quiet chat-toggle" onclick={() => (chatOpen = true)}>Ask about selection</button>
       {/if}
-      <button class="quiet" onclick={() => (hideReviewed = !hideReviewed)}>{hideReviewed ? "Show reviewed" : "Hide reviewed"}</button>
+      <button class="quiet" aria-pressed={hideReviewed} onclick={() => (hideReviewed = !hideReviewed)}>{hideReviewed ? "Show reviewed" : "Hide reviewed"}</button>
     </div>
   </header>
 
@@ -548,11 +539,11 @@
   {#if error}<p class="banner bad" role="alert">{error} <button onclick={() => (error = null)}>×</button></p>{/if}
 
   <div class="scroller">
-    <div class="content">
+    <div class="content" bind:this={contentRoot}>
       <section class="intro">
         <p class="eyebrow">A review you lead</p>
         <h1>Follow the change, one story at a time.</h1>
-        <p class="lede">Pair organizes the diff into a behavior-first review sequence. When available, it starts from and saves this worktree’s PR base. You can change the base or branch here; you read each diff and decide what holds.</p>
+        <p class="lede" data-review-text="Review introduction">Pair organizes the diff into a behavior-first review sequence. When available, it starts from and saves this worktree’s PR base. You can change the base or branch here; you read each diff and decide what holds.</p>
         <div class="repo-picker">
           <div><span>Repository</span><code title={reviewRepoPath()}>{reviewRepoPath()}</code></div>
           <button class="btn" onclick={chooseRepository} disabled={loadingBranches || loadingDiff || guideBusy || chatBusy}>Choose repository…</button>
@@ -596,7 +587,7 @@
         {#if guideBusy}<div class="pair-working"><span class="dot"></span>Pair is preparing the opening and walkthrough. You can keep reviewing while it works.</div>{/if}
 
         {#if guide?.goal || guide?.attempt}
-          <section class="guide-opening" aria-label="Review overview">
+          <section class="guide-opening" aria-label="Review overview" data-review-text="Review overview">
             <h2>The goal</h2>
             <p>{guide.goal ?? "The available context doesn’t establish a goal."}</p>
             <h2>The attempt</h2>
@@ -605,6 +596,12 @@
         {/if}
 
         {#each sections() as section, sectionIndex (section.id)}
+          {#if hideReviewed && section.files.length && section.files.every(reviewed)}
+            <section class="reviewed-section">
+              <h2>{section.title}</h2>
+              <span>{section.files.length} {section.files.length === 1 ? "file" : "files"} reviewed</span>
+            </section>
+          {:else}
           {@const files = shownFiles(section)}
           {@const blockers = section.suggestions.filter((suggestion) => suggestion.severity === "blocker")}
           {@const shouldFixes = section.suggestions.filter((suggestion) => suggestion.severity === "should_fix")}
@@ -614,9 +611,11 @@
           <section class="guide-section">
             <div class="guide-copy">
               <div class="section-number">{String(sectionIndex + 1).padStart(2, "0")} / {String(sections().length).padStart(2, "0")}</div>
-              <h2>{section.title}</h2>
-              {#if section.summary}<p class="section-summary">{section.summary}</p>{/if}
-              {#if section.focus}<p class="focus"><span>Ask yourself</span>{section.focus}</p>{/if}
+              <div data-review-text={section.title}>
+                <h2>{section.title}</h2>
+                {#if section.summary}<p class="section-summary">{section.summary}</p>{/if}
+                {#if section.focus}<p class="focus"><span>Ask yourself</span>{section.focus}</p>{/if}
+              </div>
 
               {#if section.suggestions.length}
                 <div class="suggestions">
@@ -720,11 +719,10 @@
                     {/if}
                   {/if}
                 </article>
-              {:else}
-                <p class="all-reviewed">All files in this section are marked reviewed.</p>
               {/each}
             </div>
           </section>
+          {/if}
         {/each}
         <p class="closing">Pair's suggestions are candidates from the supplied diff excerpts, not a full merge review. Check each one against PR goals and repository context.</p>
       {/if}
@@ -733,46 +731,13 @@
 
   {#if selectionOffer}
     <button class="selection-ask" style:left={`${selectionOffer.left}px`} style:top={`${selectionOffer.top}px`} onmousedown={(event) => event.preventDefault()} onclick={openChatFromSelection}>
-      Ask Pair about these lines
+      {selectionOffer.context.source === "note" ? "Ask Pair about this text" : "Ask Pair about these lines"}
     </button>
   {/if}
 
   {#if chatOpen}
-    {@const chatContext = reviewState().chat_context}
-    <aside class="chat-panel" aria-label="Review chat">
-      <div class="chat-heading">
-        <div><span class="chat-kicker">CODE REVIEW</span><h2>Ask Pair</h2></div>
-        <button class="chat-close" aria-label="Close review chat" onclick={() => (chatOpen = false)}>×</button>
-      </div>
-      {#if chatContext}
-        <div class="chat-context">
-          <strong>{chatContext.path}</strong>
-          <span>{chatContext.location}</span>
-          <pre>{chatContext.selection || chatContext.excerpt}</pre>
-        </div>
-      {/if}
-      <div class="chat-messages" bind:this={chatScroller} aria-live="polite">
-        {#if !reviewState().chat.length && !chatOutput}
-          <p class="chat-empty">Ask what the selected lines do, why they changed, or what behavior you should verify.</p>
-        {/if}
-        {#each reviewState().chat as message (message.id)}
-          <div class:from-user={message.role === "user"} class="chat-message">
-            <span>{message.role === "user" ? "You" : "Pair"}</span><p>{message.text}</p>
-          </div>
-        {/each}
-        {#if chatOutput}
-          <div class="chat-message"><span>Pair</span><p>{chatOutput}</p></div>
-        {/if}
-        {#if chatBusy && !chatOutput}
-          <div class="chat-wait"><span class="dot"></span>Pair is reading the selected diff…</div>
-        {/if}
-        {#if chatError}<p class="chat-error" role="status">{chatError}</p>{/if}
-      </div>
-      <form class="chat-compose" onsubmit={sendChat}>
-        <textarea bind:value={chatDraft} onkeydown={handleChatKeydown} aria-label="Ask Pair about the selected diff" placeholder="Ask about these lines…" rows="3" disabled={chatBusy}></textarea>
-        <div><span>Enter to send · Shift + Enter for a new line</span><button class="btn primary" type="submit" disabled={!chatDraft.trim() || chatBusy}>{chatBusy ? "Thinking…" : "Send"}</button></div>
-      </form>
-    </aside>
+    <SelectionChat label="Code review" context={reviewState().chat_context} messages={reviewState().chat}
+      output={chatOutput} busy={chatBusy} error={chatError} bind:draft={chatDraft} onSend={sendChat} onClose={() => (chatOpen = false)} />
   {/if}
 </div>
 
@@ -877,36 +842,14 @@
   .patch .removed { color: var(--bad); background: var(--bad-soft); }
   .patch .hunk { color: var(--ink); background: var(--mark); }
   .patch .meta { color: var(--ink-faint); }
-  .binary, .truncated, .all-reviewed { padding: 12px; color: var(--ink-faint); font-size: 12px; }
+  .binary, .truncated { padding: 12px; color: var(--ink-faint); font-size: 12px; }
   .truncated { margin: 0; padding: 8px 12px; color: var(--bad); background: var(--bad-soft); }
-  .all-reviewed { margin: 0; }
+  .reviewed-section { max-width: 1330px; margin: 0 auto; padding: 13px 0; display: flex; justify-content: space-between; align-items: baseline; gap: 14px; border-bottom: 1px solid var(--rule); color: var(--ink-faint); font-size: 12px; }
+  .reviewed-section h2 { margin: 0; font: 500 14px var(--sans); color: var(--ink-soft); }
+  .reviewed-section span { flex: none; }
   .closing { max-width: 1330px; margin: 22px auto; color: var(--ink-soft); font-size: 12px; }
   .selection-ask { position: fixed; z-index: 20; padding: 7px 10px; border: 1px solid var(--rule); border-radius: 7px; color: var(--bg); background: var(--ink); box-shadow: 0 5px 18px #0004; font-size: 11px; white-space: nowrap; }
   .selection-ask:hover { background: var(--accent); }
-  .chat-panel { position: absolute; z-index: 15; top: 54px; right: 16px; bottom: 16px; display: flex; width: min(430px, calc(100% - 32px)); min-height: 260px; flex-direction: column; overflow: hidden; border: 1px solid var(--rule); border-radius: 12px; background: var(--surface); box-shadow: 0 16px 50px #0005; }
-  .chat-heading { display: flex; align-items: center; justify-content: space-between; padding: 14px 16px 12px; border-bottom: 1px solid var(--rule); background: var(--sidebar); }
-  .chat-kicker { color: var(--accent); font-size: 9px; letter-spacing: .1em; }
-  .chat-heading h2 { margin: 2px 0 0; font-family: var(--sans); font-size: 16px; font-weight: 600; }
-  .chat-close { width: 28px; height: 28px; border-radius: 6px; color: var(--ink-faint); font-size: 20px; }
-  .chat-close:hover { color: var(--ink); background: var(--surface); }
-  .chat-context { display: grid; gap: 4px; padding: 11px 14px; border-bottom: 1px solid var(--rule); background: color-mix(in srgb, var(--mark) 28%, var(--surface)); }
-  .chat-context strong { overflow: hidden; color: var(--ink); font-family: var(--mono); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-  .chat-context > span { color: var(--ink-faint); font-size: 10px; }
-  .chat-context pre { max-height: 86px; overflow: auto; margin: 3px 0 0; color: var(--ink-soft); font-family: var(--mono); font-size: 10px; line-height: 1.5; white-space: pre-wrap; }
-  .chat-messages { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 12px; overflow: auto; padding: 14px; }
-  .chat-empty { max-width: 300px; margin: auto; color: var(--ink-faint); text-align: center; font-size: 12px; line-height: 1.55; }
-  .chat-message { display: grid; gap: 4px; max-width: 92%; align-self: flex-start; }
-  .chat-message.from-user { align-self: flex-end; }
-  .chat-message > span { color: var(--ink-faint); font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
-  .chat-message p { margin: 0; padding: 9px 11px; border: 1px solid var(--rule); border-radius: 9px; color: var(--ink-soft); background: var(--sidebar); font-size: 12px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
-  .chat-message.from-user p { color: var(--ink); background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
-  .chat-wait { display: flex; align-items: center; gap: 8px; color: var(--ink-faint); font-size: 11px; }
-  .chat-error { margin: 0; padding: 9px 10px; border-radius: 7px; color: var(--bad); background: var(--bad-soft); font-size: 11px; line-height: 1.45; }
-  .chat-compose { display: grid; gap: 8px; padding: 11px; border-top: 1px solid var(--rule); background: var(--sidebar); }
-  .chat-compose textarea { width: 100%; resize: vertical; box-sizing: border-box; padding: 9px; border: 1px solid var(--rule); border-radius: 7px; outline-color: var(--accent); color: var(--ink); background: var(--surface); font: 12px/1.45 var(--sans); }
-  .chat-compose textarea::placeholder { color: var(--ink-faint); }
-  .chat-compose > div { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-  .chat-compose > div > span { color: var(--ink-faint); font-size: 9px; }
   .btn.primary { border-color: var(--accent); color: var(--bg); background: var(--accent); }
   .btn.primary:hover:not(:disabled) { filter: brightness(1.08); color: var(--bg); }
   .banner { margin: 8px 18px 0; padding: 8px 12px; border-radius: 8px; background: var(--sidebar); color: var(--ink-soft); font-size: 12px; }
@@ -921,7 +864,6 @@
     .repo, .summary { display: none; }
     .bar-right { gap: 8px; }
     .progress { display: none; }
-    .chat-panel { top: 48px; right: 8px; bottom: 8px; width: calc(100% - 16px); }
     .repo-picker { align-items: stretch; flex-direction: column; }
     .target { align-items: stretch; flex-wrap: wrap; }
     .target label { flex: 1; min-width: 130px; }

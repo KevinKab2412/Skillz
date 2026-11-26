@@ -4,6 +4,7 @@ import { NoteSession, type Transport } from "./session.svelte";
 import { accept, headless, markdownOf } from "$lib/editor/note";
 import { suggestionGroups } from "$lib/editor/extensions";
 import type { Note, Thread } from "$lib/api";
+import { noteSelectionContext } from "$lib/review-guide";
 
 const MD = "# N\n\n## Think\n\nSum prices recursively.\n\n## Build\n\nUse a loop.\n";
 
@@ -67,6 +68,37 @@ test("a riddle that comes back empty leaves no empty thread behind", async () =>
   await r.s.onRecord({ type: "pair_started" });
   await r.s.onRecord({ type: "pair_settled" });
   expect(threads).toEqual([]);
+});
+
+test("a sidebar question shares the task queue and returns its answer to the sidebar", async () => {
+  const r = rig();
+  ed = r.ed;
+  await r.s.ask("ask", { request: "Why a loop?", threadId: "t1", selection: loop });
+  await r.s.onRecord({ type: "pair_started" });
+  const results: string[] = [];
+  const context = noteSelectionContext("N", "Selected text", "Use a loop", "Build: Use a loop.");
+  await r.s.askSidebar(context, "What is the plan?", (text) => results.push(text));
+  expect(r.sent[1]).toMatch(/^<pair mode="guide"\/>/);
+  expect(r.sent[1]).toContain("<selected_note_context_json>");
+  await r.s.onRecord({ type: "pair_settled" });
+  expect(results).toEqual([]);
+  await r.s.onRecord({ type: "pair_started" });
+  await r.s.onRecord({ type: "message_update", assistantMessageEvent: { type: "text_delta", delta: "Use a loop." } });
+  expect(r.s.sidebarOutput).toBe("Use a loop.");
+  await r.s.onRecord({ type: "pair_settled" });
+  expect(results).toEqual(["Use a loop."]);
+  expect(r.s.loose).toEqual([]);
+});
+
+test("stopping a queued sidebar question clears it without writing a reply to the note", async () => {
+  const r = rig();
+  ed = r.ed;
+  const context = noteSelectionContext("N", "Selected text", "Use a loop", "Build: Use a loop.");
+  const outcomes: (string | undefined)[] = [];
+  await r.s.askSidebar(context, "What is the plan?", (_text, error) => outcomes.push(error));
+  await r.s.stop();
+  expect(outcomes).toEqual(["Stopped."]);
+  expect(r.s.loose).toEqual([]);
 });
 
 test("cards belong to the thread of the task that asked for them", async () => {

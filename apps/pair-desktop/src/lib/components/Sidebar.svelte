@@ -43,9 +43,9 @@
 
 <nav class="sidebar" aria-label="Projects and notes">
   <div class="top" data-tauri-drag-region></div>
-  <button class="folder-action" title="Open a project in its own window" onclick={onAddFolder}>
+  <button class="folder-action" title="Open the Pair folder launcher" onclick={onAddFolder}>
     <span class="folder-icon" aria-hidden="true"><svg viewBox="0 0 20 20"><path d="M10 4v12M4 10h12" /></svg></span>
-    <span class="folder-copy"><strong>Open folder</strong><small>Open in its own window</small></span>
+    <span class="folder-copy"><strong>Open new folder</strong><small>Open in its own window</small></span>
   </button>
   <div class="content">
     {#if folder}

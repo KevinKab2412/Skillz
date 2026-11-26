@@ -5,8 +5,9 @@
  * `transport` to Tauri; tests pass a fake.
  */
 import type { Editor } from "@tiptap/core";
-import type { Approval, Note, Proposal, Sidecar, Thread, TextQuote } from "$lib/api";
+import type { Approval, Note, Proposal, ReviewChatContext, Sidecar, Thread, TextQuote } from "$lib/api";
 import { buildPrompt, type AskKind } from "$lib/prompts";
+import { buildReviewChatPrompt } from "$lib/review-guide";
 import { markdownOf, proposalAnchors, proposeBlock, proposeEdit, restoreProposal, threadForQuote } from "$lib/editor/note";
 import { quoteAt, textIndex } from "$lib/editor/anchors";
 
@@ -41,7 +42,8 @@ export type Card = {
 /** What pair is doing right now, and where: a thread, or the note as a whole. */
 export type Activity = { threadId: string | null; status: string; text: string };
 
-type TaskCtx = { kind: AskKind; message: string; threadId?: string; quote?: TextQuote; display: string };
+type SidebarResult = (text: string, error?: string) => void;
+type TaskCtx = { kind: AskKind; message: string; threadId?: string; quote?: TextQuote; display: string; sidebar?: SidebarResult };
 
 /** Plain words for a tool call, for the line under the passage while pair works. */
 export function describeTool(name: string, args: Record<string, any> = {}): string {
@@ -137,22 +139,47 @@ export class NoteSession {
       selection: opts.selection?.text,
       request: opts.request,
     });
-    const ctx: TaskCtx = { kind, message, threadId: opts.threadId, quote: opts.selection?.quote, display: opts.request ?? opts.selection?.text ?? "" };
+    await this.enqueue({ kind, message, threadId: opts.threadId, quote: opts.selection?.quote, display: opts.request ?? opts.selection?.text ?? "" });
+  }
+
+  async askSidebar(context: ReviewChatContext, question: string, onReply: SidebarResult) {
+    this.crash = null;
+    this.error = null;
+    await this.enqueue({ kind: "ask", message: buildReviewChatPrompt(context, question), display: question, sidebar: onReply });
+  }
+
+  get sidebarOutput() {
+    const activity = this.activity;
+    return this.current?.sidebar ? activity?.text ?? "" : "";
+  }
+
+  get canRetry() {
+    return !!this.lastTask && !this.lastTask.sidebar;
+  }
+
+  private async enqueue(ctx: TaskCtx) {
     this.pendingTasks.push(ctx);
     try {
-      const r = await this.transport.ask(message);
+      const r = await this.transport.ask(ctx.message);
       if (r === "queued") this.queued = this.pendingTasks.length - (this.running ? 0 : 1);
     } catch (e) {
+      const waiting = this.pendingTasks.includes(ctx);
       this.pendingTasks = this.pendingTasks.filter((t) => t !== ctx);
+      if (waiting) ctx.sidebar?.("", String(e));
       this.error = String(e);
     }
   }
 
   retryLast() {
-    if (this.lastTask) void this.ask("retry", { request: this.lastTask.display, threadId: this.lastTask.threadId });
+    if (this.lastTask && !this.lastTask.sidebar) void this.ask("retry", { request: this.lastTask.display, threadId: this.lastTask.threadId });
   }
 
   async stop() {
+    for (const task of this.pendingTasks) task.sidebar?.("", "Stopped.");
+    if (this.current?.sidebar) {
+      this.current.sidebar("", "Stopped.");
+      this.current.sidebar = () => {};
+    }
     this.pendingTasks = [];
     this.queued = 0;
     await this.transport.stop();
@@ -169,6 +196,7 @@ export class NoteSession {
       case "pair_started": {
         this.running = true;
         this.current = this.pendingTasks.shift() ?? { kind: "retry", message: rec.message, display: "" };
+        if (this.current.sidebar) this.error = null;
         this.lastTask = this.current;
         this.queued = this.pendingTasks.length;
         this.activity = { threadId: this.current.threadId ?? null, status: "thinking", text: "" };
@@ -200,9 +228,16 @@ export class NoteSession {
         break;
       case "pair_exited":
         if (rec.during_task || (rec.code && rec.code !== 0)) this.crash = { stderr: rec.stderr ?? "", code: rec.code ?? null };
+        if (rec.during_task) {
+          for (const task of this.pendingTasks) task.sidebar?.("", "Pair stopped before answering.");
+          this.pendingTasks = [];
+          this.queued = 0;
+          if (this.current?.sidebar) this.error = "Pair stopped before answering.";
+        }
         break;
       case "pair_error":
         this.error = rec.error;
+        if (!this.current && this.pendingTasks[0]?.sidebar) this.pendingTasks.shift()?.sidebar?.("", this.error ?? "Pair could not answer.");
         break;
       case "extension_ui_request":
         if (rec.method === "editor" && typeof rec.title === "string" && rec.title.startsWith("pair:")) {
@@ -221,6 +256,10 @@ export class NoteSession {
     this.current = null;
     this.activity = null;
     if (!ctx) return;
+    if (ctx.sidebar) {
+      ctx.sidebar(this.error ? "" : text, this.error ?? undefined);
+      return;
+    }
     const id = ctx.threadId;
     if (id) {
       // The answer joins its thread; a thread that never got a message (e.g. a riddle with no

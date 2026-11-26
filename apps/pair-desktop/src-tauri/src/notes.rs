@@ -14,7 +14,8 @@
 //!
 //! Versions: 1 = core note state, 2 = proposals and approvals, 3 = note kind and review state,
 //! 4 = selected repository path, 5 = code review base selection source,
-//! 6 = pending comparison refresh after base correction, 7 = generated note title.
+//! 6 = pending comparison refresh after base correction, 7 = generated note title,
+//! 8 = note selection chat.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -27,7 +28,7 @@ const LEGACY_NOTES_DIR: &str = ".pair/notes";
 static MIGRATION_LOCK: Mutex<()> = Mutex::new(());
 static SIDECAR_LOCK: Mutex<()> = Mutex::new(());
 /// The sidecar version this build writes, and the newest it can read.
-pub const SIDECAR_VERSION: u32 = 7;
+pub const SIDECAR_VERSION: u32 = 8;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -73,6 +74,8 @@ pub enum ReviewBaseSource {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ReviewChatContext {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub source: Option<SelectionSource>,
     pub path: String,
     #[serde(default)]
     pub location: String,
@@ -80,6 +83,18 @@ pub struct ReviewChatContext {
     pub selection: String,
     #[serde(default)]
     pub excerpt: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[serde(rename_all = "snake_case")]
+pub enum SelectionSource {
+    Note,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct SelectionChatState {
+    pub context: ReviewChatContext,
+    pub messages: Vec<ReviewChatMessage>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -265,6 +280,8 @@ pub struct Sidecar {
     pub v: u32,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub title: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub selection_chat: Option<SelectionChatState>,
     #[serde(default)]
     pub threads: Vec<Thread>,
     #[serde(default)]
@@ -290,6 +307,7 @@ impl Default for Sidecar {
         Sidecar {
             v: SIDECAR_VERSION,
             title: None,
+            selection_chat: None,
             threads: vec![],
             proposals: vec![],
             approvals: vec![],
@@ -657,6 +675,7 @@ mod tests {
                 ..ReviewGuide::default()
             }),
             chat_context: Some(ReviewChatContext {
+                source: None,
                 path: "src/lib.rs".into(),
                 location: "old 12, new 18".into(),
                 selection: "return next_value;".into(),
@@ -671,6 +690,27 @@ mod tests {
         save(d.path(), &note).unwrap();
 
         assert_eq!(read(d.path(), "review").unwrap(), note);
+    }
+
+    #[test]
+    fn sidecar_round_trips_note_selection_chat() {
+        let d = tmp();
+        let mut note = create(d.path(), "note").unwrap();
+        note.sidecar.selection_chat = Some(SelectionChatState {
+            context: ReviewChatContext {
+                source: Some(SelectionSource::Note),
+                path: "Discuss delivery".into(),
+                selection: "Claim the send first.".into(),
+                ..ReviewChatContext::default()
+            },
+            messages: vec![ReviewChatMessage {
+                id: "ask-1".into(),
+                role: ReviewChatRole::User,
+                text: "Why claim it first?".into(),
+            }],
+        });
+        save(d.path(), &note).unwrap();
+        assert_eq!(read(d.path(), "note").unwrap(), note);
     }
 
     #[test]

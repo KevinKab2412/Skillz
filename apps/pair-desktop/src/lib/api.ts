@@ -28,6 +28,7 @@ export interface ReviewGuide {
   sections: ReviewSection[];
 }
 export interface ReviewChatContext {
+  source?: "note" | null;
   path: string;
   location: string;
   selection: string;
@@ -37,6 +38,10 @@ export interface ReviewChatMessage {
   id: string;
   role: "user" | "assistant";
   text: string;
+}
+export interface SelectionChatState {
+  context: ReviewChatContext;
+  messages: ReviewChatMessage[];
 }
 export type ReviewBaseSource = "pull_request" | "fallback" | "manual";
 export interface ReviewState {
@@ -86,6 +91,7 @@ export interface Approval {
 export interface Sidecar {
   v: number;
   title?: string | null;
+  selection_chat?: SelectionChatState | null;
   threads: Thread[];
   proposals: Proposal[];
   approvals: Approval[];
