@@ -4,6 +4,7 @@
   import { createEditor, EditorContent, type Editor } from "svelte-tiptap";
   import { listen } from "@tauri-apps/api/event";
   import { agent, api, noteKey, type AgentEvent, type Checkpoint, type Note, type PiStatus, type Settings, type Stage, type Thread } from "$lib/api";
+  import type { CodeReference } from "$lib/code-references";
   import { STAGES } from "$lib/prompts";
   import { NoteSession } from "$lib/session.svelte";
   import {
@@ -35,6 +36,8 @@
     interrupted = null,
     files = [],
     openFile = null,
+    onOpenReference,
+    onSaved,
     onFilesChanged = () => {},
   }: {
     folder: string;
@@ -44,6 +47,8 @@
     interrupted?: string | null;
     files?: string[];
     openFile?: string | null;
+    onOpenReference: (reference: CodeReference) => void;
+    onSaved: (folder: string, note: Note) => void;
     onFilesChanged?: () => void;
   } = $props();
 
@@ -119,6 +124,7 @@
     activate: (id) => (active = id),
     reply: (t, text) => void replyInThread(t, text),
     resolve: (t) => void resolveThread(t),
+    openReference: (reference) => onOpenReference(reference),
     decideCard: (card, decision, opts) => void session.decideCard(card, decision, opts),
   };
 
@@ -176,6 +182,7 @@
       try {
         await api.saveNote(folder, $state.snapshot(note) as Note, expected);
         lastSaved = markdown;
+        if (!deleting) onSaved(folder, note);
       } catch (err) {
         if (String(err).includes("changed on disk")) {
           const disk = await api.openNote(folder, note.name).catch(() => null);
@@ -452,7 +459,7 @@
           syncPending();
           const snapshot = { ...($state.snapshot(note) as Note), markdown };
           const expected = lastSaved;
-          void saving.then(() => api.saveNote(folder, snapshot, expected)).catch(() => {});
+          void saving.then(() => api.saveNote(folder, snapshot, expected)).then(() => onSaved(folder, snapshot)).catch(() => {});
         }
       }
       void agent.close(folder, note.name).catch(() => {});

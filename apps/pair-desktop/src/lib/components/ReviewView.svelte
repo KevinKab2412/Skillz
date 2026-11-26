@@ -11,12 +11,14 @@
     settings,
     pi,
     interrupted = null,
+    onSaved,
   }: {
     folder: string;
     note: Note;
     settings: Settings;
     pi: PiStatus | null;
     interrupted?: string | null;
+    onSaved: (folder: string, note: Note) => void;
   } = $props();
 
   let branches = $state<string[]>([]);
@@ -97,7 +99,12 @@
     const sidecar = $state.snapshot(note.sidecar) as Note["sidecar"];
     reviewSaving = reviewSaving.then(async () => {
       if (deleting) return;
-      await api.saveSidecar(folder, note.name, sidecar).catch((e) => { error = String(e); });
+      try {
+        await api.saveSidecar(folder, note.name, sidecar);
+        if (!deleting) onSaved(folder, { name: note.name, markdown: note.markdown, sidecar });
+      } catch (e) {
+        error = String(e);
+      }
     });
     await reviewSaving;
   }

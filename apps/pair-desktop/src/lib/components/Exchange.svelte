@@ -8,6 +8,7 @@
   import ProposalBar from "$lib/editor/ProposalBar.svelte";
   import { visibleMessages, type ExchangeCtx } from "./exchange";
   import { focusOnMount } from "$lib/focus";
+  import { splitCodeReferences } from "$lib/code-references";
 
   /** Focus the reply box only when Kevin clicked Reply, not when the thread merely became active. */
   const focusIf = (el: HTMLElement, on: boolean) => {
@@ -53,7 +54,19 @@
       <div class:older={open && thread.messages.length > 2}>
         {#each view.shown as m, i (i)}
           {#if m.author === "agent"}
-            <div class="ink msg"><span class="dot"></span><div>{#each paras(m.text) as p}<p>{p}</p>{/each}</div></div>
+            <div class="ink msg">
+              <span class="dot"></span>
+              <div>
+                {#each paras(m.text) as p}
+                  <p>{#each splitCodeReferences(p) as { text, reference }}{#if reference}<button
+                    type="button"
+                    class="code-reference"
+                    title={`Open ${text} beside the note`}
+                    onclick={(event) => { event.stopPropagation(); ctx.openReference(reference); }}
+                  >{text}</button>{:else}{text}{/if}{/each}</p>
+                {/each}
+              </div>
+            </div>
           {:else}
             <div class="kevin msg">{m.text}</div>
           {/if}
@@ -116,6 +129,8 @@
   .msg { margin: 0 0 8px; }
   .ink { display: grid; grid-template-columns: 7px 1fr; column-gap: 12px; font-family: var(--serif); font-size: calc(var(--text-size) * 1.02); line-height: 1.5; color: var(--agent-ink); }
   .ink p { margin: 0 0 6px; white-space: pre-wrap; }
+  .code-reference { max-width: 100%; padding: 0; font: .82em var(--mono); color: var(--ink); text-align: left; text-decoration: underline; text-decoration-color: var(--ink-faint); text-underline-offset: .18em; overflow-wrap: anywhere; }
+  .code-reference:hover { text-decoration-color: currentColor; background: var(--mark); }
   .ink .dot { margin-top: 0.62em; }
   .kevin { font-size: calc(var(--text-size) * 0.9); line-height: 1.55; color: var(--ink); padding-left: 19px; }
   .older { border-left: 1px solid var(--rule); padding-left: 12px; margin-left: 2px; }

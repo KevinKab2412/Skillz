@@ -1,4 +1,5 @@
 import type { Thread } from "$lib/api";
+import type { CodeReference } from "$lib/code-references";
 import type { Card, NoteSession } from "$lib/session.svelte";
 
 /** What a widget under a passage needs from the note view. Reads are reactive. */
@@ -10,6 +11,7 @@ export type ExchangeCtx = {
   activate(id: string | null): void;
   reply(thread: Thread, text: string): void;
   resolve(thread: Thread): void;
+  openReference(reference: CodeReference): void;
   decideCard(card: Card, decision: "accept" | "reject", opts: { reason?: string; command?: string }): void;
 };
 

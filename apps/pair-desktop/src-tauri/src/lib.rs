@@ -3,6 +3,7 @@ mod agent_cmds;
 mod checkpoints;
 mod files;
 mod index;
+mod note_titles;
 mod notes;
 mod review;
 mod settings;
@@ -183,6 +184,26 @@ fn save_sidecar(app: AppHandle, folder: String, name: String, sidecar: Sidecar) 
 }
 
 #[tauri::command]
+async fn title_note(app: AppHandle, folder: String, name: String) -> Result<Option<String>, String> {
+    let dir = project_notes(&app, &folder_path(&folder)?)?;
+    let note = notes::read(&dir, &name).map_err(err)?;
+    if note.sidecar.title.is_some() {
+        return Ok(note.sidecar.title);
+    }
+    let Some(excerpt) = note_titles::excerpt(&note) else { return Ok(None) };
+    let pi = agent_cmds::resolve_pi(settings::load(&app).pi_path);
+    let suggested = match pi {
+        Some(pi) => note_titles::suggest(&pi, &excerpt).await,
+        None => None,
+    };
+    suggested
+        .or_else(|| note_titles::fallback(&excerpt))
+        .map(|title| notes::save_title(&dir, &name, title))
+        .transpose()
+        .map_err(err)
+}
+
+#[tauri::command]
 fn review_branches(folder: String, include_pr_base: bool) -> Result<review::BranchList, String> {
     review::branches(&folder_path(&folder)?, include_pr_base)
 }
@@ -261,6 +282,7 @@ pub fn run() {
             open_note,
             save_note,
             save_sidecar,
+            title_note,
             review_branches,
             review_diff,
             review_pull_request,

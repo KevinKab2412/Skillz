@@ -4,7 +4,7 @@
  */
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
-import type { Note } from "$lib/api";
+import { noteLabel, type Note } from "$lib/api";
 
 /** Removes ```pair-reply fences (and the blank line after them). */
 export function stripReplies(markdown: string): string {
@@ -16,7 +16,8 @@ export function exportText(markdown: string, justMyWords: boolean): string {
 }
 
 export async function exportMarkdown(note: Note, justMyWords: boolean): Promise<string> {
-  const path = await save({ title: "Export note as Markdown", defaultPath: `${note.name}.md`, filters: [{ name: "Markdown", extensions: ["md"] }] });
+  const filename = noteLabel({ name: note.name, title: note.sidecar.title }).replace(/[\\/:]/g, "-");
+  const path = await save({ title: "Export note as Markdown", defaultPath: `${filename}.md`, filters: [{ name: "Markdown", extensions: ["md"] }] });
   if (!path) return "Export cancelled.";
   await invoke("export_text", { path, contents: exportText(note.markdown, justMyWords) });
   return `Exported to ${path}`;

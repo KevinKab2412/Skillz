@@ -14,7 +14,7 @@
 //!
 //! Versions: 1 = core note state, 2 = proposals and approvals, 3 = note kind and review state,
 //! 4 = selected repository path, 5 = code review base selection source,
-//! 6 = pending comparison refresh after base correction.
+//! 6 = pending comparison refresh after base correction, 7 = generated note title.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -25,8 +25,9 @@ use std::sync::Mutex;
 
 const LEGACY_NOTES_DIR: &str = ".pair/notes";
 static MIGRATION_LOCK: Mutex<()> = Mutex::new(());
+static SIDECAR_LOCK: Mutex<()> = Mutex::new(());
 /// The sidecar version this build writes, and the newest it can read.
-pub const SIDECAR_VERSION: u32 = 6;
+pub const SIDECAR_VERSION: u32 = 7;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -262,6 +263,8 @@ pub struct Session {
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Sidecar {
     pub v: u32,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
     #[serde(default)]
     pub threads: Vec<Thread>,
     #[serde(default)]
@@ -286,6 +289,7 @@ impl Default for Sidecar {
     fn default() -> Self {
         Sidecar {
             v: SIDECAR_VERSION,
+            title: None,
             threads: vec![],
             proposals: vec![],
             approvals: vec![],
@@ -310,6 +314,7 @@ pub struct Note {
 pub struct NoteSummary {
     pub name: String,
     pub modified_ms: u64,
+    pub title: Option<String>,
     #[serde(default)]
     pub kind: NoteKind,
 }
@@ -476,12 +481,11 @@ pub fn list(dir: &Path) -> io::Result<Vec<NoteSummary>> {
             .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
             .map(|d| d.as_millis() as u64)
             .unwrap_or(0);
-        let kind = fs::read_to_string(sidecar_path(dir, name))
+        let sidecar = fs::read_to_string(sidecar_path(dir, name))
             .ok()
-            .and_then(|json| serde_json::from_str::<Sidecar>(&json).ok())
-            .map(|sidecar| sidecar.kind)
-            .unwrap_or_default();
-        out.push(NoteSummary { name: name.to_string(), modified_ms, kind });
+            .and_then(|json| serde_json::from_str::<Sidecar>(&json).ok());
+        let (kind, title) = sidecar.map(|sidecar| (sidecar.kind, sidecar.title)).unwrap_or_default();
+        out.push(NoteSummary { name: name.to_string(), modified_ms, kind, title });
     }
     out.sort_by(|a, b| b.modified_ms.cmp(&a.modified_ms).then(a.name.cmp(&b.name)));
     Ok(out)
@@ -513,12 +517,16 @@ pub fn create_kind(dir: &Path, name: &str, kind: NoteKind) -> io::Result<Note> {
 pub fn read(dir: &Path, name: &str) -> io::Result<Note> {
     validate_name(name)?;
     let markdown = fs::read_to_string(md_path(dir, name))?;
-    let sidecar = match fs::read_to_string(sidecar_path(dir, name)) {
-        Ok(s) => parse_sidecar(&s)?,
-        Err(e) if e.kind() == io::ErrorKind::NotFound => Sidecar::default(),
-        Err(e) => return Err(e),
-    };
+    let sidecar = read_sidecar(dir, name)?;
     Ok(Note { name: name.to_string(), markdown, sidecar })
+}
+
+fn read_sidecar(dir: &Path, name: &str) -> io::Result<Sidecar> {
+    match fs::read_to_string(sidecar_path(dir, name)) {
+        Ok(s) => parse_sidecar(&s),
+        Err(e) if e.kind() == io::ErrorKind::NotFound => Ok(Sidecar::default()),
+        Err(e) => Err(e),
+    }
 }
 
 /// Parses a sidecar of this version or older, upgraded to this version.
@@ -539,13 +547,13 @@ pub fn save(dir: &Path, note: &Note) -> io::Result<()> {
     validate_name(&note.name)?;
     fs::create_dir_all(dir)?;
     write_atomic(&md_path(dir, &note.name), note.markdown.as_bytes())?;
-    let json = serde_json::to_vec_pretty(&note.sidecar).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
-    write_atomic(&sidecar_path(dir, &note.name), &json)
+    save_sidecar(dir, &note.name, &note.sidecar)
 }
 
 /// Removes a note's markdown and sidecar.
 pub fn delete(dir: &Path, name: &str) -> io::Result<()> {
     validate_name(name)?;
+    let _lock = SIDECAR_LOCK.lock().map_err(|error| io::Error::other(error.to_string()))?;
     for p in [md_path(dir, name), sidecar_path(dir, name)] {
         match fs::remove_file(p) {
             Err(e) if e.kind() != io::ErrorKind::NotFound => return Err(e),
@@ -557,6 +565,27 @@ pub fn delete(dir: &Path, name: &str) -> io::Result<()> {
 
 pub fn save_sidecar(dir: &Path, name: &str, sidecar: &Sidecar) -> io::Result<()> {
     validate_name(name)?;
+    let _lock = SIDECAR_LOCK.lock().map_err(|error| io::Error::other(error.to_string()))?;
+    let mut sidecar = sidecar.clone();
+    sidecar.v = SIDECAR_VERSION;
+    sidecar.title = read_sidecar(dir, name)?.title.or(sidecar.title);
+    write_sidecar(dir, name, &sidecar)
+}
+
+pub fn save_title(dir: &Path, name: &str, title: String) -> io::Result<String> {
+    validate_name(name)?;
+    let _lock = SIDECAR_LOCK.lock().map_err(|error| io::Error::other(error.to_string()))?;
+    // Re-read after the model returns. The note may have been edited or deleted while it ran.
+    let mut note = read(dir, name)?;
+    if let Some(title) = note.sidecar.title {
+        return Ok(title);
+    }
+    note.sidecar.title = Some(title.clone());
+    write_sidecar(dir, name, &note.sidecar)?;
+    Ok(title)
+}
+
+fn write_sidecar(dir: &Path, name: &str, sidecar: &Sidecar) -> io::Result<()> {
     let json = serde_json::to_vec_pretty(sidecar).map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
     fs::create_dir_all(dir)?;
     write_atomic(&sidecar_path(dir, name), &json)
@@ -713,6 +742,28 @@ mod tests {
         assert_eq!(note.sidecar.review, Some(ReviewState::default()));
         assert_eq!(list(d.path()).unwrap()[0].kind, NoteKind::CodeReview);
         assert_eq!(read(d.path(), "review-one").unwrap(), note);
+    }
+
+    #[test]
+    fn generated_title_survives_stale_editor_saves_and_keeps_the_note_id() {
+        let d = tmp();
+        let mut stale = create(d.path(), "note-2026-11-26-1234").unwrap();
+        let name = stale.name.clone();
+        let title = "Prevent duplicate sends".to_string();
+        assert_eq!(save_title(d.path(), &name, title.clone()).unwrap(), title);
+        stale.markdown = "Claim before calling the delivery service.".into();
+        save(d.path(), &stale).unwrap();
+        save_sidecar(d.path(), &name, &stale.sidecar).unwrap();
+
+        let note = read(d.path(), &name).unwrap();
+        assert_eq!(note.sidecar.title.as_ref(), Some(&title));
+        assert_eq!(note.markdown, stale.markdown);
+        let summary = list(d.path()).unwrap().pop().unwrap();
+        assert_eq!(summary.name, name);
+        assert_eq!(summary.title.as_ref(), Some(&title));
+        delete(d.path(), &name).unwrap();
+        assert_eq!(save_title(d.path(), &name, title).unwrap_err().kind(), io::ErrorKind::NotFound);
+        assert!(list(d.path()).unwrap().is_empty());
     }
 
     #[test]

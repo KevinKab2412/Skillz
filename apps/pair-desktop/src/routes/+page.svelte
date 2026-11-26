@@ -10,7 +10,8 @@
   import SettingsSheet from "$lib/components/SettingsSheet.svelte";
   import FilePane from "$lib/components/FilePane.svelte";
   import ReviewView from "$lib/components/ReviewView.svelte";
-  import { agent, api, noteKey, settingsApi, type Note, type NoteKind, type NoteSummary, type PiStatus, type Settings } from "$lib/api";
+  import type { CodeReference } from "$lib/code-references";
+  import { agent, api, automaticallyNamed, noteKey, noteLabel, settingsApi, type Note, type NoteKind, type NoteSummary, type PiStatus, type Settings } from "$lib/api";
 
   let recentFolders = $state<string[]>([]);
   let booted = $state(false);
@@ -27,13 +28,15 @@
   let reviewView = $state<ReviewView>();
   let files = $state<string[]>([]);
   let filesFolder: string | null = null;
-  let openFile = $state<string | null>(null);
+  let filePane = $state<{ path: string; reference?: CodeReference } | null>(null);
+  const openFile = $derived(filePane?.path ?? null);
   let fileTick = $state(0);
   let navigationRequest = 0;
   let pendingNavigation: { folder: string; name: string; request: number } | null = null;
+  const titling = new Set<string>();
 
   async function loadFiles(folder: string, request = navigationRequest) {
-    if (filesFolder !== folder) openFile = null;
+    if (filesFolder !== folder) filePane = null;
     filesFolder = folder;
     const nextFiles = await api.listFiles(folder).catch(() => []);
     if (request === navigationRequest && projectFolder === folder) files = nextFiles;
@@ -56,6 +59,25 @@
 
   async function refresh(folder: string) {
     notesByFolder[folder] = await api.listNotes(folder);
+  }
+
+  async function titleStartedNote(folder: string, note: Note) {
+    const { name, sidecar } = note;
+    if (!automaticallyNamed(name) || sidecar.title) return;
+    if (sidecar.kind === "code_review" ? !sidecar.review?.guide : !note.markdown.trim()) return;
+    const key = noteKey(folder, name);
+    if (titling.has(key)) return;
+    titling.add(key);
+    try {
+      const title = await api.titleNote(folder, name);
+      if (!title) return;
+      if (current?.folder === folder && current.note.name === name) current.note.sidecar.title = title;
+      await refresh(folder);
+    } catch {
+      // Titles are optional. Retry on the next save or when the note is reopened.
+    } finally {
+      titling.delete(key);
+    }
   }
 
   async function boot() {
@@ -106,6 +128,7 @@
       const note = await api.openNote(folder, name);
       if (request !== navigationRequest) return;
       current = { folder, note };
+      void titleStartedNote(folder, note);
       void loadFiles(folder, request);
     } finally {
       if (pendingNavigation?.request === request) pendingNavigation = null;
@@ -115,12 +138,8 @@
   async function newNote(folder: string, kind: NoteKind = "note") {
     const request = ++navigationRequest;
     pendingNavigation = null;
-    const d = new Date();
-    const pad = (n: number) => String(n).padStart(2, "0");
     const prefix = kind === "code_review" ? "review" : "note";
-    let name = `${prefix}-${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}-${pad(d.getHours())}${pad(d.getMinutes())}`;
-    const taken = new Set((notesByFolder[folder] ?? []).map((n) => n.name));
-    for (let i = 2; taken.has(name); i++) name = name.replace(/(-\d+)?$/, `-${i}`);
+    const name = `${prefix}-${crypto.randomUUID()}`;
     const note = await api.createNote(folder, name, kind);
     await refresh(folder);
     if (request !== navigationRequest) return;
@@ -129,7 +148,8 @@
   }
 
   async function deleteNote(folder: string, name: string) {
-    if (!confirm(`Delete “${name}”? Its note content, review data, Pair conversation, and undo history will be removed. Project files will stay.`)) return;
+    const label = noteLabel((notesByFolder[folder] ?? []).find((note) => note.name === name) ?? { name });
+    if (!confirm(`Delete “${label}”? Its note content, review data, Pair conversation, and undo history will be removed. Project files will stay.`)) return;
 
     const previous = current;
     const selected = previous?.folder === folder && previous.note.name === name;
@@ -210,7 +230,7 @@
       settingsOpen={showSettings}
       {files}
       {openFile}
-      onOpenFile={(p) => (openFile = p)} />
+      onOpenFile={(path) => (filePane = { path })} />
 
     <main>
       {#if error}<p class="error" role="alert">{error} <button onclick={() => (error = null)}>×</button></p>{/if}
@@ -220,6 +240,7 @@
           {#if current.note.sidecar.kind === "code_review"}
             <svelte:boundary>
               <ReviewView bind:this={reviewView} folder={current.folder} bind:note={current.note} {settings} {pi}
+                onSaved={titleStartedNote}
                 interrupted={interrupted[noteKey(current.folder, current.note.name)] ?? null} />
               {#snippet failed(failure)}
                 <div class="error" role="alert">Could not open this code review: {String(failure)}</div>
@@ -227,10 +248,12 @@
             </svelte:boundary>
           {:else}
             <NoteView bind:this={view} folder={current.folder} bind:note={current.note} {settings} {pi} {files} {openFile} onFilesChanged={filesChanged}
+              onSaved={titleStartedNote}
+              onOpenReference={(reference) => (filePane = { path: reference.path, reference: { ...reference } })}
               interrupted={interrupted[noteKey(current.folder, current.note.name)] ?? null} />
           {/if}
         {/key}
-        {#if openFile}<FilePane folder={current.folder} path={openFile} tick={fileTick} onClose={() => (openFile = null)} />{/if}
+        {#if filePane}<FilePane folder={current.folder} path={filePane.path} reference={filePane.reference} tick={fileTick} onClose={() => (filePane = null)} />{/if}
         </div>
       {:else}
         <div class="bar" data-tauri-drag-region></div>

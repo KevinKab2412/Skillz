@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { folderLabel, type NoteKind, type NoteSummary } from "$lib/api";
+  import { noteLabel, type NoteKind, type NoteSummary } from "$lib/api";
   import FileTree, { buildTree } from "./FileTree.svelte";
 
   let {
@@ -50,26 +50,27 @@
   <div class="content">
     {#if folder}
       <section>
-        <header>
-          <span title={folder}>{folderLabel(folder)}</span>
-          <div class="add-wrap">
-            <button class="add" title={`Create in ${folderLabel(folder)}`} aria-label={`Create in ${folderLabel(folder)}`} aria-expanded={newMenu === folder} onclick={() => (newMenu = newMenu === folder ? null : folder)}>+</button>
-            {#if newMenu === folder}
-              <div class="new-menu">
-                <button onclick={() => { newMenu = null; onNew(folder, "note"); }}>Note</button>
-                <button onclick={() => { newMenu = null; onNew(folder, "code_review"); }}>Code review</button>
-              </div>
-            {/if}
-          </div>
+        <header class="add-wrap">
+          <button class="add" aria-expanded={newMenu === folder} onclick={() => (newMenu = newMenu === folder ? null : folder)}>
+            <span>Add new note</span><span class="plus" aria-hidden="true">+</span>
+          </button>
+          {#if newMenu === folder}
+            <div class="new-menu">
+              <button onclick={() => { newMenu = null; onNew(folder, "note"); }}>Note</button>
+              <button onclick={() => { newMenu = null; onNew(folder, "code_review"); }}>Code review</button>
+            </div>
+          {/if}
         </header>
         <ul>
           {#each notes as n (n.name)}
+            {@const label = noteLabel(n)}
             <li class="note-row">
               <button
                 class="note"
                 class:active={current?.folder === folder && current?.name === n.name}
-                onclick={() => onOpen(folder, n.name)}><span>{n.name}</span>{#if n.kind === "code_review"}<span class="kind">Review</span>{/if}</button>
-              <button class="delete-note" title="Delete note" aria-label={`Delete ${n.name}`} onclick={(event) => { event.stopPropagation(); onDelete(folder, n.name); }}>
+                title={label}
+                onclick={() => onOpen(folder, n.name)}><span>{label}</span>{#if n.kind === "code_review"}<span class="kind">Review</span>{/if}</button>
+              <button class="delete-note" title="Delete note" aria-label={`Delete ${label}`} onclick={(event) => { event.stopPropagation(); onDelete(folder, n.name); }}>
                 <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 4.5h10M6 4.5v-1h4v1m-5.5 0 .6 8h5.8l.6-8M6.5 6.5v4m3-4v4" /></svg>
               </button>
             </li>
@@ -114,9 +115,10 @@
   section { margin-bottom: 18px; }
   header { display: flex; justify-content: space-between; align-items: center; padding: 0 6px; font-size: 12px; font-weight: 600; color: var(--ink-soft); text-transform: uppercase; letter-spacing: 0.04em; }
   .add-wrap { position: relative; }
-  .add { width: 20px; height: 20px; border-radius: 4px; color: var(--ink-faint); font-size: 16px; line-height: 1; }
+  .add { display: flex; width: 100%; min-height: 24px; align-items: center; justify-content: space-between; border-radius: 4px; text-align: left; }
+  .plus { width: 20px; color: var(--ink-faint); font-size: 16px; line-height: 1; text-align: center; }
   .add:hover { background: var(--rule); color: var(--ink); }
-  .new-menu { position: absolute; z-index: 10; top: 22px; right: 0; width: 150px; padding: 4px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 14%, transparent); }
+  .new-menu { position: absolute; z-index: 10; top: 100%; right: 0; width: 150px; padding: 4px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); box-shadow: 0 8px 24px color-mix(in srgb, var(--ink) 14%, transparent); }
   .new-menu button { display: block; width: 100%; padding: 7px 8px; border-radius: 5px; text-align: left; color: var(--ink-soft); font-size: 12px; }
   .new-menu button:hover { background: var(--sidebar); color: var(--ink); }
   ul { list-style: none; margin: 4px 0 0; padding: 0; }

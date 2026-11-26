@@ -17,7 +17,8 @@ Prices are summed recursively in sum.ts, so the stack depth grows with the baske
 Replace the recursive helper with a loop and keep the rounding rules identical.
 `,
   sidecar: {
-    v: 6,
+    v: 7,
+    title: null as string | null,
     proposals: [],
     approvals: [],
     threads: [
@@ -149,13 +150,14 @@ export function installMock() {
         case "load_index":
           return { folders: [FOLDER], recent: [{ folder: FOLDER, name: note.name }] };
         case "list_notes":
-          return [{ name: note.name, modified_ms: Date.now(), kind: note.sidecar.kind }, { name: "auth-refresh", modified_ms: 0, kind: "note" }];
+          return [{ name: note.name, title: note.sidecar.title, modified_ms: Date.now(), kind: note.sidecar.kind }, { name: "auth-refresh", modified_ms: 0, kind: "note" }];
         case "create_note":
           Object.assign(note, {
             name: a.name,
             markdown: "",
             sidecar: {
-              v: 6,
+              v: 7,
+              title: null,
               proposals: [],
               approvals: [],
               threads: [],
@@ -181,6 +183,10 @@ export function installMock() {
           note.sidecar = a.sidecar;
           persist();
           return null;
+        case "title_note":
+          note.sidecar.title ??= note.sidecar.kind === "code_review" ? "Handle large baskets at checkout" : "Plan the checkout fix";
+          persist();
+          return note.sidecar.title;
         case "get_settings":
           return { thinks_with_you: false, pace: "normal", appearance: "system", text_size: "m", accent: "#d2553a", pi_path: null, default_model: "openai-codex/gpt-6-sol" };
         case "pi_status":

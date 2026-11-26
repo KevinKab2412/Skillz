@@ -85,6 +85,7 @@ export interface Approval {
 }
 export interface Sidecar {
   v: number;
+  title?: string | null;
   threads: Thread[];
   proposals: Proposal[];
   approvals: Approval[];
@@ -96,7 +97,12 @@ export interface Sidecar {
   review: ReviewState | null;
 }
 export interface Note { name: string; markdown: string; sidecar: Sidecar }
-export interface NoteSummary { name: string; modified_ms: number; kind: NoteKind }
+export interface NoteSummary { name: string; title?: string | null; modified_ms: number; kind: NoteKind }
+
+const generatedNoteId = /^(note|review)-[\da-f]{8}(?:-[\da-f]{4}){3}-[\da-f]{12}$/;
+const datedNoteId = /^(note|review)-\d{4}-\d{2}-\d{2}-\d{1,4}$/;
+export const automaticallyNamed = (name: string) => generatedNoteId.test(name) || datedNoteId.test(name);
+export const noteLabel = (note: Pick<NoteSummary, "name" | "title">) => note.title || (generatedNoteId.test(note.name) ? "Untitled" : note.name);
 export interface PullRequestBase { branch: string; remote: string | null }
 export interface ReviewPullRequest { title: string; body: string }
 export type PullRequestBaseStatus = "found" | "not_found" | "unavailable";
@@ -138,6 +144,7 @@ export const api = {
   saveNote: (folder: string, note: Note, expected?: string) => invoke<void>("save_note", { folder, note, expected: expected ?? null }),
   saveSidecar: (folder: string, name: string, sidecar: Sidecar) =>
     invoke<void>("save_sidecar", { folder, name, sidecar }),
+  titleNote: (folder: string, name: string) => invoke<string | null>("title_note", { folder, name }),
   watchFolder: (folder: string) => invoke<void>("watch_folder", { folder }),
   deleteNote: (folder: string, name: string) => invoke<void>("delete_note", { folder, name }),
   listFiles: (folder: string) => invoke<string[]>("list_files", { folder }),
