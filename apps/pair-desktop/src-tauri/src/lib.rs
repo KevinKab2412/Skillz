@@ -192,6 +192,17 @@ fn review_diff(folder: String, base_branch: String, head_branch: String) -> Resu
     review::diff(&folder_path(&folder)?, &base_branch, &head_branch)
 }
 
+#[tauri::command]
+async fn review_pull_request(
+    folder: String,
+    base_branch: String,
+    head_branch: String,
+    head_commit: String,
+) -> Option<review::PullRequestContext> {
+    let root = folder_path(&folder).ok()?;
+    review::pull_request(&root, &base_branch, &head_branch, &head_commit).await
+}
+
 /// Watches the project's central Pair note directory and emits `note-changed` for each touched note. The UI
 /// compares the new text with what it last saved, so the app's own writes are ignored there.
 #[tauri::command]
@@ -252,6 +263,7 @@ pub fn run() {
             save_sidecar,
             review_branches,
             review_diff,
+            review_pull_request,
             delete_note,
             export_text,
             watch_folder,

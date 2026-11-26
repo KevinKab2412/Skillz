@@ -1,14 +1,23 @@
-//! Read-only Git data for guided code review notes.
+//! Read-only Git and GitHub data for guided code review notes.
 
 use serde::Serialize;
 use std::collections::HashMap;
 use std::io::Read;
 use std::path::Path;
 use std::process::{Command, Output, Stdio};
+use std::time::Duration;
 
 const MAX_FILES: usize = 150;
 const MAX_FILE_PATCH_BYTES: usize = 96 * 1024;
 const MAX_TOTAL_PATCH_BYTES: usize = 2 * 1024 * 1024;
+const MAX_PR_TITLE_BYTES: usize = 512;
+const MAX_PR_BODY_BYTES: usize = 8 * 1024;
+
+#[derive(Debug, Serialize, PartialEq)]
+pub struct PullRequestContext {
+    pub title: String,
+    pub body: String,
+}
 
 #[derive(Debug, Serialize, PartialEq)]
 pub struct PullRequestBase {
@@ -222,7 +231,120 @@ fn pull_request_repository(url: &str) -> Option<String> {
     (parts.next()? == "pull").then(|| format!("{owner}/{repo}"))
 }
 
+struct ReviewBranch<'a> {
+    name: &'a str,
+    remote_url: Option<String>,
+}
+
+fn review_branch<'a>(root: &Path, reference: &'a str) -> Option<ReviewBranch<'a>> {
+    if let Some(name) = reference.strip_prefix("refs/heads/") {
+        return Some(ReviewBranch { name, remote_url: None });
+    }
+    let tracking_branch = reference.strip_prefix("refs/remotes/")?;
+    let remotes = text(git(root, &["remote"]).ok()?);
+    let remote = remotes
+        .lines()
+        .filter(|remote| {
+            tracking_branch.strip_prefix(*remote).is_some_and(|suffix| suffix.starts_with('/'))
+        })
+        .max_by_key(|remote| remote.len())?;
+    Some(ReviewBranch {
+        name: &tracking_branch[remote.len() + 1..],
+        remote_url: Some(text(git(root, &["remote", "get-url", "--", remote]).ok()?)),
+    })
+}
+
+pub async fn pull_request(
+    root: &Path,
+    base_branch: &str,
+    head_branch: &str,
+    head_commit: &str,
+) -> Option<PullRequestContext> {
+    let (head_ref, current_head) = resolve_branch(root, head_branch).ok()?;
+    if current_head != head_commit {
+        return None;
+    }
+    let (base_ref, _) = resolve_branch(root, base_branch).ok()?;
+    let head = review_branch(root, &head_ref)?;
+    let base = review_branch(root, &base_ref)?;
+    let mut gh = tokio::process::Command::new("gh");
+    gh.current_dir(root)
+        .kill_on_drop(true)
+        .env("GH_PROMPT_DISABLED", "1")
+        .args([
+            "pr",
+            "view",
+            "--json",
+            "baseRefName,headRefName,headRefOid,headRepository,url,title,body",
+            "--",
+            head.name,
+        ]);
+    let output = tokio::time::timeout(Duration::from_secs(5), gh.output())
+        .await
+        .ok()?
+        .ok()?;
+    if !output.status.success() {
+        return None;
+    }
+    matching_pull_request(&output.stdout, &base, &head, head_commit)
+}
+
+fn matches_remote(branch: &ReviewBranch<'_>, repository: Option<&str>) -> bool {
+    branch.remote_url.as_ref().is_none_or(|url| {
+        repository.is_some_and(|repository| {
+            let url = url.strip_suffix(".git").unwrap_or(url).to_ascii_lowercase();
+            let repository = repository.to_ascii_lowercase();
+            url.ends_with(&format!("/{repository}")) || url.ends_with(&format!(":{repository}"))
+        })
+    })
+}
+
+fn matching_pull_request(
+    json: &[u8],
+    base: &ReviewBranch<'_>,
+    head: &ReviewBranch<'_>,
+    commit: &str,
+) -> Option<PullRequestContext> {
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct Repository {
+        name_with_owner: String,
+    }
+    #[derive(serde::Deserialize)]
+    #[serde(rename_all = "camelCase")]
+    struct PullRequest {
+        base_ref_name: String,
+        head_ref_name: String,
+        head_ref_oid: String,
+        head_repository: Option<Repository>,
+        url: String,
+        title: String,
+        body: String,
+    }
+
+    let mut pr: PullRequest = serde_json::from_slice(json).ok()?;
+    let head_repository = pr.head_repository.as_ref().map(|repo| repo.name_with_owner.as_str());
+    if pr.head_ref_oid != commit
+        || pr.head_ref_name != head.name
+        || pr.base_ref_name != base.name
+        || !matches_remote(head, head_repository)
+        || !matches_remote(base, pull_request_repository(&pr.url).as_deref())
+    {
+        return None;
+    }
+    pr.title.truncate(pr.title.floor_char_boundary(MAX_PR_TITLE_BYTES));
+    pr.body.truncate(pr.body.floor_char_boundary(MAX_PR_BODY_BYTES));
+    Some(PullRequestContext {
+        title: pr.title,
+        body: pr.body,
+    })
+}
+
 fn resolve_commit(root: &Path, name: &str) -> Result<String, String> {
+    resolve_branch(root, name).map(|(_, commit)| commit)
+}
+
+fn resolve_branch(root: &Path, name: &str) -> Result<(String, String), String> {
     let name = name.trim();
     if name.is_empty() {
         return Err("Choose both a base branch and a branch to review.".into());
@@ -251,7 +373,7 @@ fn resolve_commit(root: &Path, name: &str) -> Result<String, String> {
         ) {
             let commit = text(output);
             if !commit.is_empty() {
-                return Ok(commit);
+                return Ok((reference, commit));
             }
         }
     }
@@ -453,6 +575,42 @@ mod tests {
                 .unwrap_err()
                 .contains("not available")
         );
+    }
+
+    #[test]
+    fn returns_bounded_pr_context_only_for_the_exact_head() {
+        let commit = "0123456789012345678901234567890123456789";
+        let json = serde_json::json!({
+            "baseRefName": "main",
+            "headRefName": "feature/review",
+            "headRefOid": commit,
+            "headRepository": { "nameWithOwner": "owner/fork" },
+            "url": "https://github.com/org/repo/pull/1",
+            "title": "Review guide",
+            "body": format!("a{}", "é".repeat(MAX_PR_BODY_BYTES / 2)),
+        })
+        .to_string();
+
+        let base = ReviewBranch {
+            name: "main",
+            remote_url: Some("https://github.com/org/repo.git".into()),
+        };
+        let head = ReviewBranch {
+            name: "feature/review",
+            remote_url: Some("git@github.com:owner/fork.git".into()),
+        };
+        let other_commit = "1123456789012345678901234567890123456789";
+        assert!(matching_pull_request(json.as_bytes(), &base, &head, other_commit).is_none());
+        let other_base = ReviewBranch { name: "dev", remote_url: None };
+        assert!(matching_pull_request(json.as_bytes(), &other_base, &head, commit).is_none());
+        let other_fork = ReviewBranch {
+            name: head.name,
+            remote_url: Some("git@github.com:other/fork.git".into()),
+        };
+        assert!(matching_pull_request(json.as_bytes(), &base, &other_fork, commit).is_none());
+        let pr = matching_pull_request(json.as_bytes(), &base, &head, commit).unwrap();
+        assert_eq!(pr.title, "Review guide");
+        assert_eq!(pr.body, format!("a{}", "é".repeat(MAX_PR_BODY_BYTES / 2 - 1)));
     }
 
     #[test]

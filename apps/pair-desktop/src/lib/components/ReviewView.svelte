@@ -199,9 +199,10 @@
       baseUpdated = false;
       state.base_refresh_required = false;
       const sameRevision = state.base_commit === next.base_commit && state.head_commit === next.head_commit;
+      const sameBranches = state.base_branch === next.base_branch && state.head_branch === next.head_branch;
+      if (!sameRevision || !sameBranches) state.guide = null;
       if (!sameRevision) {
         state.reviewed_files = [];
-        state.guide = null;
         state.chat = [];
         state.chat_context = null;
         guideOutput = "";
@@ -406,21 +407,25 @@
   }
 
   async function draftGuide() {
-    if (deleting || !diff || guideBusy || chatBusy) return;
+    if (deleting || !diff || loadingDiff || guideBusy || chatBusy) return;
     if (!pi?.path) {
       guideError = "Pair cannot find Pi. Set its path in Settings before asking for a guide.";
       return;
     }
+    const comparison = diff;
+    const repo = reviewRepoPath();
     guideBusy = true;
-    activeRequest = "guide";
     guideOutput = "";
     guideError = null;
     const sessionId = note.sidecar.session.id ?? crypto.randomUUID();
     note.sidecar.session.id = sessionId;
     await saveReview();
-    if (deleting) return;
+    if (deleting || disposed) return;
     try {
-      await agent.ask(folder, note.name, sessionId, note.sidecar.model ?? settings.default_model, buildGuidePrompt(diff), reviewRepoPath());
+      const pullRequest = await api.reviewPullRequest(repo, comparison.base_branch, comparison.head_branch, comparison.head_commit).catch(() => null);
+      if (deleting || disposed) return;
+      activeRequest = "guide";
+      await agent.ask(folder, note.name, sessionId, note.sidecar.model ?? settings.default_model, buildGuidePrompt(comparison, pullRequest), repo);
     } catch (e) {
       activeRequest = null;
       guideBusy = false;
@@ -572,15 +577,25 @@
       {:else if !diff.files.length}
         <div class="empty">These branches have no committed changes to review.</div>
       {:else}
+        {@const guide = reviewState().guide}
         <div class="guide-actions">
           <div><strong>Review guide</strong><p>Pair groups related changes into behavior sections and attaches suggestions to the files they discuss.</p></div>
-          <button class="btn" onclick={draftGuide} disabled={guideBusy || chatBusy || !diff}>{guideBusy ? "Pair is organizing sections…" : guideError ? "Retry guide" : reviewState().guide ? "Refresh guide" : "Generate guide"}</button>
+          <button class="btn" onclick={draftGuide} disabled={guideBusy || chatBusy || loadingDiff}>{guideBusy ? "Pair is preparing the guide…" : guideError ? "Retry guide" : guide ? "Refresh guide" : "Generate guide"}</button>
         </div>
-        {#if !reviewState().guide?.sections?.length && !guideBusy}
+        {#if !guide?.sections?.length && !guideBusy}
           <p class="fallback-note">{guideError ? "Pair could not prepare the section guide. The changed files are still available below; retry when ready." : "Pair is preparing the behavior-first section guide."}</p>
         {/if}
         {#if guideError}<div class="pair-error" role="status">{guideError}{#if guideOutput}<pre>{guideOutput}</pre>{/if}</div>{/if}
-        {#if guideBusy}<div class="pair-working"><span class="dot"></span>Pair is grouping the supplied diff into a review sequence. You can keep reviewing while it works.</div>{/if}
+        {#if guideBusy}<div class="pair-working"><span class="dot"></span>Pair is preparing the opening and walkthrough. You can keep reviewing while it works.</div>{/if}
+
+        {#if guide?.goal || guide?.attempt}
+          <section class="guide-opening" aria-label="Review overview">
+            <h2>The goal</h2>
+            <p>{guide.goal ?? "The available context doesn’t establish a goal."}</p>
+            <h2>The attempt</h2>
+            <p>{guide.attempt ?? "The supplied diff doesn’t establish an approach."}</p>
+          </section>
+        {/if}
 
         {#each sections() as section, sectionIndex (section.id)}
           {@const files = shownFiles(section)}
@@ -794,6 +809,10 @@
   .guide-actions { display: flex; justify-content: space-between; align-items: center; gap: 18px; margin: 0 auto 20px; max-width: 1330px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 9px; background: var(--sidebar); }
   .guide-actions strong { font-size: 13px; }
   .guide-actions p { margin: 4px 0 0; color: var(--ink-faint); font-size: 12px; }
+  .guide-opening { max-width: 1330px; margin: 0 auto; padding: 4px 0 20px; border-bottom: 1px solid var(--rule); }
+  .guide-opening h2 { margin: 0 0 5px; }
+  .guide-opening p { max-width: 75ch; margin: 0; color: var(--ink-soft); font-size: 13px; line-height: 1.55; overflow-wrap: anywhere; }
+  .guide-opening p + h2 { margin-top: 14px; }
   .fallback-note { max-width: 1330px; margin: -10px auto 18px; color: var(--ink-faint); font-size: 11px; }
   .pair-working, .pair-error { max-width: 1330px; margin: 0 auto 14px; padding: 10px 13px; border-radius: 8px; background: var(--sidebar); color: var(--ink-soft); font-size: 12px; }
   .pair-working { display: flex; align-items: center; gap: 9px; }

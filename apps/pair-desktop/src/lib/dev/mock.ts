@@ -98,6 +98,8 @@ async function runAsk(message: string) {
   await wait(500);
   if (message.includes("Return only valid JSON matching this shape")) {
     await say(JSON.stringify({
+      goal: "Keep checkout working for large baskets without changing how prices are summed.",
+      attempt: "Replace the recursive sum with a running total and add a test for a 200-item basket.",
       sections: [
         { title: "Keep the basket calculation shallow", summary: "The new loop replaces one waiting call per price with a running total.", focus: "Does the loop preserve the existing empty-list and rounding behavior?", files: ["src/checkout/sum.ts"], suggestions: [{ path: "src/checkout/sum.ts", line: 4, severity: "check", summary: "Check rounding remains per line.", rationale: "The prior helper returned the sum of each price without rounding here.", next_check: "Follow the caller that converts prices into display values." }] },
         { title: "Cover the larger input", summary: "The test adds a large basket case to exercise the old stack-depth risk.", focus: "Does the test cover the failure size that motivated the change?", files: ["src/checkout/sum.test.ts"], suggestions: [] },
@@ -217,6 +219,8 @@ export function installMock() {
               { path: "src/checkout/sum.test.ts", status: "M", additions: 8, deletions: 0, binary: false, truncated: false, patch: "diff --git a/src/checkout/sum.test.ts b/src/checkout/sum.test.ts\n--- a/src/checkout/sum.test.ts\n+++ b/src/checkout/sum.test.ts\n@@ -5,3 +5,11 @@\n+test('sums a large basket', () => {\n+  expect(sumPrices(Array(200).fill(1))).toBe(200);\n+});" },
             ],
           };
+        case "review_pull_request":
+          return { title: "Handle large baskets at checkout", body: "Avoid stack overflows while keeping existing totals." };
         case "read_file":
           return { path: a.path, text: FILES[a.path] ?? "", truncated: false, binary: false };
         case "plugin:dialog|open":

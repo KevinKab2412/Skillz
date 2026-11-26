@@ -26,6 +26,26 @@ describe("review guide", () => {
     expect(prompt).toContain("do not edit files or run commands");
   });
 
+  test("supplies PR context for the goal and asks for a diff-backed attempt", () => {
+    const prompt = buildGuidePrompt(diff, { title: "Allow ride edits", body: "Riders need to fix pickup details." });
+    expect(prompt).toContain('<pull_request_json>');
+    expect(prompt).toContain('"title":"Allow ride edits"');
+    expect(prompt).toContain('"body":"Riders need to fix pickup details."');
+    expect(prompt).toContain("From the diff,");
+    expect(prompt).toContain("Explain the attempt from the supplied patch");
+  });
+
+  test("keeps a concise opening and accepts guides saved before it was added", () => {
+    const sections = [{ title: "Edit policy", files: ["app/model.ts"] }];
+    const parse = (opening: object) => parseGuide(JSON.stringify({ sections, ...opening }), ["app/model.ts"]);
+    expect(parse({ goal: "  Let riders fix pickup details. ", attempt: "Add an edit window." })).toMatchObject({
+      goal: "Let riders fix pickup details.",
+      attempt: "Add an edit window.",
+    });
+    expect(parse({ goal: null, attempt: 42 })).toEqual(parse({}));
+    expect(parse({}).sections[0].title).toBe("Edit policy");
+  });
+
   test("keeps suggestions beside their section and assigns every changed file once", () => {
     const guide = parseGuide(
       JSON.stringify({

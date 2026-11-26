@@ -98,6 +98,10 @@ pub struct ReviewChatMessage {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub struct ReviewGuide {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub goal: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub attempt: Option<String>,
     #[serde(default)]
     pub sections: Vec<ReviewSection>,
 }
@@ -614,10 +618,15 @@ mod tests {
     }
 
     #[test]
-    fn sidecar_round_trips_review_chat_context() {
+    fn sidecar_round_trips_review_guide_and_chat_context() {
         let d = tmp();
         let mut note = create(d.path(), "review").unwrap();
         note.sidecar.review = Some(ReviewState {
+            guide: Some(ReviewGuide {
+                goal: Some("Let riders fix pickup details.".into()),
+                attempt: Some("Add an edit window.".into()),
+                ..ReviewGuide::default()
+            }),
             chat_context: Some(ReviewChatContext {
                 path: "src/lib.rs".into(),
                 location: "old 12, new 18".into(),
@@ -655,12 +664,12 @@ mod tests {
         save(d.path(), &note).unwrap();
         assert_eq!(read(d.path(), "n").unwrap(), note);
         let raw = fs::read_to_string(sidecar_path(d.path(), "n")).unwrap();
-        assert!(raw.contains("\"v\": 3"));
+        assert!(raw.contains(&format!("\"v\": {SIDECAR_VERSION}")));
         assert!(raw.contains("\"status\": \"expired\""));
     }
 
     #[test]
-    fn v1_sidecar_loads_and_saves_as_v2() {
+    fn v1_sidecar_loads_and_saves_at_current_version() {
         let d = tmp();
         create(d.path(), "old").unwrap();
         // Written by pair before proposals and approvals were saved.
@@ -681,14 +690,15 @@ mod tests {
         assert!(note.sidecar.proposals.is_empty() && note.sidecar.approvals.is_empty());
         save(d.path(), &note).unwrap();
         let raw = fs::read_to_string(sidecar_path(d.path(), "old")).unwrap();
-        assert!(raw.contains("\"v\": 3") && raw.contains("\"proposals\": []"));
+        assert!(raw.contains(&format!("\"v\": {SIDECAR_VERSION}")) && raw.contains("\"proposals\": []"));
     }
 
     #[test]
     fn newer_sidecar_is_refused() {
         let d = tmp();
         create(d.path(), "new").unwrap();
-        fs::write(sidecar_path(d.path(), "new"), r#"{"v": 4, "threads": [], "somethingNew": [1]}"#).unwrap();
+        let future = serde_json::json!({ "v": SIDECAR_VERSION + 1, "threads": [], "somethingNew": [1] });
+        fs::write(sidecar_path(d.path(), "new"), future.to_string()).unwrap();
         let err = read(d.path(), "new").unwrap_err();
         assert_eq!(err.kind(), io::ErrorKind::InvalidData);
         assert!(err.to_string().contains("newer pair"), "{err}");

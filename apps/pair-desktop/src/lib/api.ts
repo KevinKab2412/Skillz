@@ -22,7 +22,11 @@ export interface ReviewSection {
   files: string[];
   suggestions: ReviewSuggestion[];
 }
-export interface ReviewGuide { sections: ReviewSection[] }
+export interface ReviewGuide {
+  goal?: string | null;
+  attempt?: string | null;
+  sections: ReviewSection[];
+}
 export interface ReviewChatContext {
   path: string;
   location: string;
@@ -94,6 +98,7 @@ export interface Sidecar {
 export interface Note { name: string; markdown: string; sidecar: Sidecar }
 export interface NoteSummary { name: string; modified_ms: number; kind: NoteKind }
 export interface PullRequestBase { branch: string; remote: string | null }
+export interface ReviewPullRequest { title: string; body: string }
 export type PullRequestBaseStatus = "found" | "not_found" | "unavailable";
 export interface ReviewBranchList {
   current: string | null;
@@ -139,6 +144,8 @@ export const api = {
   readFile: (folder: string, path: string) => invoke<FileText>("read_file", { folder, path }),
   reviewBranches: (folder: string, includePrBase: boolean) => invoke<ReviewBranchList>("review_branches", { folder, includePrBase }),
   reviewDiff: (folder: string, baseBranch: string, headBranch: string) => invoke<ReviewDiff>("review_diff", { folder, baseBranch, headBranch }),
+  reviewPullRequest: (folder: string, baseBranch: string, headBranch: string, headCommit: string) =>
+    invoke<ReviewPullRequest | null>("review_pull_request", { folder, baseBranch, headBranch, headCommit }),
 };
 
 export interface FileText { path: string; text: string; truncated: boolean; binary: boolean }
