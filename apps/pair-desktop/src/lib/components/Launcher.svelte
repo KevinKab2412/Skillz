@@ -61,7 +61,8 @@
 
 <style>
   .launcher { min-height: 100vh; background: var(--bg); color: var(--ink); }
-  .topbar { display: flex; height: 44px; align-items: center; gap: 8px; padding: 0 22px; border-bottom: 1px solid var(--rule); color: var(--ink-soft); }
+  /* The native window buttons sit over the left edge of the launcher. */
+  .topbar { display: flex; height: 44px; align-items: center; gap: 8px; padding: 0 22px 0 88px; border-bottom: 1px solid var(--rule); color: var(--ink-soft); }
   .brand-mark { display: grid; width: 22px; height: 22px; place-items: center; border-radius: 6px; background: var(--ink); color: var(--bg); font-size: 14px; }
   .brand { font-size: 13px; font-weight: 600; letter-spacing: .01em; }
   .picker { width: min(100% - 40px, 520px); margin: 10vh auto 56px; padding: 26px; border: 1px solid var(--rule); border-radius: 14px; background: var(--surface); box-shadow: 0 18px 55px color-mix(in srgb, var(--ink) 8%, transparent); }
