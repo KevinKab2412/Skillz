@@ -15,7 +15,7 @@
 //! Versions: 1 = core note state, 2 = proposals and approvals, 3 = note kind and review state,
 //! 4 = selected repository path, 5 = code review base selection source,
 //! 6 = pending comparison refresh after base correction, 7 = generated note title,
-//! 8 = note selection chat.
+//! 8 = note selection chat, 9 = review verification.
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -28,7 +28,7 @@ const LEGACY_NOTES_DIR: &str = ".pair/notes";
 static MIGRATION_LOCK: Mutex<()> = Mutex::new(());
 static SIDECAR_LOCK: Mutex<()> = Mutex::new(());
 /// The sidecar version this build writes, and the newest it can read.
-pub const SIDECAR_VERSION: u32 = 8;
+pub const SIDECAR_VERSION: u32 = 9;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 #[serde(rename_all = "snake_case")]
@@ -120,6 +120,15 @@ pub struct ReviewGuide {
     pub attempt: Option<String>,
     #[serde(default)]
     pub sections: Vec<ReviewSection>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub verification: Option<Vec<ReviewVerification>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub struct ReviewVerification {
+    pub command: String,
+    pub status: String,
+    pub message: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
@@ -672,6 +681,11 @@ mod tests {
             guide: Some(ReviewGuide {
                 goal: Some("Let riders fix pickup details.".into()),
                 attempt: Some("Add an edit window.".into()),
+                verification: Some(vec![ReviewVerification {
+                    command: "bun test".into(),
+                    status: "passed".into(),
+                    message: "Test exit code: 0.".into(),
+                }]),
                 ..ReviewGuide::default()
             }),
             chat_context: Some(ReviewChatContext {

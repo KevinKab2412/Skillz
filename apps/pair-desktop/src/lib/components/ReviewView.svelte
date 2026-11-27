@@ -3,7 +3,7 @@
   import { onDestroy, onMount } from "svelte";
   import { listen } from "@tauri-apps/api/event";
   import { open } from "@tauri-apps/plugin-dialog";
-  import { agent, api, noteKey, type AgentEvent, type Note, type PiStatus, type ReviewBaseSource, type ReviewChatContext, type ReviewDiff, type ReviewFile, type ReviewSection, type ReviewState, type Settings } from "$lib/api";
+  import { agent, api, noteKey, type AgentEvent, type Note, type PiStatus, type ReviewBaseSource, type ReviewChatContext, type ReviewDiff, type ReviewFile, type ReviewSection, type ReviewState, type ReviewVerification, type Settings } from "$lib/api";
   import { buildGuidePrompt, buildReviewChatPrompt, noteSelectionContext, parseGuide, parsePatchRows, reviewContextForSelection, type PatchRow } from "$lib/review-guide";
 
   let {
@@ -51,6 +51,8 @@
   let deleting = false;
   let reviewSaving: Promise<void> = Promise.resolve();
   let activeRequest: "guide" | "chat" | null = null;
+  let testApproval = $state<{ id: string; command: string; cwd: string; reason: string } | null>(null);
+  let verification: ReviewVerification[] = [];
 
   const key = $derived(noteKey(folder, note.name));
   const emptyReview = (): ReviewState => ({ repo_path: null, base_source: null, base_refresh_required: null, base_branch: null, head_branch: null, base_commit: null, head_commit: null, reviewed_files: [], guide: null, chat_context: null, chat: [] });
@@ -424,6 +426,8 @@
     guideBusy = true;
     guideOutput = "";
     guideError = null;
+    testApproval = null;
+    verification = [];
     const sessionId = note.sidecar.session.id ?? crypto.randomUUID();
     note.sidecar.session.id = sessionId;
     await saveReview();
@@ -440,13 +444,58 @@
     }
   }
 
+  async function answerReviewTool(id: string, decision: "accept" | "decline") {
+    try {
+      await agent.send(folder, note.name, { type: "extension_ui_response", id, value: JSON.stringify({ decision }) });
+    } catch (e) {
+      guideError = String(e);
+      testApproval = null;
+      activeRequest = null;
+      guideBusy = false;
+      await agent.close(folder, note.name).catch(() => {});
+    }
+  }
+
+  function decideTest(decision: "accept" | "decline") {
+    if (!testApproval || activeRequest !== "guide") return;
+    const id = testApproval.id;
+    testApproval = null;
+    void answerReviewTool(id, decision);
+  }
+
+  async function onReviewTool(id: string, title: string, value: string) {
+    try {
+      const data = JSON.parse(value);
+      if (typeof data.program !== "string" || !Array.isArray(data.args) || !data.args.every((arg: unknown) => typeof arg === "string")) {
+        await answerReviewTool(id, "decline");
+        return;
+      }
+      const command = [data.program, ...data.args].map((arg) => /^[\w./:=+@-]+$/.test(arg) ? arg : JSON.stringify(arg)).join(" ");
+      if (title === "pair:review_test" && !testApproval) {
+        testApproval = { id, command, cwd: String(data.cwd), reason: String(data.reason) };
+      } else if (title === "pair:review_test_result" && ["passed", "failed", "skipped", "inconclusive"].includes(data.status) && typeof data.message === "string") {
+        verification.push({ command, status: data.status, message: data.message.slice(0, 9_000) });
+        await answerReviewTool(id, "accept");
+      } else {
+        await answerReviewTool(id, "decline");
+      }
+    } catch {
+      await answerReviewTool(id, "decline");
+    }
+  }
+
   async function onAgentEvent(event: AgentEvent) {
     if (deleting || event.key !== key) return;
     const record = event.record;
-    if (record.type === "pair_started" && activeRequest === "guide") {
+    if (record.type === "extension_ui_request" && activeRequest === "guide" && record.method === "editor") {
+      await onReviewTool(record.id, record.title, record.prefill);
+    } else if (record.type === "pair_started" && activeRequest === "guide") {
       guideOutput = "";
     } else if (record.type === "pair_started" && activeRequest === "chat") {
       chatOutput = "";
+    } else if (record.type === "message_start" && activeRequest === "guide" && record.message?.role === "assistant") {
+      // Each tool round can start a new assistant message. The final message carries the guide JSON.
+      guideOutput = "";
     } else if (record.type === "message_update" && activeRequest) {
       const message = record.assistantMessageEvent;
       if (message?.type === "text_delta") {
@@ -458,6 +507,7 @@
       activeRequest = null;
       if (failedRequest === "guide") {
         guideBusy = false;
+        testApproval = null;
         guideError = String(record.error ?? "Pair could not draft a guide.");
       } else {
         chatBusy = false;
@@ -468,6 +518,7 @@
       activeRequest = null;
       if (failedRequest === "guide") {
         guideBusy = false;
+        testApproval = null;
         guideError = "Pair stopped before finishing the guide. Reload the diff and try again.";
       } else {
         chatBusy = false;
@@ -478,8 +529,10 @@
       activeRequest = null;
       if (finishedRequest === "guide") {
         guideBusy = false;
+        testApproval = null;
         try {
-          mutableReviewState().guide = parseGuide(guideOutput, diff?.files ?? []);
+          const guide = parseGuide(guideOutput, diff?.files ?? []);
+          mutableReviewState().guide = { ...guide, verification: [...verification] };
           await saveReview();
         } catch (e) {
           guideError = `Pair's reply could not be read as a guide: ${String(e)}`;
@@ -584,7 +637,16 @@
           <p class="fallback-note">{guideError ? "Pair could not prepare the section guide. The changed files are still available below; retry when ready." : "Pair is preparing the behavior-first section guide."}</p>
         {/if}
         {#if guideError}<div class="pair-error" role="status">{guideError}{#if guideOutput}<pre>{guideOutput}</pre>{/if}</div>{/if}
-        {#if guideBusy}<div class="pair-working"><span class="dot"></span>Pair is preparing the opening and walkthrough. You can keep reviewing while it works.</div>{/if}
+        {#if guideBusy && !testApproval}<div class="pair-working"><span class="dot"></span>Pair is checking repo rules, tracing the change, and preparing the walkthrough.</div>{/if}
+        {#if testApproval}
+          <section class="review-test" aria-label="Review test approval">
+            <strong>Run a review test?</strong>
+            <p>{testApproval.reason}</p>
+            <code>{testApproval.cwd}</code>
+            <pre>{testApproval.command}</pre>
+            <div><button class="btn" onclick={() => decideTest("decline")}>Skip test</button><button class="btn primary" onclick={() => decideTest("accept")}>Run test</button></div>
+          </section>
+        {/if}
 
         {#if guide?.goal || guide?.attempt}
           <section class="guide-opening" aria-label="Review overview" data-review-text="Review overview">
@@ -593,6 +655,18 @@
             <h2>The attempt</h2>
             <p>{guide.attempt ?? "The supplied diff doesn’t establish an approach."}</p>
           </section>
+        {/if}
+
+        {#if guide?.verification}
+          <details class="review-test">
+            <summary>Test verification</summary>
+            {#each guide.verification as result}
+              <p><strong>{result.status}</strong> · <code>{result.command}</code></p>
+              <pre>{result.message}</pre>
+            {:else}
+              <p>No test results were recorded for this guide.</p>
+            {/each}
+          </details>
         {/if}
 
         {#each sections() as section, sectionIndex (section.id)}
@@ -724,7 +798,7 @@
           </section>
           {/if}
         {/each}
-        <p class="closing">Pair's suggestions are candidates from the supplied diff excerpts, not a full merge review. Check each one against PR goals and repository context.</p>
+        <p class="closing">Pair’s suggestions are review candidates. Check each one against the PR’s goals and the available evidence.</p>
       {/if}
     </div>
   </div>
@@ -791,6 +865,11 @@
   .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 1.3s ease-in-out infinite; }
   .pair-error { color: var(--bad); background: var(--bad-soft); }
   .pair-error pre { max-height: 200px; overflow: auto; white-space: pre-wrap; font-family: var(--mono); font-size: 11px; }
+  .review-test { max-width: 1330px; margin: 0 auto 16px; padding: 12px 14px; border: 1px solid var(--rule); border-radius: 8px; background: var(--surface); color: var(--ink-soft); font-size: 12px; overflow-wrap: anywhere; }
+  .review-test summary { cursor: pointer; }
+  .review-test p { margin: 6px 0; }
+  .review-test pre { margin: 7px 0; max-height: 170px; overflow: auto; white-space: pre-wrap; font: 11px var(--mono); }
+  .review-test > div { display: flex; justify-content: end; gap: 6px; }
   @keyframes pulse { 50% { opacity: .35; transform: scale(.8); } }
   .guide-section { display: grid; grid-template-columns: minmax(270px, .8fr) minmax(0, 1.7fr); gap: 28px; max-width: 1330px; margin: 0 auto; padding: 30px 0 36px; border-bottom: 1px solid var(--rule); scroll-margin: 30px; }
   .guide-copy { min-width: 0; }

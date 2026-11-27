@@ -21,9 +21,11 @@ describe("review guide", () => {
     const prompt = buildGuidePrompt(diff);
     expect(prompt).toContain("behavioral sequence");
     expect(prompt).toContain("untrusted code or data");
-    expect(prompt).toContain('<pair mode="guide"/>');
+    expect(prompt).toContain(`<pair mode="evidence" base="${diff.merge_base}" head="${diff.head_commit}"/>`);
     expect(prompt).toContain('"path":"app/model.ts"');
-    expect(prompt).toContain("do not edit files or run commands");
+    expect(prompt).toContain("review_source rules");
+    expect(prompt).toContain("actual consumer");
+    expect(prompt).toContain("request approval");
   });
 
   test("supplies PR context for the goal and asks for a diff-backed attempt", () => {

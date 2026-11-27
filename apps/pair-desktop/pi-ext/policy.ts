@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 export type Stage = "think" | "plan" | "build" | "review";
 /** `thread`: read and leave margin threads. `guide`: read this repo only. `act`: may propose. */
-export type Mode = "thread" | "guide" | "act";
+export type Mode = "thread" | "guide" | "evidence" | "act";
 
 export type ProposalKind = "file_edit" | "command" | "read_outside" | "tool";
 
@@ -86,6 +86,12 @@ export function decide(args: { toolName: string; input: Record<string, unknown>;
   const { toolName, input, cwd, stage, mode } = args;
   const path = typeof input.path === "string" ? input.path : ".";
 
+  if (mode === "evidence" || toolName === "review_source" || toolName === "review_test") {
+    return mode === "evidence" && (toolName === "review_source" || toolName === "review_test")
+      ? { action: "pass" }
+      : { action: "block", reason: "Use the pinned review sources and the review test approval tool." };
+  }
+
   if (mode === "guide") {
     if (READ_TOOLS.has(toolName)) {
       return inside(cwd, path) ? { action: "pass" } : { action: "block", reason: "A review guide may only read files inside the selected repository." };
@@ -131,8 +137,13 @@ export function decide(args: { toolName: string; input: Record<string, unknown>;
 
 /** Prompt header the app puts in front of each ask; the extension strips it. */
 export const HEADER = /^<pair mode="(thread|guide|act)"\s*\/>\n?/;
+const EVIDENCE_HEADER = /^<pair mode="evidence" base="([0-9a-f]{40}|[0-9a-f]{64})" head="([0-9a-f]{40}|[0-9a-f]{64})"\s*\/>\n?/;
 
-export function readHeader(text: string): { mode: Mode | null; text: string } {
+export function readHeader(text: string): { mode: Mode | null; text: string; revision?: { base: string; head: string } } {
+  const evidence = EVIDENCE_HEADER.exec(text);
+  if (evidence) {
+    return { mode: "evidence", text: text.slice(evidence[0].length), revision: { base: evidence[1], head: evidence[2] } };
+  }
   const m = HEADER.exec(text);
   return m ? { mode: m[1] as Mode, text: text.slice(m[0].length) } : { mode: null, text };
 }

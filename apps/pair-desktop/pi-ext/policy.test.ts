@@ -67,6 +67,19 @@ describe("guide mode (code review)", () => {
       expect(d(tool, {}, "review", "guide").action).toBe("block");
     }
   });
+
+  test("evidence mode exposes only pinned sources and the approval-gated test tool", () => {
+    expect(d("review_source", {}, "review", "evidence").action).toBe("pass");
+    expect(d("review_test", {}, "review", "evidence").action).toBe("pass");
+    expect(d("review_test", {}, "review", "guide").action).toBe("block");
+    for (const tool of ["read", "edit", "bash", "add_thread", "review_verdict"]) {
+      expect(d(tool, {}, "review", "evidence").action).toBe("block");
+    }
+    const base = "a".repeat(40);
+    const head = "b".repeat(40);
+    expect(readHeader(`<pair mode="evidence" base="${base}" head="${head}"/>\nreview`))
+      .toEqual({ mode: "evidence", revision: { base, head }, text: "review" });
+  });
 });
 
 describe("note tools by stage", () => {

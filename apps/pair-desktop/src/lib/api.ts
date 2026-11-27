@@ -26,6 +26,12 @@ export interface ReviewGuide {
   goal?: string | null;
   attempt?: string | null;
   sections: ReviewSection[];
+  verification?: ReviewVerification[];
+}
+export interface ReviewVerification {
+  command: string;
+  status: "passed" | "failed" | "skipped" | "inconclusive";
+  message: string;
 }
 export interface ReviewChatContext {
   source?: "note" | null;

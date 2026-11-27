@@ -14,12 +14,15 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { validate } from "./diagram-spec";
 import { decide, readHeader, type Mode, type Stage } from "./policy";
+import { reviewRules, reviewSource, verifyReviewTest, type ReviewRevision } from "./review-evidence";
 
 type Answer = { decision: "accept" | "decline"; reason?: string; command?: string; note?: string };
 
 const NOTE = process.env.PAIR_NOTE ?? "";
 const NOTES_DIR = process.env.PAIR_NOTES_DIR ?? "";
 let mode: Mode = "act";
+let reviewRevision: ReviewRevision | undefined;
+let reviewTests = 0;
 let diagramFailures = 0;
 
 /** Stage is read fresh on every call, since Kevin can move it at any time. */
@@ -49,13 +52,62 @@ const declined = (a: Answer) => `Kevin declined this.${a.reason ? ` Reason: ${a.
 const text = (t: string) => ({ content: [{ type: "text" as const, text: t }], details: undefined });
 
 export default function (pi: ExtensionAPI) {
-  pi.on("input", async (event) => {
+  pi.on("input", async (event, ctx) => {
     if (event.source === "extension") return { action: "continue" };
-    const { mode: m, text: rest } = readHeader(event.text);
+    const { mode: m, text: rest, revision } = readHeader(event.text);
     mode = m ?? "act";
+    reviewRevision = revision;
+    reviewTests = 0;
     diagramFailures = 0;
+    if (revision) {
+      const rules = await reviewRules(ctx.cwd, revision).catch(() => ({ error: "Could not load committed repo rules. Continue with the available evidence and disclose this gap." }));
+      return { action: "transform", text: `${rest}\n\n<baseline_repo_rules_json>\n${JSON.stringify(rules)}\n</baseline_repo_rules_json>` };
+    }
     return m ? { action: "transform", text: rest } : { action: "continue" };
   });
+
+  pi.registerTool(defineTool({
+    name: "review_source",
+    label: "Inspect reviewed revision",
+    description: "Read committed evidence for this comparison. rules lists applicable baseline standards; read shows numbered lines from a tracked file (standards come from the baseline); search finds literal downstream references at the reviewed head; patch retrieves a file's diff when missing from the guide excerpts.",
+    parameters: Type.Object({
+      operation: StringEnum(["rules", "read", "search", "patch"] as const),
+      path: Type.Optional(Type.String()),
+      query: Type.Optional(Type.String()),
+      start: Type.Optional(Type.Integer({ minimum: 1 })),
+    }),
+    async execute(_id, params, _signal, _update, ctx) {
+      if (mode !== "evidence" || !reviewRevision) throw new Error("No pinned review revision.");
+      return text(await reviewSource(ctx.cwd, reviewRevision, params));
+    },
+  }));
+
+  pi.registerTool(defineTool({
+    name: "review_test",
+    label: "Verify reviewed behavior",
+    description: "Propose one focused, documented test from the repo root. Pair asks the user to approve the exact executable and arguments. Test execution requires a clean checkout at the reviewed commit. Use only existing local test tooling.",
+    parameters: Type.Object({
+      program: Type.String({ minLength: 1, maxLength: 240 }),
+      args: Type.Array(Type.String({ maxLength: 600 }), { maxItems: 30 }),
+      reason: Type.String({ minLength: 1, maxLength: 400 }),
+    }),
+    async execute(_id, { program, args, reason }, signal, _update, ctx) {
+      const revision = reviewRevision;
+      if (mode !== "evidence" || !revision) throw new Error("No pinned review revision.");
+      if (reviewTests++ >= 3) return text("Test request limit reached for this guide.");
+      const result = await verifyReviewTest(
+        ctx.cwd,
+        revision.head,
+        async () => {
+          const approval = await ask(ctx, "review_test", { program, args, reason, cwd: ctx.cwd });
+          return approval.decision === "accept" && !signal?.aborted;
+        },
+        () => pi.exec(program, args, { cwd: ctx.cwd, signal, timeout: 120_000 }),
+      );
+      await ask(ctx, "review_test_result", { program, args, ...result });
+      return text(`Test result: ${result.status}. ${result.message}`);
+    },
+  }));
 
   pi.on("tool_call", async (event, ctx) => {
     const input = event.input as Record<string, unknown>;
